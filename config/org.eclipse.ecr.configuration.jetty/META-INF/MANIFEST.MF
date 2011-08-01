@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: ECR Jetty Configuration (Incubation)
+Bundle-SymbolicName: org.eclipse.ecr.configuration.jetty
+Bundle-Version: 0.5.4.qualifier
+Fragment-Host: org.eclipse.ecr.application
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Export-Package: org.eclipse.ecr.configuration
+Import-Package: org.eclipse.equinox.http.jetty
+ECR-ApplicationListener: org.eclipse.ecr.configuration.JettyConfigurator

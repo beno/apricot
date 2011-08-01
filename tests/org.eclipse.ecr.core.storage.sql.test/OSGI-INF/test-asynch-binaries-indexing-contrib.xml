@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<component name="org.eclipse.ecr.core.storage.sql.tests.binaries-indexing-synch">
+
+  <extension target="org.eclipse.ecr.core.event.EventServiceComponent" point="listener">
+    <listener priority="10" async="true" class="org.eclipse.ecr.core.storage.sql.TestSQLBinariesIndexing$SynchHandler" name="binariesIndexingSynchHandler"/>
+  </extension>
+
+</component>

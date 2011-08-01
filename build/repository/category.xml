@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+
+   <feature url="features/org.eclipse.ecr.core_0.5.4.qualifier.jar" id="org.eclipse.ecr.core" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+   <feature url="features/org.eclipse.ecr.core.sdk_0.5.4.qualifier.jar" id="org.eclipse.ecr.core.sdk" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.sdk"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.equinox_0.5.4.qualifier.jar" id="org.eclipse.ecr.equinox" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+   <feature url="features/org.eclipse.ecr.equinox.sdk_0.5.4.qualifier.jar" id="org.eclipse.ecr.equinox.sdk" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.sdk"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.dependencies_0.5.4.qualifier.jar" id="org.eclipse.ecr.dependencies" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.h2_0.5.4.qualifier.jar" id="org.eclipse.ecr.h2" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+   <feature url="features/org.eclipse.ecr.h2.sdk_0.5.4.qualifier.jar" id="org.eclipse.ecr.h2.sdk" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.sdk"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.web_0.5.4.qualifier.jar" id="org.eclipse.ecr.web" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+   <feature url="features/org.eclipse.ecr.web.sdk_0.5.4.qualifier.jar" id="org.eclipse.ecr.web.sdk" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.sdk"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.opencmis_0.5.4.qualifier.jar" id="org.eclipse.ecr.opencmis" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr"/>
+   </feature>
+   <feature url="features/org.eclipse.ecr.opencmis.sdk_0.5.4.qualifier.jar" id="org.eclipse.ecr.opencmis.sdk" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.sdk"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.test_0.5.4.qualifier.jar" id="org.eclipse.ecr.test" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.test"/>
+   </feature>
+
+   <feature url="features/org.eclipse.ecr.psql_0.5.4.qualifier.jar" id="org.eclipse.ecr.psql" version="0.5.4.qualifier">
+      <category name="org.eclipse.ecr.psql"/>
+   </feature>
+
+   <category-def name="org.eclipse.ecr" label="Eclipse Content Repository (ECR)"/>
+   <category-def name="org.eclipse.ecr.sdk" label="Eclipse Content Repository (ECR) SDK"/>
+   <category-def name="org.eclipse.ecr.test" label="Eclipse Content Repository (ECR) Tests"/>
+
+   <category-def name="org.eclipse.ecr.psql" label="ECR Postgresql Support"/>
+
+</site>
