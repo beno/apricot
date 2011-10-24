@@ -18,6 +18,5 @@ Import-Package: junit.framework,
  org.nuxeo.common
 Export-Package: org.eclipse.ecr.runtime,
  org.eclipse.ecr.runtime.api,
- org.eclipse.ecr.runtime.expression,
  org.eclipse.ecr.runtime.model
 Require-Bundle: org.eclipse.ecr.testlib
