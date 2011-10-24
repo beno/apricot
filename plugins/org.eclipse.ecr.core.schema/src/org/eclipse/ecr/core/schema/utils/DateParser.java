@@ -26,6 +26,9 @@ import java.util.TimeZone;
 public class DateParser {
 
     public static Calendar parse(String str) throws ParseException {
+    	if (str == null) {
+    		return null;
+    	}
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         cal.clear();
         int len = str.length();
@@ -68,6 +71,9 @@ public class DateParser {
     }
     
     public static Date parseW3CDateTime(String str) {
+    	if (str == null) {
+    		return null;
+    	}
         try {
             return parse(str).getTime();
         } catch (ParseException e) {
@@ -81,6 +87,9 @@ public class DateParser {
      * @return
      */
     public static String formatW3CDateTime(Date date) {
+    	if (date == null) {
+    		return null;
+    	}
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         cal.setTime(date);
         StringBuilder buf = new StringBuilder(32);
