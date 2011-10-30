@@ -117,13 +117,10 @@ public class Activator implements BundleActivator, Constants {
     }
 
     protected void removeH2Lock() {
-        String h2 = System.getProperty("h2.baseDir");
-        if (h2 != null) {
-            File file = new File(h2);
-            file = new File(file, "nuxeo.lucene");
-            file = new File(file, "write.lock");
-            file.delete();
-        }
+    	File file = new File(Environment.getDefault().getData(), "h2");    	
+    	file = new File(file, "nuxeo.lucene");
+    	file = new File(file, "write.lock");
+    	file.delete();
     }
 
     protected void startRuntime() throws BundleException {
