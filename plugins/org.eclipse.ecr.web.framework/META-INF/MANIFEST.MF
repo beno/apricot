@@ -1,0 +1,36 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Apricot Web Framework
+Bundle-SymbolicName: org.eclipse.ecr.web.framework;singleton:=true
+Bundle-Version: 0.5.4.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Import-Package: freemarker.core,
+ freemarker.template,
+ javax.servlet,
+ javax.servlet.http,
+ javax.ws.rs,
+ javax.ws.rs.core,
+ javax.ws.rs.ext,
+ org.apache.commons.logging,
+ org.eclipse.ecr.runtime.api,
+ org.eclipse.ecr.runtime.model,
+ org.eclipse.ecr.web.jaxrs.context,
+ org.eclipse.ecr.web.rendering.api,
+ org.eclipse.ecr.web.rendering.fm,
+ org.eclipse.ecr.web.rendering.fm.extensions,
+ org.mvel2,
+ org.mvel2.templates,
+ org.nuxeo.common.utils,
+ org.nuxeo.common.xmap.annotation,
+ org.osgi.framework,
+ org.eclipse.ecr.web.jaxrs.scan
+Export-Package: org.eclipse.ecr.web.framework,
+ org.eclipse.ecr.web.framework.adapters,
+ org.eclipse.ecr.web.framework.forms,
+ org.eclipse.ecr.web.framework.fragments,
+ org.eclipse.ecr.web.framework.io,
+ org.eclipse.ecr.web.framework.skins,
+ org.eclipse.ecr.web.framework.skins.i18n
+Nuxeo-Component: OSGI-INF/WebFramework.xml, OSGI-INF/FormService.xml
+Bundle-ActivationPolicy: lazy
+Nuxeo-WebModule: org.eclipse.ecr.web.jaxrs.scan.DynamicApplicationFactory

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+<component name="org.eclipse.ecr.web.forms" version="1.0">
+
+  <implementation class="org.eclipse.ecr.web.framework.forms.FormServiceImpl" />
+
+  <service>
+      <provide interface="org.eclipse.ecr.web.framework.forms.FormService" />
+  </service>
+  
+  <extension-point name="forms">
+    <object class="org.eclipse.ecr.web.framework.forms.FormDescriptor" />
+  </extension-point>
+       
+</component>

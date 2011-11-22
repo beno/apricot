@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<component name="org.eclipse.ecr.web.framework" version="1.0">
+
+  <implementation class="org.eclipse.ecr.web.framework.WebFrameworkComponent" />
+
+  <service>
+      <provide interface="org.eclipse.ecr.web.framework.WebFramework" />
+  </service>
+  
+  <extension-point name="adapters">
+    <object class="org.eclipse.ecr.web.framework.adapters.AdapterFactoryDescriptor" />
+  </extension-point>
+   
+  <extension-point name="skins">
+    <object class="org.eclipse.ecr.web.framework.skins.SkinFragment" />
+  </extension-point>
+
+  <extension-point name="fragments">
+    <object class="org.eclipse.ecr.web.framework.fragments.FragmentDescriptor" />
+  </extension-point>
+   
+  <extension point="adapters" target="org.eclipse.ecr.web.framework">
+    <factory path="views" class="org.eclipse.ecr.web.framework.adapters.ViewAdapterFactory" />
+  </extension>
+    
+</component>

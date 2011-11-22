@@ -1,0 +1,4 @@
+handle errors
+messages -> may pose memory pb if random language are requested
+better handling of app names in WebRoot object?
+handle proxy redirect -> update WebContext.getUri and other path handling methods
