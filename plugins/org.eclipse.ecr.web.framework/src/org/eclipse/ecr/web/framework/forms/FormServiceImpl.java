@@ -33,43 +33,43 @@ public class FormServiceImpl extends DefaultComponent implements FormService {
 		validators = new HashMap<String, FieldValidator>();
 		validators.put("required", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
 				return value != null && value.length() > 0;
 			}
 		});
 		validators.put("minlen", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
-				return Integer.parseInt(rd.value) >= Integer.parseInt(value);
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
+				return Integer.parseInt(rd.value) <= value.length();
 			}
 		});
 		validators.put("maxlen", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
-				return Integer.parseInt(rd.value) <= value.length();
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
+				return Integer.parseInt(rd.value) >= value.length();
 			}
 		});
 		validators.put("min", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
-				return Integer.parseInt(rd.value) <= value.length();
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
+				return Integer.parseInt(rd.value) <= Integer.parseInt(value);
 			}
 		});
 		validators.put("max", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
 				return Integer.parseInt(rd.value) >= Integer.parseInt(value);
 			}
 		});
 		validators.put("regex", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
 				return value.matches(rd.value);
 			}
 		});
 		validators.put("sameAs", new FieldValidator() {
 			@Override
-			public boolean validate(RuleDescriptor rd, String value, FormData form) {
+			public boolean validate(RuleDescriptor rd, String value, Form form) {
 				return value != null && value.equals(form.getString(rd.value));
 			}
 		});

@@ -18,8 +18,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import org.eclipse.ecr.web.framework.FreemarkerRenderingEngine;
 import org.eclipse.ecr.web.framework.WebApplication;
+import org.eclipse.ecr.web.framework.rendering.FreemarkerRenderingEngine;
 
 import freemarker.core.Environment;
 import freemarker.template.SimpleScalar;

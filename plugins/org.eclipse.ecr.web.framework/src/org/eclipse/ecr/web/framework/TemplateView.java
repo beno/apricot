@@ -15,6 +15,7 @@ package org.eclipse.ecr.web.framework;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -66,7 +67,7 @@ public class TemplateView implements View {
 
 	@Override
 	public void render(OutputStream out) throws Exception {
-		OutputStreamWriter writer = new OutputStreamWriter(out);
+		OutputStreamWriter writer = new OutputStreamWriter(out, "UTF-8");
 		render(writer);
 		writer.flush();
 	}

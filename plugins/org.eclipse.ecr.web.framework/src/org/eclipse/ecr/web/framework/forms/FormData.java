@@ -13,83 +13,46 @@
 
 package org.eclipse.ecr.web.framework.forms;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.ws.rs.core.MultivaluedMap;
 
-import org.eclipse.ecr.runtime.api.Framework;
+public class FormData extends HashMap<String, List<String>> implements MultivaluedMap<String, String> {
 
-public class FormData {
+	private static final long serialVersionUID = -7063103957476783018L;
 
-	protected FormService service;
-	
-	protected MultivaluedMap<String, String> params;
-	
-	protected FormDescriptor fd;
-	
-	protected Map<String, String> errors;
-	
-	public FormData(String id) {
-		this (id, new MultivaluedMapImpl());
+	public FormData() {
 	}
 	
-	public FormData(String id, MultivaluedMap<String, String> params) {
-		this.params = params;
-		this.service = Framework.getLocalService(FormService.class);
-		this.fd = service.getFormDescriptor(id);
-		this.errors = new HashMap<String, String>();
+	public FormData(int initialCapacity) {
+		super (initialCapacity);
 	}
 
-	public String getId() {
-		return fd.id;
-	}
-	
-	public final MultivaluedMap<String, String> getParams() {
-		return params;
-	}
-	
-	public boolean hasErrors() {
-		return !errors.isEmpty();
-	}
-	
-	public FormService getService() {
-		return service;
-	}
-	
-	public Map<String, String> getErrors() {
-		return errors;
-	}
-	
-	public String getError(String name) {
-		return errors.get(name);
-	}
-	
-	public String getString(String key) {
-		return params.getFirst(key);
-	}
-
-	public List<String> getStrings(String key) {
-		return params.get(key);
-	}
-
-	public FormDescriptor getDescriptor() {
-		return fd;
-	}
-	
-	public Map<String,String> validate() {
-		for (FieldDescriptor field : fd.fields) {
-			for (RuleDescriptor rd : field.rules) {
-				FieldValidator v = service.getValidator(rd.type);
-				if (v != null) {
-					if (!v.validate(rd, getString(field.name), this)) {
-						errors.put(field.name, rd.message);
-					}
-				}
-			}
+	@Override
+	public void add(String key, String value) {
+		List<String> list = get(key);
+		if (list == null) {
+			list = new ArrayList<String>();
+			put(key, list);
 		}
-		return errors;
+		list.add(value == null ? "" : value);
+	}
+
+	@Override
+	public String getFirst(String key) {
+		List<String> list = get(key);
+		if (list == null || list.isEmpty()) {
+			return null;
+		}		
+		return list.get(0);
+	}
+
+	@Override
+	public void putSingle(String key, String value) {
+		put(key, Collections.singletonList(value == null ? "" : value));
 	}
 	
 }

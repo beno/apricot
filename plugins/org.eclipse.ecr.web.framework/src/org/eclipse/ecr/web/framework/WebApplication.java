@@ -19,6 +19,7 @@ import java.util.List;
 import org.eclipse.ecr.web.framework.adapters.AdapterManager;
 import org.eclipse.ecr.web.framework.fragments.FragmentManager;
 import org.eclipse.ecr.web.framework.fragments.FragmentManagerImpl;
+import org.eclipse.ecr.web.framework.rendering.FreemarkerRenderingEngine;
 import org.eclipse.ecr.web.framework.skins.SkinManager;
 import org.eclipse.ecr.web.rendering.api.RenderingEngine;
 

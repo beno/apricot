@@ -11,7 +11,7 @@
  *
  */
 
-package org.eclipse.ecr.web.framework;
+package org.eclipse.ecr.web.framework.rendering;
 
 import java.io.Writer;
 
@@ -24,6 +24,7 @@ import org.eclipse.ecr.web.framework.forms.ftl.TextareaDirective;
 import org.eclipse.ecr.web.framework.fragments.FragmentDirective;
 import org.eclipse.ecr.web.framework.fragments.FragmentsDirective;
 import org.eclipse.ecr.web.framework.fragments.SlotDirective;
+import org.eclipse.ecr.web.framework.pagination.PaginationDirective;
 import org.eclipse.ecr.web.rendering.api.RenderingException;
 import org.eclipse.ecr.web.rendering.api.ResourceLocator;
 import org.eclipse.ecr.web.rendering.fm.FreemarkerEngine;
@@ -56,6 +57,11 @@ public class FreemarkerRenderingEngine extends FreemarkerEngine {
         this.cfg.setSharedVariable("textarea", new TextareaDirective());
         this.cfg.setSharedVariable("select", new SelectDirective());
         this.cfg.setSharedVariable("option", new OptionDirective());
+        
+        this.cfg.setSharedVariable("paginate", new PaginationDirective());
+        
+        this.cfg.setSharedVariable("navbar", new NavbarDirective());
+        this.cfg.setSharedVariable("navbar_item", new NavbarItemDirective());
     }
     
 	@Override

@@ -34,6 +34,14 @@ public abstract class AbstractResource {
 		initContext(ctx);
 	}
 	
+	protected void addBreadcrumb(String name) {
+		ctx.getBreadcrumb().add(getPath(), name);
+	}
+
+	protected void addBreadcrumb(String url, String name) {
+		ctx.getBreadcrumb().add(url, name);
+	}
+
 	protected void initContext(WebContext ctx) {
 		this.ctx = ctx;
 		UriInfo uriInfo = ctx.getUriInfo();
@@ -70,7 +78,8 @@ public abstract class AbstractResource {
 		args.put("Request", ctx.getRequest());
 		//args.put("contextPath", VirtualHostHelper.getContextPathProperty());
 		args.put("basePath", ctx.getBasePath());
-		args.put("skinPath", ctx.getSkinPath());		
+		args.put("skinPath", ctx.getSkinPath());
+		args.putAll(ctx.getProperties());
 	}
 	
 	public String getPath() {

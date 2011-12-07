@@ -16,9 +16,9 @@ package org.eclipse.ecr.web.framework.forms.ftl;
 import java.io.IOException;
 import java.util.Map;
 
-import org.eclipse.ecr.web.framework.FreemarkerRenderingEngine;
-import org.eclipse.ecr.web.framework.forms.FormData;
+import org.eclipse.ecr.web.framework.forms.Form;
 import org.eclipse.ecr.web.framework.forms.FormDescriptor;
+import org.eclipse.ecr.web.framework.rendering.FreemarkerRenderingEngine;
 
 import freemarker.core.Environment;
 import freemarker.template.SimpleScalar;
@@ -47,7 +47,7 @@ public class FormDirective implements TemplateDirectiveModel {
         	throw new TemplateException("No WebContext available in current Freemarker rendering context", env);
         }
         
-        FormData form = (FormData)model.get(id);
+        Form form = (Form)model.get(id);
         if (form == null) {
         	throw new TemplateException("No form found in WebContext having the ID: "+id, env);
         }

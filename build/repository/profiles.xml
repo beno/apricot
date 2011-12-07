@@ -61,6 +61,8 @@
     <artifact name="org.eclipse.ecr.web.rendering" />
 
     <artifact name="org.eclipse.ecr.automation.server" />
+    
+    <artifact name="org.eclipse.ecr.web.framework" />
   </profile>
 
   <profile name="cmis">

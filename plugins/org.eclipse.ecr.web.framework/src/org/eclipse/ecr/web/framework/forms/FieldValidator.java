@@ -15,6 +15,6 @@ package org.eclipse.ecr.web.framework.forms;
 
 public interface FieldValidator {
 
-	boolean validate(RuleDescriptor rd, String value, FormData form);
+	boolean validate(RuleDescriptor rd, String value, Form form);
 	
 }

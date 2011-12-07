@@ -84,9 +84,11 @@ public class InputDirective implements TemplateDirectiveModel {
 	}
 
 	protected void writeCustomInput(FormWriter writer, Map<String, Object> params, TemplateDirectiveBody body) throws TemplateException, IOException {
-		StringWriter sw = new StringWriter();
-		body.render(sw);
-		//TODO how to handle values?
-		writer.print(sw.toString());	
+		if (body != null) {
+			StringWriter sw = new StringWriter();
+			body.render(sw);
+			//TODO how to handle values?
+			writer.print(sw.toString());
+		}
 	}
 }

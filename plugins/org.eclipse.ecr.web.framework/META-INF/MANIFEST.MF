@@ -4,7 +4,8 @@ Bundle-Name: Apricot Web Framework
 Bundle-SymbolicName: org.eclipse.ecr.web.framework;singleton:=true
 Bundle-Version: 0.5.4.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Import-Package: freemarker.core,
+Import-Package: com.sun.jersey.core.impl.provider.entity,
+ freemarker.core,
  freemarker.template,
  javax.servlet,
  javax.servlet.http,
@@ -15,15 +16,16 @@ Import-Package: freemarker.core,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.model,
  org.eclipse.ecr.web.jaxrs.context,
+ org.eclipse.ecr.web.jaxrs.scan,
  org.eclipse.ecr.web.rendering.api,
  org.eclipse.ecr.web.rendering.fm,
+ org.eclipse.ecr.web.rendering.fm.adapters,
  org.eclipse.ecr.web.rendering.fm.extensions,
  org.mvel2,
  org.mvel2.templates,
  org.nuxeo.common.utils,
  org.nuxeo.common.xmap.annotation,
- org.osgi.framework,
- org.eclipse.ecr.web.jaxrs.scan
+ org.osgi.framework
 Export-Package: org.eclipse.ecr.web.framework,
  org.eclipse.ecr.web.framework.adapters,
  org.eclipse.ecr.web.framework.forms,
