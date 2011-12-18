@@ -165,6 +165,10 @@ public class WebContext {
 	public URI getUri(String absPath) {
 		return uriInfo.getAbsolutePathBuilder().replacePath(absPath).build();
 	}
+	
+	public String getRequestUrl() {
+		return request.getRequestURL().toString();
+	}
 
 	public WebRoot getRoot() {
 		List<Object> res = uriInfo.getMatchedResources();
