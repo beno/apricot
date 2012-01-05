@@ -54,5 +54,9 @@ public class FormData extends HashMap<String, List<String>> implements Multivalu
 	public void putSingle(String key, String value) {
 		put(key, Collections.singletonList(value == null ? "" : value));
 	}
-	
+
+	public void putSingle(String key, Object value) {
+		put(key, Collections.singletonList(value == null ? "" : value.toString()));
+	}
+
 }

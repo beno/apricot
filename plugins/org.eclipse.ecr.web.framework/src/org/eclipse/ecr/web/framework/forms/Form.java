@@ -106,6 +106,36 @@ public class Form {
 		return data.getFirst(key);
 	}
 
+	/**
+	 * This is like getString but trims the string and return "" for null values
+	 * @param key
+	 * @return
+	 */
+	public String getSafeString(String key) {
+		String v = data.getFirst(key);
+		return v == null ? "" : v.trim();
+	}
+
+	public Boolean getBoolean(String key) {
+		String v = data.getFirst(key);
+		return v != null ? Boolean.valueOf(v) : null;
+	}
+	
+	public Long getLong(String key) {
+		String v = data.getFirst(key);
+		return v != null ? Long.valueOf(v) : null;
+	}
+
+	public boolean getBoolean(String key, boolean defValue) {
+		String v = data.getFirst(key);
+		return v != null ? Boolean.parseBoolean(v) : defValue;
+	}
+	
+	public long getLong(String key, long defValue) {
+		String v = data.getFirst(key);
+		return v != null ? Long.parseLong(v) : defValue;
+	}
+
 	public List<String> getStrings(String key) {
 		return data.get(key);
 	}

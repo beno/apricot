@@ -125,7 +125,7 @@ public class WebContext {
 		}
 		basePath = basePath.concat(modulePath);
 		this.basePath = basePath;
-		this.skinPath = basePath.concat("/skin");
+		this.skinPath = basePath.equals("/") ? "/skin" : basePath.concat("/skin");
 	}
 
 	public String getContextPath() {
