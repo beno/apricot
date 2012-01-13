@@ -13,19 +13,22 @@ Bundle-Name: ECR SQL Storage (Incubation)
 Created-By: 1.6.0_20 (Sun Microsystems Inc.)
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
-Eclipse-BuddyPolicy: registered, dependent
-Eclipse-RegisterBuddy: org.nuxeo.common
 Nuxeo-Component: OSGI-INF/listener-contrib.xml,
   OSGI-INF/querymaker-service.xml,
   OSGI-INF/querymaker-contrib.xml,
   OSGI-INF/reload-contrib.xml
 Bundle-ManifestVersion: 2
-Import-Package: javax.resource,
+Import-Package: javax.naming,
+ javax.resource,
  javax.resource.cci,
  javax.servlet;resolution:=optional,
  javax.servlet.http;resolution:=optional,
  javax.sql,
  javax.transaction.xa,
+ javax.xml.parsers,
+ javax.xml.transform,
+ javax.xml.transform.dom,
+ javax.xml.transform.stream,
  org.apache.commons.beanutils,
  org.apache.commons.codec,
  org.apache.commons.collections.map,
@@ -74,8 +77,11 @@ Import-Package: javax.resource,
  org.eclipse.ecr.core.repository,
  org.eclipse.ecr.core.security,
  org.eclipse.ecr.core.versioning,
- org.osgi.framework
+ org.osgi.framework,
+ org.w3c.dom
 Bundle-SymbolicName: org.eclipse.ecr.core.storage.sql;singleton:=true
 Bundle-Activator: org.eclipse.ecr.core.storage.sql.Activator
 Require-Bundle: javax.servlet;bundle-version="2.5.0",
- org.eclipse.ecr.core.storage.sql.extensions;visibility:=reexport
+ org.eclipse.ecr.core.storage.sql.extensions;visibility:=reexport,
+ org.h2;resolution:=optional,
+ org.postgresql;resolution:=optional

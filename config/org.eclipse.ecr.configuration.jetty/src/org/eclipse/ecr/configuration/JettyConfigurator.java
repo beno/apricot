@@ -14,8 +14,10 @@ package org.eclipse.ecr.configuration;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+import org.eclipse.ecr.application.Activator;
 import org.eclipse.ecr.application.LifeCycleAdapter;
 import org.eclipse.equinox.http.jetty.JettyConstants;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -26,6 +28,7 @@ public class JettyConfigurator extends LifeCycleAdapter {
 
     @Override
     public void beforeStart(BundleContext context) throws Exception {
+    	Activator.getInstance().getBundle("org.eclipse.equinox.http.jetty").start(Bundle.START_ACTIVATION_POLICY);
         Dictionary<String, Object> settings = createDefaultSettings(context);
         org.eclipse.equinox.http.jetty.JettyConfigurator.startServer("org.eclipse.ecr", settings);
     }

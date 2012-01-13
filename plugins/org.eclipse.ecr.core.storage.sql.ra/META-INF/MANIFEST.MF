@@ -33,7 +33,3 @@ Import-Package: javax.annotation,
  org.nuxeo.common.collections,
  org.nuxeo.common.xmap
 Bundle-SymbolicName: org.eclipse.ecr.core.storage.sql.ra;singleton:=true
-Eclipse-RegisterBuddy: org.eclipse.ecr.core.storage.sql,
-  org.nuxeo.runtime
-Require-Bundle: org.h2;resolution:=optional,
- org.postgresql;resolution:=optional

@@ -25,7 +25,6 @@ Bundle-Name: ECR Runtime (Incubation)
 Created-By: 1.6.0_20 (Sun Microsystems Inc.)
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
-Eclipse-BuddyPolicy: registered
 Nuxeo-Component: OSGI-INF/EventService.xml,
  OSGI-INF/ResourceService.xml,
  OSGI-INF/DeploymentService.xml,

@@ -7,7 +7,6 @@ Bundle-Name: ECR Runtime JTA/JCA Support (Incubation)
 Created-By: 1.6.0_20 (Sun Microsystems Inc.)
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
-Eclipse-BuddyPolicy: registered
 Bundle-ManifestVersion: 2
 Import-Package: javax.annotation,
  javax.naming,

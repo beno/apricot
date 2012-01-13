@@ -10,7 +10,6 @@ Bundle-Name: ECR Convert (Incubation)
 Created-By: 1.6.0_20 (Sun Microsystems Inc.)
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
-Eclipse-BuddyPolicy: dependent
 Nuxeo-Component: OSGI-INF/convert-service-framework.xml,
  OSGI-INF/convert-service-base-contrib.xml
 Bundle-ManifestVersion: 2

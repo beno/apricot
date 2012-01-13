@@ -72,7 +72,8 @@ public class Activator implements BundleActivator, Constants {
         beforeStart();
         removeH2Lock();
         startJNDI();
-        startRuntime();
+        getBundle("org.eclipse.ecr.runtime").start(Bundle.START_TRANSIENT | Bundle.START_ACTIVATION_POLICY);
+        //startRuntime();
         startContainer();
         ((OSGiRuntimeService)Framework.getRuntime()).fireApplicationStarted();
         // install extra plugins if any
@@ -178,7 +179,9 @@ public class Activator implements BundleActivator, Constants {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     protected Environment createEnvironment() throws Exception {
         // enable OSGi services
-        System.setProperty("ecr.osgi.services", "true");
+    	if (System.getProperty("ecr.osgi.services") == null) {
+    		System.setProperty("ecr.osgi.services", "true");
+    	}
         Map<String,String> vars = createDefaultConfiguration();
         String configUri = System.getProperty(ECR_APP_CONFIG);
         if (configUri != null) {

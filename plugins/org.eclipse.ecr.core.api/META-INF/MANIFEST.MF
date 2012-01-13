@@ -60,5 +60,4 @@ Import-Package: javax.security.auth,
  org.nuxeo.common.utils,
  org.nuxeo.common.xmap.annotation
 Bundle-SymbolicName: org.eclipse.ecr.core.api;singleton:=true
-Eclipse-RegisterBuddy: org.nuxeo.runtime
 Eclipse-ExtensibleAPI: true

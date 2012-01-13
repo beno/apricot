@@ -27,6 +27,7 @@ Import-Package: META-INF.services,
  freemarker.core;resolution:=optional,
  freemarker.template;resolution:=optional,
  javax.naming,
+ javax.security.auth,
  javax.security.auth.login,
  javax.servlet,
  javax.servlet.http,
@@ -53,7 +54,6 @@ Import-Package: META-INF.services,
  org.osgi.service.http,
  org.osgi.service.packageadmin,
  org.osgi.util.tracker
-Eclipse-BuddyPolicy: dependent
 Bundle-SymbolicName: org.eclipse.ecr.web.jaxrs;singleton:=true
 Bundle-Activator: org.eclipse.ecr.web.jaxrs.Activator
 Nuxeo-Component: OSGI-INF/servlet-registry.xml
