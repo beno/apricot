@@ -72,7 +72,7 @@ public class Activator implements BundleActivator, Constants {
         beforeStart();
         removeH2Lock();
         startJNDI();
-        getBundle("org.eclipse.ecr.runtime").start(Bundle.START_TRANSIENT | Bundle.START_ACTIVATION_POLICY);
+        getBundle("org.eclipse.ecr.runtime").start(Bundle.START_ACTIVATION_POLICY);
         //startRuntime();
         startContainer();
         ((OSGiRuntimeService)Framework.getRuntime()).fireApplicationStarted();
