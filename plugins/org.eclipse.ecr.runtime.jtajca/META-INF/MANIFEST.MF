@@ -22,8 +22,9 @@ Import-Package: javax.annotation,
  org.apache.geronimo.connector.outbound.connectiontracking,
  org.apache.geronimo.transaction,
  org.apache.geronimo.transaction.manager,
+ org.apache.xbean.naming.context,
+ org.apache.xbean.naming.reference,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.transaction,
- org.apache.xbean.naming.context,
  org.osgi.framework
 Bundle-SymbolicName: org.eclipse.ecr.runtime.jtajca;singleton:=true

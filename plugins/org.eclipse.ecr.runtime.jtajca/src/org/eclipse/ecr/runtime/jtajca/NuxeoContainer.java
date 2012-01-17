@@ -52,6 +52,7 @@ import org.apache.geronimo.transaction.manager.NamedXAResource;
 import org.apache.geronimo.transaction.manager.RecoverableTransactionManager;
 import org.apache.geronimo.transaction.manager.TransactionManagerImpl;
 import org.eclipse.ecr.runtime.api.InitialContextAccessor;
+import org.apache.xbean.naming.reference.SimpleReference;
 
 /**
  * Internal helper for the Nuxeo-defined transaction manager and connection
@@ -286,8 +287,13 @@ public class NuxeoContainer {
     }
 
     protected static Reference getTransactionManagerReference() {
-        return new Reference(TransactionManager.class.getName(),
-                NuxeoTransactionManagerFactory.class.getName(), null);
+    	return new SimpleReference() {
+    		public Object getContent() throws NamingException {
+    			return NuxeoContainer.getTransactionManager();
+    		}
+    	};
+//        return new Reference(TransactionManager.class.getName(),
+//                NuxeoTransactionManagerFactory.class.getName(), null);
     }
 
     /**
@@ -303,8 +309,13 @@ public class NuxeoContainer {
     }
 
     protected static Reference getUserTransactionReference() {
-        return new Reference(UserTransaction.class.getName(),
-                NuxeoUserTransactionFactory.class.getName(), null);
+    	return new SimpleReference() {
+    		public Object getContent() throws NamingException {
+    			return NuxeoContainer.getUserTransaction();
+    		}
+    	};    	
+//        return new Reference(UserTransaction.class.getName(),
+//                NuxeoUserTransactionFactory.class.getName(), null);
     }
 
     /**
@@ -317,8 +328,13 @@ public class NuxeoContainer {
     }
 
     protected static Reference getConnectionManagerReference() {
-        return new Reference(ConnectionManager.class.getName(),
-                NuxeoConnectionManagerFactory.class.getName(), null);
+    	return new SimpleReference() {
+    		public Object getContent() throws NamingException {
+    			return NuxeoContainer.getConnectionManager();
+    		}
+    	};
+//        return new Reference(ConnectionManager.class.getName(),
+//                NuxeoConnectionManagerFactory.class.getName(), null);
     }
 
     public static synchronized void initTransactionManager(

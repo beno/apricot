@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import javax.naming.NamingException;
+import javax.naming.spi.NamingManager;
 
 import org.eclipse.ecr.application.internal.ConfigurationProvider;
 import org.eclipse.ecr.runtime.api.Framework;
@@ -70,6 +71,7 @@ public class Activator implements BundleActivator, Constants {
         listeners = loadListeners();
         beforeStart();
         removeH2Lock();
+        installJNDI();
         getBundle("org.eclipse.ecr.runtime").start(Bundle.START_ACTIVATION_POLICY);
         //startRuntime();
         startContainer();
@@ -131,6 +133,14 @@ public class Activator implements BundleActivator, Constants {
     }
 
 
+    /**
+     * Install the built-in JNDI support. 
+     * TODO the JNDI to use must be configurable
+     */
+    protected void installJNDI() throws NamingException {
+    	NamingManager.setInitialContextFactoryBuilder(new ContextFactoryBuilder());
+    }
+    	
     protected void startContainer() throws NamingException {
         NuxeoContainer.install();
     }
