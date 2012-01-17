@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,11 +11,7 @@
  */
 package org.eclipse.ecr.runtime.jtajca;
 
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.jndi.NamingContextFactory;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
@@ -38,12 +34,6 @@ public class Activator implements BundleActivator {
         // where the container is explicitly activated
         // TODO: use this activation method in all distributions too.
         if ("true".equalsIgnoreCase(Framework.getProperty(AUTO_ACTIVATION))) {
-            // if no InitialContext exists install the dummy one.
-            try {
-                new InitialContext();
-            } catch (NamingException e) {
-                NamingContextFactory.install();
-            }
             NuxeoContainer.install();
         }
     }

@@ -28,7 +28,6 @@ import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.jtajca.NuxeoContainer;
 import org.eclipse.ecr.runtime.osgi.OSGiRuntimeService;
 import org.nuxeo.common.Environment;
-import org.nuxeo.common.jndi.NamingContextFactory;
 import org.nuxeo.common.utils.Vars;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
@@ -71,7 +70,6 @@ public class Activator implements BundleActivator, Constants {
         listeners = loadListeners();
         beforeStart();
         removeH2Lock();
-        startJNDI();
         getBundle("org.eclipse.ecr.runtime").start(Bundle.START_ACTIVATION_POLICY);
         //startRuntime();
         startContainer();
@@ -132,9 +130,6 @@ public class Activator implements BundleActivator, Constants {
         }
     }
 
-    protected void startJNDI() throws NamingException {
-        NamingContextFactory.install();
-    }
 
     protected void startContainer() throws NamingException {
         NuxeoContainer.install();

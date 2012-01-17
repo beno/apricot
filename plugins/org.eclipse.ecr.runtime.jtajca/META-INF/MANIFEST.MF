@@ -24,6 +24,6 @@ Import-Package: javax.annotation,
  org.apache.geronimo.transaction.manager,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.transaction,
- org.nuxeo.common.jndi,
+ org.apache.xbean.naming.context,
  org.osgi.framework
 Bundle-SymbolicName: org.eclipse.ecr.runtime.jtajca;singleton:=true
