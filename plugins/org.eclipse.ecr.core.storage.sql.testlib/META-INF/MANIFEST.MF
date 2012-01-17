@@ -20,7 +20,6 @@ Import-Package: javax.resource,
  org.eclipse.ecr.runtime.jtajca,
  org.eclipse.ecr.runtime.transaction,
  org.eclipse.ecr.testlib,
- org.nuxeo.common.jndi,
  org.nuxeo.common.utils
 Export-Package: org.eclipse.ecr.core.storage.sql.testlib
 Require-Bundle: org.eclipse.ecr.testlib;visibility:=reexport,

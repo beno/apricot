@@ -12,7 +12,6 @@
 
 package org.eclipse.ecr.core.storage.sql.testlib;
 
-import org.nuxeo.common.jndi.NamingContextFactory;
 import org.eclipse.ecr.runtime.jtajca.NuxeoContainer;
 import org.eclipse.ecr.runtime.transaction.TransactionHelper;
 
@@ -27,7 +26,6 @@ public class TXSQLRepositoryTestCase extends SQLRepositoryTestCase {
 
     @Override
     public void setUp() throws Exception {
-        NamingContextFactory.setAsInitial();
         setUpContainer();
         super.setUp(); // calls deployRepositoryConfig()
         TransactionHelper.startTransaction();
@@ -69,7 +67,7 @@ public class TXSQLRepositoryTestCase extends SQLRepositoryTestCase {
         }
         closeSession();
         super.tearDown();
-        NamingContextFactory.revertSetAsInitial();
+        NuxeoContainer.uninstall();
     }
 
 }
