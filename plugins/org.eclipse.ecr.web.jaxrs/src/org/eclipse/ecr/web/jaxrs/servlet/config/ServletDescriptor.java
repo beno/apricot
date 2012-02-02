@@ -17,14 +17,14 @@ import java.util.List;
 
 import javax.servlet.http.HttpServlet;
 
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XNodeMap;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.web.jaxrs.BundleNotFoundException;
 import org.eclipse.ecr.web.jaxrs.Utils;
 import org.eclipse.ecr.web.jaxrs.Utils.ClassRef;
 import org.eclipse.ecr.web.jaxrs.servlet.FilterSet;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XNodeMap;
-import org.nuxeo.common.xmap.annotation.XObject;
 import org.osgi.framework.Bundle;
 
 /**

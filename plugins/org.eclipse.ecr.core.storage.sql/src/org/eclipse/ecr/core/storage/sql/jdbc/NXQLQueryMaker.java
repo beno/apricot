@@ -26,6 +26,8 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FullTextUtils;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.impl.FacetFilter;
 import org.eclipse.ecr.core.query.QueryFilter;
 import org.eclipse.ecr.core.query.sql.NXQL;
@@ -69,8 +71,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.TableAlias;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect.FulltextMatchInfo;
-import org.nuxeo.common.utils.FullTextUtils;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * Transformer of NXQL queries into underlying SQL queries to the actual

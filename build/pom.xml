@@ -14,6 +14,7 @@
 
   <modules>
     <module>./pom-test.xml</module>
+    <module>../plugins/org.eclipse.ecr.common</module>
     <module>../plugins/org.eclipse.ecr.application</module>
     <module>../plugins/org.eclipse.ecr.audit.api</module>
     <module>../plugins/org.eclipse.ecr.auth</module>

@@ -22,11 +22,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.Base64;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.convert.api.ConversionService;
 import org.eclipse.ecr.convert.service.ConversionServiceImpl;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
-import org.nuxeo.common.utils.Base64;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Manager for the cache system of the {@link ConversionService}.

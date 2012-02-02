@@ -50,12 +50,12 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.PolicyIdListImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RenditionDataImpl;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.spi.BindingsObjectFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.opencmis.impl.util.ListUtils;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * Nuxeo implementation of a CMIS {@link ObjectData}, backed by a

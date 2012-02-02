@@ -15,9 +15,9 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentRef;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Info about the deletion/purge/undeletion of a list of document.

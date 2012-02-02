@@ -18,6 +18,7 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentLocation;
@@ -27,7 +28,6 @@ import org.eclipse.ecr.core.io.DocumentTranslationMap;
 import org.eclipse.ecr.core.io.ExportedDocument;
 import org.eclipse.ecr.core.io.impl.AbstractDocumentModelWriter;
 import org.eclipse.ecr.core.io.impl.DocumentTranslationMapImpl;
-import org.nuxeo.common.utils.Path;
 
 /**
  * A writer which is creating new docs or updating existing docs.

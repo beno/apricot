@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.RuntimeService;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.model.ComponentManager;
@@ -33,7 +34,6 @@ import org.eclipse.ecr.runtime.model.StreamRef;
 import org.eclipse.ecr.runtime.model.URLStreamRef;
 import org.eclipse.ecr.runtime.osgi.OSGiRuntimeActivator;
 import org.eclipse.ecr.runtime.osgi.OSGiRuntimeContext;
-import org.nuxeo.common.utils.FileUtils;
 import org.osgi.framework.Bundle;
 
 /**

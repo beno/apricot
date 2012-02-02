@@ -16,8 +16,8 @@ package org.eclipse.ecr.runtime.api;
 
 import java.io.Serializable;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -13,8 +13,8 @@ package org.eclipse.ecr.core.versioning;
 
 import java.io.Serializable;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 @XObject("option")
 public class OptionDescriptor implements Serializable {

@@ -25,9 +25,9 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

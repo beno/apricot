@@ -19,6 +19,9 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.ecr.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopedMap;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DataModel;
@@ -37,9 +40,6 @@ import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventBundle;
 import org.eclipse.ecr.core.schema.DocumentType;
-import org.nuxeo.common.collections.ScopeType;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Light weight {@link DocumentModel} implementation Only holds

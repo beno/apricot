@@ -16,9 +16,9 @@ package org.eclipse.ecr.core.security;
 
 import java.io.Serializable;
 
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 @XObject("item")
 public class PermissionUIItemDescriptor implements Serializable{

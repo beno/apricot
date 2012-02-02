@@ -11,14 +11,14 @@ Import-Package: javax.security.auth,
  javax.security.auth.callback,
  javax.security.auth.login,
  javax.security.auth.spi,
+ org.eclipse.ecr.common,
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap,
+ org.eclipse.ecr.common.xmap.annotation,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.api.login,
  org.eclipse.ecr.runtime.model,
- org.nuxeo.common,
- org.nuxeo.common.utils,
- org.nuxeo.common.xmap,
- org.nuxeo.common.xmap.annotation,
  org.osgi.framework
 Require-Bundle: org.eclipse.ecr.core.api
 Bundle-SymbolicName: org.eclipse.ecr.auth

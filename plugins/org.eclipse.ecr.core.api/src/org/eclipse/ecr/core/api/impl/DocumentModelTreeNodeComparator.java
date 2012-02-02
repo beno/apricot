@@ -18,7 +18,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Map;
 
-import org.nuxeo.common.utils.Path;
+import org.eclipse.ecr.common.utils.Path;
 
 /**
  * Comparator to sort a document tree using titles.

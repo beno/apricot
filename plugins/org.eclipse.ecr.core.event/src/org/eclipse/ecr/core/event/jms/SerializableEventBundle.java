@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
@@ -37,7 +38,6 @@ import org.eclipse.ecr.core.event.impl.DocumentEventContext;
 import org.eclipse.ecr.core.event.impl.EventBundleImpl;
 import org.eclipse.ecr.core.event.impl.EventContextImpl;
 import org.eclipse.ecr.core.event.impl.EventImpl;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Serializable representation of an {@link EventBundle} that is used for JMS

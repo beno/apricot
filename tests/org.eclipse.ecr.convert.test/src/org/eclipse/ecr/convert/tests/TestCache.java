@@ -16,11 +16,11 @@ package org.eclipse.ecr.convert.tests;
 import java.io.File;
 import java.net.URL;
 
-import org.nuxeo.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
 import org.eclipse.ecr.core.api.blobholder.SimpleBlobHolder;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.convert.api.ConversionService;
 import org.eclipse.ecr.convert.cache.ConversionCacheGCManager;
 import org.eclipse.ecr.convert.cache.ConversionCacheHolder;

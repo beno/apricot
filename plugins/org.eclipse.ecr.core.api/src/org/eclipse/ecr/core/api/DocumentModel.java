@@ -18,14 +18,14 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.ecr.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopedMap;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.schema.DocumentType;
-import org.nuxeo.common.collections.ScopeType;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.Path;
 
 /**
  * The document model is a serializable representation of a core document.

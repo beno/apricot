@@ -25,6 +25,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dom4j.Document;
 import org.dom4j.Element;
+import org.eclipse.ecr.common.collections.PrimitiveArrays;
+import org.eclipse.ecr.common.utils.Base64;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
@@ -49,9 +52,6 @@ import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.streaming.ByteArraySource;
-import org.nuxeo.common.collections.PrimitiveArrays;
-import org.nuxeo.common.utils.Base64;
-import org.nuxeo.common.utils.Path;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

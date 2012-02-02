@@ -12,8 +12,8 @@
 
 package org.eclipse.ecr.core;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 /**
  * Descriptor for Core Service versionRemovalPolicy extension point configuration.

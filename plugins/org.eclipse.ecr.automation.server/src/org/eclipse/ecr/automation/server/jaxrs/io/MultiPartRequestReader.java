@@ -35,11 +35,11 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.automation.core.util.BlobList;
 import org.eclipse.ecr.automation.server.jaxrs.ExceptionHandler;
 import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.web.jaxrs.context.RequestCleanupHandler;
 import org.eclipse.ecr.web.jaxrs.context.RequestContext;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

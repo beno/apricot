@@ -25,6 +25,7 @@ import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreInstance;
@@ -32,7 +33,6 @@ import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.streaming.StreamManager;
 import org.eclipse.ecr.runtime.services.streaming.StreamSource;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * TODO: describe what this blob is and does.

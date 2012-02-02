@@ -17,10 +17,10 @@ package org.eclipse.ecr.runtime;
 import java.io.InputStream;
 import java.net.URL;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.resource.ResourceService;
 import org.eclipse.ecr.testlib.NXRuntimeTestCase;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

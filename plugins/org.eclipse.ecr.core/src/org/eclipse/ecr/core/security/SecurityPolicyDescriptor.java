@@ -14,8 +14,8 @@
 
 package org.eclipse.ecr.core.security;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 /**
  * Pluggable policy descriptor for core security

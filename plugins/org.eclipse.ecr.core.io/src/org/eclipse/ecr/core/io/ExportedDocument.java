@@ -17,9 +17,9 @@ package org.eclipse.ecr.core.io;
 import java.util.Map;
 
 import org.dom4j.Document;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.DocumentLocation;
-import org.nuxeo.common.utils.Path;
 
 /**
  * A representation for an exported document.

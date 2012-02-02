@@ -26,6 +26,7 @@ import org.apache.commons.collections.bidimap.DualHashBidiMap;
 import org.apache.commons.collections.map.ReferenceMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.DirtyUpdateInvokeBridge;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
 import org.eclipse.ecr.core.api.DocumentModel;
@@ -40,7 +41,6 @@ import org.eclipse.ecr.core.api.repository.Repository;
 import org.eclipse.ecr.core.api.repository.RepositoryExceptionHandler;
 import org.eclipse.ecr.core.api.repository.RepositoryInstance;
 import org.eclipse.ecr.core.api.repository.RepositoryInstanceHandler;
-import org.nuxeo.common.DirtyUpdateInvokeBridge;
 
 /**
  * Cached children are not preserving order

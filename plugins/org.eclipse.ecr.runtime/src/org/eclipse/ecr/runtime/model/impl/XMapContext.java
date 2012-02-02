@@ -16,8 +16,8 @@ package org.eclipse.ecr.runtime.model.impl;
 
 import java.net.URL;
 
+import org.eclipse.ecr.common.xmap.Context;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.xmap.Context;
 
 /**
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

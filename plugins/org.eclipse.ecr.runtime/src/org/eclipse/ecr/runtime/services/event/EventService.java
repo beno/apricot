@@ -20,12 +20,12 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ListenerList;
 import org.eclipse.ecr.runtime.model.Adaptable;
 import org.eclipse.ecr.runtime.model.Component;
 import org.eclipse.ecr.runtime.model.ComponentContext;
 import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.Extension;
-import org.nuxeo.common.collections.ListenerList;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -20,10 +20,10 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.api.security.UserVisiblePermission;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 @XObject("visibility")
 public class PermissionVisibilityDescriptor {

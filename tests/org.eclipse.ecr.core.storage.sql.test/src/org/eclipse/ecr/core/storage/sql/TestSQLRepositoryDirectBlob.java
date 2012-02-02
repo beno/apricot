@@ -23,7 +23,7 @@ import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import org.nuxeo.common.Environment;
+import org.eclipse.ecr.common.Environment;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;

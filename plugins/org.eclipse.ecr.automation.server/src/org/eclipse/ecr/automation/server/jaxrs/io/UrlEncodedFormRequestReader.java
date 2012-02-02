@@ -25,8 +25,8 @@ import javax.ws.rs.ext.MessageBodyReader;
 import javax.ws.rs.ext.Provider;
 
 import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.web.jaxrs.context.RequestContext;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * Reads {@link ExecutionRequest} from a urlencoded POST

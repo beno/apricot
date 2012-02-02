@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Hashtable;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyDiff;
@@ -35,7 +36,6 @@ import org.eclipse.ecr.core.schema.types.ComplexType;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.Path;
 
 /**
  *

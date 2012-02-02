@@ -29,13 +29,13 @@ import org.eclipse.ecr.automation.OperationParameters;
 import org.eclipse.ecr.automation.core.impl.adapters.StringToDocRef;
 import org.eclipse.ecr.automation.core.scripting.Scripting;
 import org.eclipse.ecr.automation.core.util.Properties;
+import org.eclipse.ecr.common.utils.StringUtils;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.api.impl.DocumentRefListImpl;
 import org.eclipse.ecr.core.schema.utils.DateParser;
-import org.nuxeo.common.utils.StringUtils;
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
 import org.osgi.framework.Bundle;
 
 /**

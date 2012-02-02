@@ -27,13 +27,13 @@ import javax.ws.rs.ext.Provider;
 import net.sf.json.JSONObject;
 
 import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.DocumentRefList;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.PathRef;
 import org.eclipse.ecr.core.api.impl.DocumentRefListImpl;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -21,6 +21,7 @@ import java.net.URL;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.TypeException;
 import org.eclipse.ecr.runtime.api.Framework;
@@ -31,7 +32,6 @@ import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.DefaultComponent;
 import org.eclipse.ecr.runtime.model.Extension;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.utils.FileUtils;
 import org.xml.sax.SAXException;
 
 /**

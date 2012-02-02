@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.core.api.DocumentException;
 import org.eclipse.ecr.core.model.Repository;
 import org.eclipse.ecr.core.model.Session;
@@ -27,7 +28,6 @@ import org.eclipse.ecr.core.security.SecurityManager;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.xmap.XMap;
 
 /**
  * This is the {@link Session} factory when the repository is used outside of a

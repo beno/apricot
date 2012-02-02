@@ -19,12 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyConversionException;
 import org.eclipse.ecr.core.api.model.PropertyError;
 import org.eclipse.ecr.core.api.model.impl.ScalarProperty;
 import org.eclipse.ecr.core.schema.types.Field;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -22,9 +22,9 @@ import java.util.Iterator;
 import org.eclipse.ecr.application.Activator;
 import org.eclipse.ecr.application.Constants;
 import org.eclipse.ecr.application.FileIterator;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.utils.StringUtils;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 

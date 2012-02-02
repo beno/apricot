@@ -38,8 +38,8 @@ import javax.transaction.xa.Xid;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.nuxeo.common.utils.XidImpl;
 import org.nuxeo.osgi.BundleImpl;
+import org.eclipse.ecr.common.utils.XidImpl;
 import org.eclipse.ecr.core.api.Lock;
 import org.eclipse.ecr.core.query.QueryFilter;
 import org.eclipse.ecr.core.storage.PartialList;

@@ -15,7 +15,7 @@ package org.eclipse.ecr.core.query.sql.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.nuxeo.common.utils.StringUtils;
+import org.eclipse.ecr.common.utils.StringUtils;
 
 /**
  * @author Florent Guillaume

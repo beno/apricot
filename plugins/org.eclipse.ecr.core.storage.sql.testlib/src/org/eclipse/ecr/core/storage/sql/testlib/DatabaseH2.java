@@ -22,7 +22,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.nuxeo.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
 import org.eclipse.ecr.runtime.api.Framework;
 

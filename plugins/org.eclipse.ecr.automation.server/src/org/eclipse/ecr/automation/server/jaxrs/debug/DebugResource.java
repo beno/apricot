@@ -27,6 +27,7 @@ import org.eclipse.ecr.automation.OperationChain;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.OperationChainContribution;
 import org.eclipse.ecr.automation.core.doc.JSONExporter;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.IdRef;
@@ -35,7 +36,6 @@ import org.eclipse.ecr.core.api.PathRef;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
 import org.eclipse.ecr.web.jaxrs.views.TemplateView;
-import org.nuxeo.common.xmap.XMap;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -14,9 +14,9 @@
 
 package org.eclipse.ecr.core.schema;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 /**
  * Document Type Descriptor.

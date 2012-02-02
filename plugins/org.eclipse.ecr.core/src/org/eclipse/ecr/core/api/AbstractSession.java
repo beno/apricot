@@ -50,6 +50,9 @@ import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopedMap;
+import org.eclipse.ecr.common.utils.IdUtils;
 import org.eclipse.ecr.core.CoreService;
 import org.eclipse.ecr.core.NXCore;
 import org.eclipse.ecr.core.api.AlreadyConnectedException;
@@ -131,9 +134,6 @@ import org.eclipse.ecr.core.versioning.VersioningService;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.streaming.InputStreamSource;
 import org.eclipse.ecr.runtime.services.streaming.StreamManager;
-import org.nuxeo.common.collections.ScopeType;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.IdUtils;
 
 /**
  * Abstract implementation of the client interface.

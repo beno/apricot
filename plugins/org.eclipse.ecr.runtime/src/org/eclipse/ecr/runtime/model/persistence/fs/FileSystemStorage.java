@@ -22,11 +22,11 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.xmap.DOMSerializer;
 import org.eclipse.ecr.runtime.model.persistence.Contribution;
 import org.eclipse.ecr.runtime.model.persistence.ContributionStorage;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.xmap.DOMSerializer;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;

@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ListenerList;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventBundle;
@@ -36,7 +37,6 @@ import org.eclipse.ecr.core.event.jms.AsyncProcessorConfig;
 import org.eclipse.ecr.core.event.tx.BulkExecutor;
 import org.eclipse.ecr.core.event.tx.PostCommitSynchronousRunner;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.collections.ListenerList;
 
 /**
  * Implementation of the event service.

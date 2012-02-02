@@ -22,10 +22,10 @@ import java.io.InputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.io.DocumentReader;
 import org.eclipse.ecr.core.io.ExportedDocument;
 import org.eclipse.ecr.core.io.impl.AbstractDocumentReader;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * A reader to read zip files. If the zip file is recognized as a nuxeo archive

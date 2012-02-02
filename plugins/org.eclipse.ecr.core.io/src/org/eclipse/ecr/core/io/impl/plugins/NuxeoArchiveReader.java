@@ -31,6 +31,8 @@ import java.util.zip.ZipInputStream;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.StreamingBlob;
 import org.eclipse.ecr.core.io.ExportConstants;
@@ -40,8 +42,6 @@ import org.eclipse.ecr.core.io.impl.DWord;
 import org.eclipse.ecr.core.io.impl.ExportedDocumentImpl;
 import org.eclipse.ecr.runtime.services.streaming.FileSource;
 import org.eclipse.ecr.runtime.services.streaming.ZipEntrySource;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Reads nuxeo archives generated using {@link NuxeoArchiveWriter}.

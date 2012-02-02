@@ -18,12 +18,12 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.schema.types.ComplexType;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Document properties are instances of document schema fields.

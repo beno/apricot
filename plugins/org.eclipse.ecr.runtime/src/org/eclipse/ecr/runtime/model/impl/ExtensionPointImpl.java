@@ -16,15 +16,15 @@ package org.eclipse.ecr.runtime.model.impl;
 
 import java.io.Serializable;
 
+import org.eclipse.ecr.common.xmap.XMap;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XParent;
 import org.eclipse.ecr.runtime.model.Extension;
 import org.eclipse.ecr.runtime.model.ExtensionPoint;
 import org.eclipse.ecr.runtime.model.RegistrationInfo;
-import org.nuxeo.common.xmap.XMap;
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
-import org.nuxeo.common.xmap.annotation.XParent;
 import org.w3c.dom.Element;
 
 /**

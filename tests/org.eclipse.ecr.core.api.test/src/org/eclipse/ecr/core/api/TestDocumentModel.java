@@ -16,7 +16,7 @@ package org.eclipse.ecr.core.api;
 
 import java.util.Collections;
 
-import org.nuxeo.common.utils.Path;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
 import org.eclipse.ecr.testlib.NXRuntimeTestCase;
 

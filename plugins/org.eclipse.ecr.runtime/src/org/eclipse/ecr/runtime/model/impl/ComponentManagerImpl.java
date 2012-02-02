@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ListenerList;
 import org.eclipse.ecr.runtime.ComponentEvent;
 import org.eclipse.ecr.runtime.ComponentListener;
 import org.eclipse.ecr.runtime.RuntimeService;
@@ -36,7 +37,6 @@ import org.eclipse.ecr.runtime.model.ComponentManager;
 import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.Extension;
 import org.eclipse.ecr.runtime.model.RegistrationInfo;
-import org.nuxeo.common.collections.ListenerList;
 
 /**
  * @author Bogdan Stefanescu

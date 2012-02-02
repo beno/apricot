@@ -24,6 +24,7 @@ import java.util.Properties;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.logging.JavaUtilLoggingHelper;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.model.ComponentInstance;
 import org.eclipse.ecr.runtime.model.ComponentManager;
@@ -31,7 +32,6 @@ import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
 import org.eclipse.ecr.runtime.model.impl.ComponentManagerImpl;
 import org.eclipse.ecr.runtime.model.impl.DefaultRuntimeContext;
-import org.nuxeo.common.logging.JavaUtilLoggingHelper;
 import org.osgi.framework.Bundle;
 
 /**

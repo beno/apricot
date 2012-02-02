@@ -28,6 +28,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.eclipse.ecr.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopedMap;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
@@ -64,10 +68,6 @@ import org.eclipse.ecr.core.storage.sql.testlib.DatabaseHelper;
 import org.eclipse.ecr.core.storage.sql.testlib.DatabaseOracle;
 import org.eclipse.ecr.core.storage.sql.testlib.SQLRepositoryTestCase;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.collections.ScopeType;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.utils.Path;
 
 /**
  * NOTE: to run these tests in Eclipse, make sure your test runner allocates at

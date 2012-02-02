@@ -23,11 +23,11 @@ import java.security.NoSuchAlgorithmException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.streaming.FileSource;
 import org.eclipse.ecr.runtime.services.streaming.StreamSource;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.xmap.XMap;
 
 /**
  * A simple filesystem-based binary manager. It stores the binaries according to

@@ -13,9 +13,9 @@ package org.eclipse.ecr.core.api.pathsegment;
 
 import java.util.regex.Pattern;
 
+import org.eclipse.ecr.common.utils.IdUtils;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentModel;
-import org.nuxeo.common.utils.IdUtils;
 
 /**
  * Service generating a path segment from the title by just removing slashes and

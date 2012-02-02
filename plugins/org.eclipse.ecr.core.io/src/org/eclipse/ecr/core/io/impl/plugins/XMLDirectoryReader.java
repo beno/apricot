@@ -23,15 +23,15 @@ import java.io.IOException;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
+import org.eclipse.ecr.common.utils.FileTreeIterator;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.impl.blob.StreamingBlob;
 import org.eclipse.ecr.core.io.ExportConstants;
 import org.eclipse.ecr.core.io.ExportedDocument;
 import org.eclipse.ecr.core.io.impl.AbstractDocumentReader;
 import org.eclipse.ecr.core.io.impl.ExportedDocumentImpl;
 import org.eclipse.ecr.runtime.services.streaming.FileSource;
-import org.nuxeo.common.utils.FileTreeIterator;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.utils.Path;
 
 /**
  *

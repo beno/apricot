@@ -17,14 +17,14 @@ package org.eclipse.ecr.runtime.model.impl;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import org.eclipse.ecr.common.xmap.DOMSerializer;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.runtime.model.ComponentInstance;
 import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.Extension;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.xmap.DOMSerializer;
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 import org.w3c.dom.Element;
 
 /**

@@ -15,8 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.model.persistence.AbstractContribution;
-import org.nuxeo.common.utils.FileUtils;
 
 public class ContributionLocation extends AbstractContribution {
 

@@ -27,6 +27,9 @@ import org.dom4j.Document;
 import org.dom4j.DocumentFactory;
 import org.dom4j.Element;
 import org.dom4j.QName;
+import org.eclipse.ecr.common.collections.PrimitiveArrays;
+import org.eclipse.ecr.common.utils.Base64;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
@@ -49,9 +52,6 @@ import org.eclipse.ecr.core.schema.types.ListType;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.collections.PrimitiveArrays;
-import org.nuxeo.common.utils.Base64;
-import org.nuxeo.common.utils.Path;
 
 /**
  * A representation for an exported document.

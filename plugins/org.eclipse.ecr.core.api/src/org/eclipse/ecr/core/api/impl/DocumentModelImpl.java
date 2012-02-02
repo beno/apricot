@@ -29,6 +29,12 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ArrayMap;
+import org.eclipse.ecr.common.collections.PrimitiveArrays;
+import org.eclipse.ecr.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopedMap;
+import org.eclipse.ecr.common.utils.Null;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
@@ -66,12 +72,6 @@ import org.eclipse.ecr.core.schema.types.ListType;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.collections.ArrayMap;
-import org.nuxeo.common.collections.PrimitiveArrays;
-import org.nuxeo.common.collections.ScopeType;
-import org.nuxeo.common.collections.ScopedMap;
-import org.nuxeo.common.utils.Null;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Standard implementation of a {@link DocumentModel}.

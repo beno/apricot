@@ -16,11 +16,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.FieldDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.FulltextIndexDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.ServerDescriptor;
 import org.eclipse.ecr.testlib.NXRuntimeTestCase;
-import org.nuxeo.common.xmap.XMap;
 
 public class TestRepositoryDescriptor extends NXRuntimeTestCase {
 

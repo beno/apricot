@@ -14,6 +14,8 @@ Nuxeo-Component: OSGI-INF/convert-service-framework.xml,
  OSGI-INF/convert-service-base-contrib.xml
 Bundle-ManifestVersion: 2
 Import-Package: org.apache.commons.logging,
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap.annotation,
  org.eclipse.ecr.convert.api,
  org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
@@ -21,7 +23,5 @@ Import-Package: org.apache.commons.logging,
  org.eclipse.ecr.core.api.impl.blob,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.model,
- org.nuxeo.common.utils,
- org.nuxeo.common.xmap.annotation,
  org.osgi.framework
 Bundle-SymbolicName: org.eclipse.ecr.convert

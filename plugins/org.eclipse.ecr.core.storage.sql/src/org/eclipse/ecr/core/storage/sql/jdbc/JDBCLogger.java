@@ -24,10 +24,10 @@ import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.storage.sql.Binary;
 import org.eclipse.ecr.core.storage.sql.Row;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * Logger used for debugging.

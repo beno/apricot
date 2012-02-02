@@ -25,9 +25,9 @@ import javax.transaction.xa.Xid;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.XidImpl;
 import org.eclipse.ecr.core.api.Lock;
 import org.eclipse.ecr.core.storage.StorageException;
-import org.nuxeo.common.utils.XidImpl;
 
 /**
  * Manager of locks that serializes access to them.

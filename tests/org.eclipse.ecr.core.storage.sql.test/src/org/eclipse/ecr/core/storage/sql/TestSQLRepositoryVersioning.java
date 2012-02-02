@@ -17,7 +17,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.nuxeo.common.collections.ScopeType;
+import org.eclipse.ecr.common.collections.ScopeType;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;

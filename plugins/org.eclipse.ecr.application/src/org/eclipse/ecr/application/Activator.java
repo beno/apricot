@@ -25,11 +25,11 @@ import javax.naming.NamingException;
 import javax.naming.spi.NamingManager;
 
 import org.eclipse.ecr.application.internal.ConfigurationProvider;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.utils.Vars;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.jtajca.NuxeoContainer;
 import org.eclipse.ecr.runtime.osgi.OSGiRuntimeService;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.utils.Vars;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;

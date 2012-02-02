@@ -14,12 +14,12 @@ package org.eclipse.ecr.auth;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.ecr.common.utils.StringUtils;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
-import org.nuxeo.common.utils.StringUtils;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

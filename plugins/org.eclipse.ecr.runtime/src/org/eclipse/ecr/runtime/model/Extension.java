@@ -24,7 +24,7 @@ import org.w3c.dom.Element;
  * Extension objects holds extension data as a DOM element.
  * <p>
  * This data can be used by the extension point to extract contribution objects
- * by using {@link org.nuxeo.common.xmap.XMap} XML mapping engine.
+ * by using {@link org.eclipse.ecr.common.xmap.XMap} XML mapping engine.
  *
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */

@@ -15,12 +15,12 @@ package org.eclipse.ecr.runtime.model.impl;
 
 import java.io.InputStream;
 
+import org.eclipse.ecr.common.xmap.Context;
+import org.eclipse.ecr.common.xmap.XMap;
+import org.eclipse.ecr.common.xmap.XValueFactory;
 import org.eclipse.ecr.runtime.Version;
 import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.xmap.Context;
-import org.nuxeo.common.xmap.XMap;
-import org.nuxeo.common.xmap.XValueFactory;
 
 /**
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

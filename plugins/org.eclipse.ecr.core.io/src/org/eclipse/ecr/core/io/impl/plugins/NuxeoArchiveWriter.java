@@ -28,6 +28,7 @@ import java.util.zip.ZipOutputStream;
 import org.dom4j.Document;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.DocumentLocation;
 import org.eclipse.ecr.core.api.DocumentRef;
@@ -37,7 +38,6 @@ import org.eclipse.ecr.core.io.ExportedDocument;
 import org.eclipse.ecr.core.io.impl.AbstractDocumentWriter;
 import org.eclipse.ecr.core.io.impl.DWord;
 import org.eclipse.ecr.core.io.impl.DocumentTranslationMapImpl;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

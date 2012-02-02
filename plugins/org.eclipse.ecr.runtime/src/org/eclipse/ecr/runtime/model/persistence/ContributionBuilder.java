@@ -21,8 +21,8 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.nuxeo.common.xmap.DOMSerializer;
-import org.nuxeo.common.xmap.XMap;
+import org.eclipse.ecr.common.xmap.DOMSerializer;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 

@@ -18,6 +18,8 @@ Import-Package: javax.annotation,
  javax.transaction.xa,
  org.apache.commons.logging,
  org.apache.geronimo.transaction.manager,
+ org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.xmap,
  org.eclipse.ecr.core,
  org.eclipse.ecr.core.api,
  org.eclipse.ecr.core.model,
@@ -29,7 +31,5 @@ Import-Package: javax.annotation,
  org.eclipse.ecr.core.storage.sql,
  org.eclipse.ecr.core.storage.sql.coremodel,
  org.eclipse.ecr.core.storage.sql.net,
- org.eclipse.ecr.runtime.api,
- org.nuxeo.common.collections,
- org.nuxeo.common.xmap
+ org.eclipse.ecr.runtime.api
 Bundle-SymbolicName: org.eclipse.ecr.core.storage.sql.ra;singleton:=true

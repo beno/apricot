@@ -1,0 +1,31 @@
+Export-Package: org.eclipse.ecr.common,
+ org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.logging,
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap,
+ org.eclipse.ecr.common.xmap.annotation
+Bundle-ActivationPolicy: lazy
+Manifest-Version: 1.0
+Bundle-Name: Eclipse ECR Common
+Created-By: 1.6.0_20 (Sun Microsystems Inc.)
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Vendor: Nuxeo
+Bundle-Version: 0.5.4.qualifier
+Bundle-ManifestVersion: 2
+Require-Bundle: org.apache.xerces 
+Import-Package: org.apache.commons.codec.binary, 
+ javax.naming,
+ javax.naming.spi,
+ javax.resource,
+ javax.transaction.xa,
+ javax.xml.parsers,
+ org.apache.commons.collections.map;version="3.2.0",
+ org.apache.commons.io,
+ org.apache.commons.lang.builder,
+ org.apache.commons.logging,
+ org.apache.xml.serialize,
+ org.w3c.dom,
+ org.w3c.dom.ranges,
+ org.xml.sax
+Bundle-SymbolicName: org.eclipse.ecr.common;singleton:=true
+Bundle-ClassPath: .

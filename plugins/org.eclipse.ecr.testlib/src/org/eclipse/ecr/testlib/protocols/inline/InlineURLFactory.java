@@ -21,8 +21,8 @@ import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.nuxeo.common.utils.Base64;
-import org.nuxeo.common.utils.URLStreamHandlerFactoryInstaller;
+import org.eclipse.ecr.common.utils.Base64;
+import org.eclipse.ecr.common.utils.URLStreamHandlerFactoryInstaller;
 
 public class InlineURLFactory {
 

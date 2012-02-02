@@ -46,6 +46,7 @@ import org.apache.chemistry.opencmis.server.support.query.QueryObject.SortSpec;
 import org.apache.chemistry.opencmis.server.support.query.QueryUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.LifeCycleConstants;
 import org.eclipse.ecr.core.query.QueryFilter;
 import org.eclipse.ecr.core.query.QueryParseException;
@@ -65,7 +66,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.TableAlias;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect.FulltextMatchInfo;
 import org.eclipse.ecr.opencmis.impl.util.TypeManagerImpl;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * Transformer of CMISQL queries into real SQL queries for the actual database.

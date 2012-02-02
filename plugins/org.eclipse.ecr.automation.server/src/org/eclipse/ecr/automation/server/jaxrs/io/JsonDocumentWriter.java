@@ -34,6 +34,7 @@ import net.sf.json.JSONObject;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.Lock;
@@ -47,7 +48,6 @@ import org.eclipse.ecr.core.schema.types.ListType;
 import org.eclipse.ecr.core.schema.utils.DateParser;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

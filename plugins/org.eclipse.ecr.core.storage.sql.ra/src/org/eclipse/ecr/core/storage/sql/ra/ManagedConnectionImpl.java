@@ -31,10 +31,10 @@ import javax.transaction.xa.XAResource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.collections.ListenerList;
 import org.eclipse.ecr.core.storage.Credentials;
 import org.eclipse.ecr.core.storage.sql.ConnectionSpecImpl;
 import org.eclipse.ecr.core.storage.sql.SessionImpl;
-import org.nuxeo.common.collections.ListenerList;
 
 /**
  * The managed connection represents an actual physical connection to the

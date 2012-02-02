@@ -16,8 +16,8 @@ package org.eclipse.ecr.core.query.sql.model;
 
 import junit.framework.TestCase;
 
-import org.nuxeo.common.collections.SerializableArrayMap;
-import org.nuxeo.common.utils.SerializableHelper;
+import org.eclipse.ecr.common.collections.SerializableArrayMap;
+import org.eclipse.ecr.common.utils.SerializableHelper;
 import org.eclipse.ecr.core.query.sql.SQLQueryParser;
 
 /**

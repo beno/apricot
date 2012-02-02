@@ -20,6 +20,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.convert.api.ConversionService;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
@@ -40,7 +41,6 @@ import org.eclipse.ecr.core.storage.sql.Model;
 import org.eclipse.ecr.core.storage.sql.ModelFulltext;
 import org.eclipse.ecr.core.utils.BlobsExtractor;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * Listener that does fulltext extraction from the blobs of documents whose ids

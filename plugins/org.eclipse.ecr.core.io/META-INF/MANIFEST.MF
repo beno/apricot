@@ -14,6 +14,8 @@ Import-Package: javax.security.auth.login,
  org.apache.commons.logging,
  org.dom4j,
  org.dom4j.io,
+ org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.utils,
  org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.impl,
@@ -24,7 +26,5 @@ Import-Package: javax.security.auth.login,
  org.eclipse.ecr.core.schema,
  org.eclipse.ecr.core.schema.types,
  org.eclipse.ecr.runtime.api,
- org.eclipse.ecr.runtime.services.streaming,
- org.nuxeo.common.collections,
- org.nuxeo.common.utils
+ org.eclipse.ecr.runtime.services.streaming
 Bundle-SymbolicName: org.eclipse.ecr.core.io

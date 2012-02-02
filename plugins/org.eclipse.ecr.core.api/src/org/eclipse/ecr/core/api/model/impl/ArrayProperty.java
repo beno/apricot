@@ -19,12 +19,12 @@ import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.eclipse.ecr.common.collections.PrimitiveArrays;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyConversionException;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.JavaTypes;
 import org.eclipse.ecr.core.schema.types.ListType;
-import org.nuxeo.common.collections.PrimitiveArrays;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

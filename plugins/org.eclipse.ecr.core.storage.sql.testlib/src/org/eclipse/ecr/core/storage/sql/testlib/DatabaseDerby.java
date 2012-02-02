@@ -18,8 +18,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author Florent Guillaume

@@ -11,12 +11,12 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
 Bundle-ManifestVersion: 2
 Import-Package: java_cup.runtime,
+ org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.utils,
  org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.impl,
  org.joda.time,
  org.joda.time.base,
- org.joda.time.format,
- org.nuxeo.common.collections,
- org.nuxeo.common.utils
+ org.joda.time.format
 Bundle-SymbolicName: org.eclipse.ecr.core.query;singleton:=true

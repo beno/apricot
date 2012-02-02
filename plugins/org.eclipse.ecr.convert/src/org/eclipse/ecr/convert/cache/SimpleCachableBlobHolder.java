@@ -16,11 +16,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.convert.api.ConversionException;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.blobholder.SimpleBlobHolder;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Cachable implementation of the {@link SimpleBlobHolder}.

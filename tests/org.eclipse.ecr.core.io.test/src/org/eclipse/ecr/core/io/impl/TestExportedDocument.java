@@ -22,7 +22,7 @@ import java.io.Writer;
 
 import org.dom4j.io.XMLWriter;
 import org.jmock.Mock;
-import org.nuxeo.common.utils.Path;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.io.ExportedDocument;

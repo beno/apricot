@@ -22,11 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.OperationException;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.mvel2.MVEL;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

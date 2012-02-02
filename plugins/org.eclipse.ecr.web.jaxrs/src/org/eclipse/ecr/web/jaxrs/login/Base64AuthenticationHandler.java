@@ -18,9 +18,9 @@ import javax.security.auth.login.LoginException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.ecr.common.utils.Base64;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.Base64;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

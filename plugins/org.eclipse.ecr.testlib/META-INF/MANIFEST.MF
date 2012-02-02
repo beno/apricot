@@ -8,14 +8,14 @@ Bundle-SymbolicName: org.eclipse.ecr.testlib;singleton:=true
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: junit.framework,
  org.apache.commons.logging,
+ org.eclipse.ecr.common,
+ org.eclipse.ecr.common.utils,
  org.eclipse.ecr.runtime,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.model,
  org.eclipse.ecr.runtime.model.impl,
  org.eclipse.ecr.runtime.osgi,
  org.eclipse.ecr.runtime.services.streaming,
- org.nuxeo.common,
- org.nuxeo.common.utils,
  org.osgi.framework
 Export-Package: org.eclipse.ecr.testlib,
  org.eclipse.ecr.testlib.protocols.inline,

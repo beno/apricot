@@ -17,11 +17,11 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.web.framework.WebApplication;
-import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 import org.osgi.framework.Bundle;
 import org.w3c.dom.DocumentFragment;
 

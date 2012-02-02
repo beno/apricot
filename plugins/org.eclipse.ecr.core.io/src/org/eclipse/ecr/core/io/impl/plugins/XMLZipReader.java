@@ -22,11 +22,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.dom4j.Document;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.io.ExportConstants;
 import org.eclipse.ecr.core.io.ExportedDocument;
 import org.eclipse.ecr.core.io.impl.AbstractDocumentReader;
 import org.eclipse.ecr.core.io.impl.ExportedDocumentImpl;
-import org.nuxeo.common.utils.Path;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

@@ -18,7 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
-import org.nuxeo.common.utils.FileUtils;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.AbstractRuntimeService;
 import org.eclipse.ecr.runtime.Version;
 import org.eclipse.ecr.runtime.model.impl.DefaultRuntimeContext;

@@ -15,7 +15,7 @@ Import-Package: junit.framework,
  org.jmock,
  org.junit,
  org.junit.runner,
- org.nuxeo.common
+ org.eclipse.ecr.common
 Export-Package: org.eclipse.ecr.runtime,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.model

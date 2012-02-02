@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
-import org.nuxeo.common.utils.StringUtils;
+import org.eclipse.ecr.common.utils.StringUtils;
 
 import freemarker.core.Environment;
 import freemarker.template.TemplateDirectiveBody;

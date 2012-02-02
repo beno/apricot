@@ -24,11 +24,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.model.RegistrationInfo;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
 import org.eclipse.ecr.runtime.osgi.OSGiRuntimeService;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.utils.FileUtils;
 import org.osgi.framework.Bundle;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;

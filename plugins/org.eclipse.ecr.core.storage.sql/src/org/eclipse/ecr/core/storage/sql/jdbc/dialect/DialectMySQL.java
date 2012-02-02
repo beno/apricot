@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.BinaryManager;
 import org.eclipse.ecr.core.storage.sql.ColumnType;
@@ -35,7 +36,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Database;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Join;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect.FulltextQuery.Op;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * MySQL-specific dialect.

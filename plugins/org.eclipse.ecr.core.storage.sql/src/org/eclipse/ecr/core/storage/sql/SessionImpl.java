@@ -36,6 +36,7 @@ import javax.transaction.xa.Xid;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.Lock;
@@ -55,7 +56,6 @@ import org.eclipse.ecr.core.storage.sql.Invalidations.InvalidationsPair;
 import org.eclipse.ecr.core.storage.sql.RowMapper.RowBatch;
 import org.eclipse.ecr.core.storage.sql.coremodel.BinaryTextListener;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * The session is the main high level access point to data from the underlying

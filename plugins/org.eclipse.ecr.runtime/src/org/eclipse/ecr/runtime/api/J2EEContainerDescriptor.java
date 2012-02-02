@@ -16,7 +16,7 @@ package org.eclipse.ecr.runtime.api;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.nuxeo.common.Environment;
+import org.eclipse.ecr.common.Environment;
 
 /**
  * Helper class to get container related properties.

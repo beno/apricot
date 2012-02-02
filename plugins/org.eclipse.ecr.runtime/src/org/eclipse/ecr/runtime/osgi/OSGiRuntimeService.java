@@ -37,6 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.runtime.AbstractRuntimeService;
 import org.eclipse.ecr.runtime.Version;
 import org.eclipse.ecr.runtime.api.Framework;
@@ -45,8 +47,6 @@ import org.eclipse.ecr.runtime.model.RegistrationInfo;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
 import org.eclipse.ecr.runtime.model.impl.ComponentPersistence;
 import org.eclipse.ecr.runtime.model.impl.RegistrationInfoImpl;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.utils.FileUtils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;

@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.schema.types.AnyType;
 import org.eclipse.ecr.core.schema.types.CompositeType;
 import org.eclipse.ecr.core.schema.types.CompositeTypeImpl;
@@ -37,7 +38,6 @@ import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
 import org.eclipse.ecr.core.schema.types.TypeHelper;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * Schema Manager implementation.

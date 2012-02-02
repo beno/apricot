@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.NXCore;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.core.storage.StorageException;
@@ -37,7 +38,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Database;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Join;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * H2-specific dialect.

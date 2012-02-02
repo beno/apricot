@@ -15,11 +15,11 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentRef;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Service containing the logic about deleting/purging/undeleting a document.

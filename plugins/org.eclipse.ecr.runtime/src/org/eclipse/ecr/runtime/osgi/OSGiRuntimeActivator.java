@@ -18,8 +18,8 @@ import java.net.URL;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.Environment;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.Environment;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;

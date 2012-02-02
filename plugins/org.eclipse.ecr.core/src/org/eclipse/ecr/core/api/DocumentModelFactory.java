@@ -22,6 +22,8 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.Null;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
 import org.eclipse.ecr.core.api.DataModel;
@@ -44,8 +46,6 @@ import org.eclipse.ecr.core.schema.FacetNames;
 import org.eclipse.ecr.core.schema.PrefetchInfo;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.Schema;
-import org.nuxeo.common.utils.Null;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Bridge between a {@link DocumentModel} and a {@link Document} for creation /

@@ -17,6 +17,7 @@ package org.eclipse.ecr.core.api.model.impl;
 import java.io.Serializable;
 import java.util.Iterator;
 
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.InvalidPropertyValueException;
 import org.eclipse.ecr.core.api.model.Property;
@@ -25,7 +26,6 @@ import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
 import org.eclipse.ecr.core.api.model.ReadOnlyPropertyException;
 import org.eclipse.ecr.core.schema.types.Schema;
-import org.nuxeo.common.utils.Path;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

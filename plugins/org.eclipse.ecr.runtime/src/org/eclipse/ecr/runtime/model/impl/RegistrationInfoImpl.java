@@ -22,6 +22,11 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XNodeMap;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.runtime.ComponentEvent;
 import org.eclipse.ecr.runtime.Version;
 import org.eclipse.ecr.runtime.api.Framework;
@@ -35,11 +40,6 @@ import org.eclipse.ecr.runtime.model.ExtensionPoint;
 import org.eclipse.ecr.runtime.model.Property;
 import org.eclipse.ecr.runtime.model.RegistrationInfo;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.xmap.annotation.XContent;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XNodeMap;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

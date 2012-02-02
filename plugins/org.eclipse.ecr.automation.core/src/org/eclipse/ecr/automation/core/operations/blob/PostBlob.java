@@ -21,8 +21,8 @@ import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.automation.core.collectors.BlobCollector;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  *

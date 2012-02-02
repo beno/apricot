@@ -33,6 +33,7 @@ import javax.security.auth.Subject;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.core.NXCore;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.ConnectionSpecImpl;
@@ -41,7 +42,6 @@ import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 import org.eclipse.ecr.core.storage.sql.RepositoryManagement;
 import org.eclipse.ecr.core.storage.sql.SessionImpl;
 import org.eclipse.ecr.core.storage.sql.net.MapperClientInfo;
-import org.nuxeo.common.xmap.XMap;
 
 /**
  * The managed connection factory receives requests from the application server

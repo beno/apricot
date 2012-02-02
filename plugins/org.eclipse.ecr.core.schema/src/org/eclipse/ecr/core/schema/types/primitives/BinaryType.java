@@ -19,8 +19,8 @@ import java.io.InputStream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.schema.types.PrimitiveType;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * The binary type handles values of type InputStream.

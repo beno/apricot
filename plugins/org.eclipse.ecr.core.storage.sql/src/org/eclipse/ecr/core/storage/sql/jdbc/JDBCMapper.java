@@ -42,6 +42,7 @@ import javax.transaction.xa.Xid;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.Lock;
 import org.eclipse.ecr.core.query.QueryFilter;
@@ -61,7 +62,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.DialectOracle;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * A {@link JDBCMapper} maps objects to and from a JDBC database. It is specific

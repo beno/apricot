@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.eclipse.ecr.common.collections.PrimitiveArrays;
 import org.eclipse.ecr.core.api.ListDiff;
 import org.eclipse.ecr.core.api.model.InvalidPropertyValueException;
 import org.eclipse.ecr.core.api.model.Property;
@@ -32,7 +33,6 @@ import org.eclipse.ecr.core.api.model.PropertyVisitor;
 import org.eclipse.ecr.core.api.model.ReadOnlyPropertyException;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.ListType;
-import org.nuxeo.common.collections.PrimitiveArrays;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

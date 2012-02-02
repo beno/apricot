@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.ColumnType;
 import org.eclipse.ecr.core.storage.sql.Mapper;
@@ -40,7 +41,6 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Update;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.SQLStatement;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * This singleton generates and holds the actual SQL DDL and DML statements for

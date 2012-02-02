@@ -10,14 +10,14 @@ Bundle-ClassPath: .
 Import-Package: javax.naming,
  javax.naming.spi,
  org.apache.commons.logging,
+ org.eclipse.ecr.common,
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap,
+ org.eclipse.ecr.common.xmap.annotation,
  org.eclipse.ecr.runtime,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.jtajca,
  org.eclipse.ecr.runtime.osgi,
- org.nuxeo.common,
- org.nuxeo.common.utils,
- org.nuxeo.common.xmap,
- org.nuxeo.common.xmap.annotation,
  org.osgi.framework,
  org.osgi.service.packageadmin;version="1.2.0"
 Bundle-Activator: org.eclipse.ecr.application.Activator

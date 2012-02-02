@@ -16,7 +16,7 @@ package org.eclipse.ecr.core.query.sql;
 
 import junit.framework.TestCase;
 
-import org.nuxeo.common.utils.ExceptionUtils;
+import org.eclipse.ecr.common.utils.ExceptionUtils;
 import org.eclipse.ecr.core.query.QueryParseException;
 import org.eclipse.ecr.core.query.sql.model.Operator;
 import org.eclipse.ecr.core.query.sql.model.Reference;

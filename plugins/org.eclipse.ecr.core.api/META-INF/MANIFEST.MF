@@ -47,6 +47,10 @@ Import-Package: javax.security.auth,
  org.apache.commons.collections.bidimap,
  org.apache.commons.collections.map,
  org.apache.commons.logging,
+ org.eclipse.ecr.common,
+ org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap.annotation,
  org.eclipse.ecr.core.schema,
  org.eclipse.ecr.core.schema.types,
  org.eclipse.ecr.core.schema.types.primitives,
@@ -54,10 +58,6 @@ Import-Package: javax.security.auth,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.api.login,
  org.eclipse.ecr.runtime.model,
- org.eclipse.ecr.runtime.services.streaming,
- org.nuxeo.common,
- org.nuxeo.common.collections,
- org.nuxeo.common.utils,
- org.nuxeo.common.xmap.annotation
+ org.eclipse.ecr.runtime.services.streaming
 Bundle-SymbolicName: org.eclipse.ecr.core.api;singleton:=true
 Eclipse-ExtensibleAPI: true

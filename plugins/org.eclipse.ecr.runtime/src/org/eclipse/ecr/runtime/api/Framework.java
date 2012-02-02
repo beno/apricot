@@ -24,14 +24,14 @@ import javax.security.auth.login.LoginException;
 
 import org.apache.commons.io.FileCleaningTracker;
 import org.apache.commons.io.FileDeleteStrategy;
+import org.eclipse.ecr.common.Environment;
+import org.eclipse.ecr.common.collections.ListenerList;
 import org.eclipse.ecr.runtime.RuntimeService;
 import org.eclipse.ecr.runtime.RuntimeServiceEvent;
 import org.eclipse.ecr.runtime.RuntimeServiceListener;
 import org.eclipse.ecr.runtime.ServiceManager;
 import org.eclipse.ecr.runtime.api.login.LoginAs;
 import org.eclipse.ecr.runtime.api.login.LoginService;
-import org.nuxeo.common.Environment;
-import org.nuxeo.common.collections.ListenerList;
 
 /**
  * This class is the main entry point to a Nuxeo runtime application.

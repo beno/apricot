@@ -17,15 +17,15 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.event.EventListener;
 import org.eclipse.ecr.core.event.PostCommitEventListener;
 import org.eclipse.ecr.core.event.script.Script;
 import org.eclipse.ecr.core.event.script.ScriptingEventListener;
 import org.eclipse.ecr.core.event.script.ScriptingPostCommitEventListener;
 import org.eclipse.ecr.runtime.model.RuntimeContext;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * XObject descriptor to declare event listeners

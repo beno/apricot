@@ -16,8 +16,8 @@ package org.eclipse.ecr.web.framework.forms;
 import java.io.IOException;
 import java.io.Writer;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 
 @XObject
 public class RuleDescriptor {

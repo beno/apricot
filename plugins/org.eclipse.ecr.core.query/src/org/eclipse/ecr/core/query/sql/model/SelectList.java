@@ -14,7 +14,7 @@
 
 package org.eclipse.ecr.core.query.sql.model;
 
-import org.nuxeo.common.collections.SerializableArrayMap;
+import org.eclipse.ecr.common.collections.SerializableArrayMap;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

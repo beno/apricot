@@ -25,11 +25,11 @@ import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.automation.core.events.DocumentAttributeFilterFactory;
 import org.eclipse.ecr.automation.core.scripting.Expression;
 import org.eclipse.ecr.automation.core.scripting.Scripting;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentModelList;
 import org.eclipse.ecr.core.api.Filter;
 import org.eclipse.ecr.core.api.impl.DocumentModelListImpl;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  *

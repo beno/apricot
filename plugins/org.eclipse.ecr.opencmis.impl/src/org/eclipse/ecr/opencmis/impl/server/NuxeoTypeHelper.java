@@ -36,6 +36,7 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyUriDefinit
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RelationshipTypeDefinitionImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
@@ -53,7 +54,6 @@ import org.eclipse.ecr.core.schema.types.primitives.DateType;
 import org.eclipse.ecr.core.schema.types.primitives.DoubleType;
 import org.eclipse.ecr.core.schema.types.primitives.LongType;
 import org.eclipse.ecr.core.schema.types.primitives.StringType;
-import org.nuxeo.common.utils.Path;
 
 /**
  * Nuxeo Type Utilities.

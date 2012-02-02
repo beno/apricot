@@ -78,7 +78,7 @@ public class Composer {
 
     protected Mailer createMailer() {
         // first try the local configuration
-        org.nuxeo.common.Environment env = org.nuxeo.common.Environment.getDefault();
+        org.eclipse.ecr.common.Environment env = org.eclipse.ecr.common.Environment.getDefault();
         if (env != null) {
             File file = new File(env.getConfig(), "mail.properties");
             if (file.isFile()) {

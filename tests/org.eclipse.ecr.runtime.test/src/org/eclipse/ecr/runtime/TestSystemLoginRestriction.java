@@ -16,10 +16,10 @@ import java.io.File;
 
 import junit.framework.TestCase;
 
+import org.eclipse.ecr.common.Environment;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.api.login.SystemLoginRestrictionManager;
 import org.eclipse.ecr.runtime.util.SimpleRuntime;
-import org.nuxeo.common.Environment;
 
 public class TestSystemLoginRestriction extends TestCase {
 

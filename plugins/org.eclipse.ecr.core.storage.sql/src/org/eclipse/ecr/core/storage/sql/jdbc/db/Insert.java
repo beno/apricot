@@ -16,8 +16,8 @@ import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect;
-import org.nuxeo.common.utils.StringUtils;
 
 /**
  * An {@code INSERT} statement.

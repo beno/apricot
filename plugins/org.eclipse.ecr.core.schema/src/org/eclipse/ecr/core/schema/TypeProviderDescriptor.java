@@ -14,9 +14,9 @@
 
 package org.eclipse.ecr.core.schema;
 
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.runtime.api.ServiceLocatorFactory;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * A object describing a type provider.

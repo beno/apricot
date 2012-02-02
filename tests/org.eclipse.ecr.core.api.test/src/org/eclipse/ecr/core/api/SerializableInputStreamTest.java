@@ -23,8 +23,8 @@ import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.util.Arrays;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.testlib.NXRuntimeTestCase;
-import org.nuxeo.common.utils.FileUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

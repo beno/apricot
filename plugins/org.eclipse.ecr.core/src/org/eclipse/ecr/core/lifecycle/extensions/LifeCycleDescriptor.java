@@ -18,12 +18,12 @@ import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.lifecycle.LifeCycle;
 import org.eclipse.ecr.core.lifecycle.LifeCycleState;
 import org.eclipse.ecr.core.lifecycle.LifeCycleTransition;
 import org.eclipse.ecr.core.lifecycle.impl.LifeCycleImpl;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 import org.w3c.dom.Element;
 
 /**

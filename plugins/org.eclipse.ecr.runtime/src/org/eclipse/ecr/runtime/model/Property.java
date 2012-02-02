@@ -17,9 +17,9 @@ package org.eclipse.ecr.runtime.model;
 import java.io.Serializable;
 import java.util.List;
 
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.runtime.model.impl.PropertyDecoder;
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XObject;
 
 /**
  * @author Bogdan Stefanescu

@@ -9,6 +9,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: javax.resource,
  junit.framework,
  org.apache.commons.logging,
+ org.eclipse.ecr.common.utils,
  org.eclipse.ecr.core.api,
  org.eclipse.ecr.core.api.security,
  org.eclipse.ecr.core.event,
@@ -19,8 +20,7 @@ Import-Package: javax.resource,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.jtajca,
  org.eclipse.ecr.runtime.transaction,
- org.eclipse.ecr.testlib,
- org.nuxeo.common.utils
+ org.eclipse.ecr.testlib
 Export-Package: org.eclipse.ecr.core.storage.sql.testlib
 Require-Bundle: org.eclipse.ecr.testlib;visibility:=reexport,
  org.h2;resolution:=optional;visibility:=reexport

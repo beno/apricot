@@ -18,12 +18,12 @@ import java.util.Calendar;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
 
+import org.eclipse.ecr.common.DirtyUpdateInvokeBridge;
+import org.eclipse.ecr.common.DirtyUpdateInvokeBridge.ThreadContext;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.operation.ModificationSet;
-import org.nuxeo.common.DirtyUpdateInvokeBridge;
-import org.nuxeo.common.DirtyUpdateInvokeBridge.ThreadContext;
 
 public class DirtyUpdateChecker {
 
