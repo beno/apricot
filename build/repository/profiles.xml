@@ -61,8 +61,13 @@
     <artifact name="org.eclipse.ecr.web.rendering" />
 
     <artifact name="org.eclipse.ecr.automation.server" />
-    
+
     <artifact name="org.eclipse.ecr.web.framework" />
+
+    <!-- jersey bundles require auto-start=true - TODO must put by default auto-start=true for the entire application -->
+    <artifact name="com.sun.jersey.jersey-core" autostart="true"/>
+    <artifact name="com.sun.jersey.jersey-server" autostart="true"/>
+    <artifact name="com.sun.jersey.jersey-servlet" autostart="true"/>
   </profile>
 
   <profile name="cmis">

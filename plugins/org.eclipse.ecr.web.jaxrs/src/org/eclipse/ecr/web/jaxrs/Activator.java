@@ -52,14 +52,14 @@ public class Activator implements BundleActivator, ServiceTrackerCustomizer {
     public void start(BundleContext context) throws Exception {
         // we need to set by hand the runtime delegate to avoid letting ServiceFinder discover the implementation
         // which is not working in an OSGi environment
-    	Thread th = Thread.currentThread();
-    	ClassLoader cl = th.getContextClassLoader();
-    	th.setContextClassLoader(getClass().getClassLoader());
-    	try {
-    		RuntimeDelegate.setInstance(new RuntimeDelegateImpl());
-    	} finally {
-    		th.setContextClassLoader(cl);
-    	}
+//    	Thread th = Thread.currentThread();
+//    	ClassLoader cl = th.getContextClassLoader();
+//    	th.setContextClassLoader(getClass().getClassLoader());
+//    	try {
+//    		RuntimeDelegate.setInstance(new RuntimeDelegateImpl());
+//    	} finally {
+//    		th.setContextClassLoader(cl);
+//    	}
 
         instance = this;
         this.context = context;

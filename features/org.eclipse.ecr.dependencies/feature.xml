@@ -25,7 +25,7 @@
          unpack="false"/>
 
    <plugin
-         id="com.sun.xml.xsom"
+         id="com.sun.xsom"
          download-size="0"
          install-size="0"
          version="0.0.0"
@@ -352,14 +352,21 @@
          unpack="false"/>
 
    <plugin
-         id="com.sun.jersey.core"
+         id="com.sun.jersey.jersey-core"
          download-size="0"
          install-size="0"
          version="0.0.0"
          unpack="false"/>
 
    <plugin
-         id="com.sun.jersey.server"
+         id="com.sun.jersey.jersey-server"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="com.sun.jersey.jersey-servlet"
          download-size="0"
          install-size="0"
          version="0.0.0"
