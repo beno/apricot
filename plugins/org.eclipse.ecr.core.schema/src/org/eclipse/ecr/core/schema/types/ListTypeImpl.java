@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import java.math.BigInteger;
+
 import org.eclipse.ecr.core.schema.TypeRef;
 
 /**
@@ -80,7 +82,11 @@ public class ListTypeImpl extends AbstractType implements ListType {
             String defaultValue) {
         this(schema, name, type, null, defaultValue, 0, -1);
     }
-
+	
+    public ListTypeImpl(String schema, String name, Type type, String fieldName,
+            String defaultValue, BigInteger minOccurs, BigInteger maxOccurs) {
+        this(schema, name, type.getRef(), fieldName, defaultValue, minOccurs.intValue(), maxOccurs.intValue());
+    }
 
     @Override
     public void setLimits(int minOccurs, int maxOccurs) {
