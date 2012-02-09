@@ -1,0 +1,10 @@
+Fork to get it to install. Changes are brute force monkeypatches by a non-Java person, so don't try this at home.
+
+    cd build/
+    mvn clean install -Dmaven.test.skip=true
+    cd product/
+    ./build.sh
+    cd target/ecr-default
+    ./run.sh
+
+It installs and starts but returns only 404s for now. So there.
