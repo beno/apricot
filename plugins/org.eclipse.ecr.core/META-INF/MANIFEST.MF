@@ -60,4 +60,3 @@ Import-Package: javax.naming,
  org.osgi.framework;version="1.4",
  org.w3c.dom
 Bundle-SymbolicName: org.eclipse.ecr.core;singleton:=true
-Eclipse-ExtensibleAPI: true

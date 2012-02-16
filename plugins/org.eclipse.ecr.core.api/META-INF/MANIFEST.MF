@@ -60,4 +60,3 @@ Import-Package: javax.security.auth,
  org.eclipse.ecr.runtime.model,
  org.eclipse.ecr.runtime.services.streaming
 Bundle-SymbolicName: org.eclipse.ecr.core.api;singleton:=true
-Eclipse-ExtensibleAPI: true

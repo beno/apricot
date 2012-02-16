@@ -5,7 +5,6 @@ Bundle-SymbolicName: org.eclipse.ecr.opencmis.bindings;singleton:=true
 Bundle-Vendor: Nuxeo
 Export-Package: org.eclipse.ecr.opencmis.bindings
 Bundle-ActivationPolicy: lazy
-Eclipse-ExtensibleAPI: true
 Nuxeo-Component: OSGI-INF/atom-contrib.xml,
  OSGI-INF/soap-contrib.xml
 Bundle-Version: 0.5.4.qualifier

@@ -8,7 +8,6 @@ Export-Package: org.eclipse.ecr.opencmis.impl.client,
  org.eclipse.ecr.opencmis.impl.server,
  org.eclipse.ecr.opencmis.impl.util
 Bundle-ActivationPolicy: lazy
-Eclipse-ExtensibleAPI: true
 Nuxeo-Component: OSGI-INF/opencmis-contrib.xml,
  OSGI-INF/cmis-querymaker-contrib.xml
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
