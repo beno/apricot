@@ -1517,7 +1517,7 @@ public class TestSQLRepositoryQuery extends SQLRepositoryTestCase {
     }
 
     public void testFulltextBlob() throws Exception {
-        deployBundle("org.eclipse.ecr.convert.api");
+        deployBundle("org.eclipse.ecr.core.convert.api");
         deployBundle("org.eclipse.ecr.convert");
 
         createDocs();

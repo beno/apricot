@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.eclipse.ecr.test</groupId>
-  <artifactId>org.eclipse.ecr.convert.test</artifactId>
+  <artifactId>org.eclipse.ecr.core.convert.test</artifactId>
   <version>0.5.4-SNAPSHOT</version>
   <name>Eclipse ECR Convert Test</name>
   <packaging>eclipse-plugin</packaging>

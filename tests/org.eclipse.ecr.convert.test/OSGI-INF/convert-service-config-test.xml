@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<component name="org.eclipse.ecr.convert.tests.config">
+<component name="org.eclipse.ecr.core.convert.tests.config">
 
-  <extension target="org.eclipse.ecr.convert.service.ConversionServiceImpl"
+  <extension target="org.eclipse.ecr.core.convert.service.ConversionServiceImpl"
       point="configuration">
 
     <configuration>

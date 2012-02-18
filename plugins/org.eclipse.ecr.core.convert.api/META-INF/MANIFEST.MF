@@ -1,4 +1,4 @@
-Export-Package: org.eclipse.ecr.convert.api
+Export-Package: org.eclipse.ecr.core.convert.api
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .
 Manifest-Version: 1.0
@@ -11,4 +11,4 @@ Bundle-ManifestVersion: 2
 Import-Package: org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.blobholder
-Bundle-SymbolicName: org.eclipse.ecr.convert.api
+Bundle-SymbolicName: org.eclipse.ecr.core.convert.api

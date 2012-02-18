@@ -16,9 +16,9 @@ import java.io.Serializable;
 import java.util.Map;
 
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
-import org.eclipse.ecr.convert.api.ConversionException;
-import org.eclipse.ecr.convert.extension.Converter;
-import org.eclipse.ecr.convert.extension.ConverterDescriptor;
+import org.eclipse.ecr.core.convert.api.ConversionException;
+import org.eclipse.ecr.core.convert.extension.Converter;
+import org.eclipse.ecr.core.convert.extension.ConverterDescriptor;
 
 public class DummyConverter implements Converter {
 

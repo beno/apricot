@@ -91,7 +91,7 @@ public class TestSQLBinariesIndexing extends TXSQLRepositoryTestCase {
     @Override
     protected void deployRepositoryContrib() throws Exception {
         super.deployRepositoryContrib();
-        deployBundle("org.eclipse.ecr.convert.api");
+        deployBundle("org.eclipse.ecr.core.convert.api");
         deployBundle("org.eclipse.ecr.convert");
         deployContrib(TEST_BUNDLE,
                 "OSGI-INF/test-asynch-binaries-indexing-contrib.xml");

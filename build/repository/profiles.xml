@@ -39,8 +39,8 @@
     <artifact name="org.eclipse.ecr.core.storage.sql" />
     <artifact name="org.eclipse.ecr.core.storage.sql.extensions" />
     <artifact name="org.eclipse.ecr.core.storage.sql.ra" />
-    <artifact name="org.eclipse.ecr.convert.api" />
-    <artifact name="org.eclipse.ecr.convert" />
+    <artifact name="org.eclipse.ecr.core.convert.api" />
+    <artifact name="org.eclipse.ecr.core.convert" />
 
     <artifact name="org.eclipse.ecr.auth" />
     <artifact name="org.eclipse.ecr.dublincore" />

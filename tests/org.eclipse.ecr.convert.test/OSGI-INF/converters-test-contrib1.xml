@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<component name="org.eclipse.ecr.convert.tests.1">
+<component name="org.eclipse.ecr.core.convert.tests.1">
 
-  <extension target="org.eclipse.ecr.convert.service.ConversionServiceImpl"
+  <extension target="org.eclipse.ecr.core.convert.service.ConversionServiceImpl"
       point="converter">
-    <converter name="dummy1" class="org.eclipse.ecr.convert.tests.DummyConverter">
+    <converter name="dummy1" class="org.eclipse.ecr.core.convert.tests.DummyConverter">
       <sourceMimeType>text/plain</sourceMimeType>
       <sourceMimeType>text/xml</sourceMimeType>
       <destinationMimeType>test/me</destinationMimeType>

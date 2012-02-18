@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.eclipse.ecr.plugins</groupId>
-  <artifactId>org.eclipse.ecr.convert</artifactId>
+  <artifactId>org.eclipse.ecr.core.convert</artifactId>
   <version>0.5.4-SNAPSHOT</version>
   <name>Eclipse ECR Core Converter</name>
   <packaging>eclipse-plugin</packaging>

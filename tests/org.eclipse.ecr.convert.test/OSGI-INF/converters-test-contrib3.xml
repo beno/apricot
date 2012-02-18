@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<component name="org.eclipse.ecr.convert.tests.3">
+<component name="org.eclipse.ecr.core.convert.tests.3">
 
-  <extension target="org.eclipse.ecr.convert.service.ConversionServiceImpl"
+  <extension target="org.eclipse.ecr.core.convert.service.ConversionServiceImpl"
       point="converter">
-    <converter name="identity" class="org.eclipse.ecr.convert.tests.IdentityConverter">
+    <converter name="identity" class="org.eclipse.ecr.core.convert.tests.IdentityConverter">
       <sourceMimeType>*</sourceMimeType>
       <destinationMimeType>test/cache</destinationMimeType>
     </converter>

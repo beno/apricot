@@ -23,8 +23,8 @@ import junit.framework.TestCase;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.core.api.impl.blob.StringBlob;
-import org.eclipse.ecr.convert.cache.CachableBlobHolder;
-import org.eclipse.ecr.convert.cache.SimpleCachableBlobHolder;
+import org.eclipse.ecr.core.convert.cache.CachableBlobHolder;
+import org.eclipse.ecr.core.convert.cache.SimpleCachableBlobHolder;
 
 public class TestBlobHolderPersistence extends TestCase {
 

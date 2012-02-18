@@ -20,11 +20,11 @@ import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.util.BlobList;
-import org.eclipse.ecr.convert.api.ConversionService;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
 import org.eclipse.ecr.core.api.blobholder.SimpleBlobHolder;
+import org.eclipse.ecr.core.convert.api.ConversionService;
 
 /**
  * Save the input document

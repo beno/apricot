@@ -2,9 +2,9 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Eclipse ECR Convert Tests (Incubation)
 Bundle-Vendor: Nuxeo SAS
-Bundle-SymbolicName: org.eclipse.ecr.convert.test;singleton:=true
+Bundle-SymbolicName: org.eclipse.ecr.core.convert.test;singleton:=true
 Bundle-Version: 0.5.4.qualifier
 Bundle-Description: ECR Convert Tests
-Fragment-Host: org.eclipse.ecr.convert
+Fragment-Host: org.eclipse.ecr.core.convert
 Require-Bundle: org.eclipse.ecr.testlib
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6

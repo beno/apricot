@@ -20,25 +20,25 @@ import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
 import org.eclipse.ecr.core.api.blobholder.SimpleBlobHolder;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
+import org.eclipse.ecr.core.convert.api.ConversionService;
+import org.eclipse.ecr.core.convert.cache.ConversionCacheGCManager;
+import org.eclipse.ecr.core.convert.cache.ConversionCacheHolder;
+import org.eclipse.ecr.core.convert.extension.Converter;
+import org.eclipse.ecr.core.convert.service.ConversionServiceImpl;
 import org.eclipse.ecr.common.utils.FileUtils;
-import org.eclipse.ecr.convert.api.ConversionService;
-import org.eclipse.ecr.convert.cache.ConversionCacheGCManager;
-import org.eclipse.ecr.convert.cache.ConversionCacheHolder;
-import org.eclipse.ecr.convert.extension.Converter;
-import org.eclipse.ecr.convert.service.ConversionServiceImpl;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.testlib.NXRuntimeTestCase;
 
 public class TestCache extends NXRuntimeTestCase {
 
-    public static final String TEST_BUNDLE = "org.eclipse.ecr.convert.test";
+    public static final String TEST_BUNDLE = "org.eclipse.ecr.core.convert.test";
 
     @Override
     public void setUp() throws Exception {
         super.setUp();
         deployBundle("org.eclipse.ecr.core.api");
-        deployBundle("org.eclipse.ecr.convert.api");
-        deployBundle("org.eclipse.ecr.convert");
+        deployBundle("org.eclipse.ecr.core.convert.api");
+        deployBundle("org.eclipse.ecr.core.convert");
         deployContrib(TEST_BUNDLE,
                 "OSGI-INF/convert-service-config-enabled.xml");
     }

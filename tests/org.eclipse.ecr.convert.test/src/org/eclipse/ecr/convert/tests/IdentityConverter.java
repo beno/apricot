@@ -18,10 +18,10 @@ import java.util.Map;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
-import org.eclipse.ecr.convert.api.ConversionException;
-import org.eclipse.ecr.convert.cache.SimpleCachableBlobHolder;
-import org.eclipse.ecr.convert.extension.Converter;
-import org.eclipse.ecr.convert.extension.ConverterDescriptor;
+import org.eclipse.ecr.core.convert.api.ConversionException;
+import org.eclipse.ecr.core.convert.cache.SimpleCachableBlobHolder;
+import org.eclipse.ecr.core.convert.extension.Converter;
+import org.eclipse.ecr.core.convert.extension.ConverterDescriptor;
 
 public class IdentityConverter implements Converter {
 
