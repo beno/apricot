@@ -202,53 +202,33 @@ public class ApplicationServlet extends HttpServlet implements ManagedServlet, R
     }
 
     protected void initContainer(ServletConfig config) throws ServletException {
-//        Thread thread = Thread.currentThread();
-//        ClassLoader cl = thread.getContextClassLoader();
-//        thread.setContextClassLoader(ServiceClassLoader.getLoader());
-//        try {
-            container.init(getServletConfig());
-//        } finally {
-//            thread.setContextClassLoader(cl);
-//        }
+    	container.init(getServletConfig());
     }
 
     protected void destroyContainer() {
-        //Thread thread = Thread.currentThread();
-        //ClassLoader cl = thread.getContextClassLoader();
-        //thread.setContextClassLoader(ServiceClassLoader.getLoader());
-        //try {
-            container.destroy();
-            container = null;
-//        } finally {
-//            thread.setContextClassLoader(cl);
-//        }
+    	container.destroy();
+    	container = null;
     }
     
+    protected synchronized void reloadContainer() throws ServletException {
+        // reload is not working correctly since old classes are still referenced
+        // for this to work we need a custom ResourceConfig but all fields in jersey
+    	// classes are private so we cannot set it ...
+    	try {
+    		container.destroy();
+    		container = createServletContainer(app);
+    		container.init(getServletConfig());
+    	} finally {
+    		isDirty = false;
+    	}
+    }
+
     protected ServletContainer createServletContainer(Application app) {
     	ApplicationAdapter adapter = new ApplicationAdapter(app);
     	// disable wadl since we got class loader pb in JAXB under equinox
     	adapter.getFeatures().put(ResourceConfig.FEATURE_DISABLE_WADL, Boolean.TRUE);
     	return new ServletContainer(adapter);
     }
-
-    protected synchronized void reloadContainer() throws ServletException {
-        // reload is not working correctly since old classes are still referenced
-        // for this to work we need a custom ResourceConfig but all fields in jersey
-        // classes are private so we cannot set it ...
-        //super.reload();
-//        Thread thread = Thread.currentThread();
-//        ClassLoader cl = thread.getContextClassLoader();
-//        thread.setContextClassLoader(ServiceClassLoader.getLoader());
-//        try {
-            container.destroy();
-            container = createServletContainer(app);
-            container.init(getServletConfig());
-//        } finally {
-//            thread.setContextClassLoader(cl);
-//            isDirty = false;
-//        }
-    }
-
 
     @Override
     public File getResourceFile(String key) {
