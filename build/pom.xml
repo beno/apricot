@@ -20,8 +20,8 @@
     <module>../plugins/org.eclipse.ecr.auth</module>
     <module>../plugins/org.eclipse.ecr.automation.core</module>
     <module>../plugins/org.eclipse.ecr.automation.server</module>
-    <module>../plugins/org.eclipse.ecr.convert</module>
-    <module>../plugins/org.eclipse.ecr.convert.api</module>
+    <module>../plugins/org.eclipse.ecr.core.convert</module>
+    <module>../plugins/org.eclipse.ecr.core.convert.api</module>
     <module>../plugins/org.eclipse.ecr.core</module>
     <module>../plugins/org.eclipse.ecr.core.api</module>
     <module>../plugins/org.eclipse.ecr.core.event</module>
