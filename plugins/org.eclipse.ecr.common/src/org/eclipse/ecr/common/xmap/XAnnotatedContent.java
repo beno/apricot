@@ -16,6 +16,7 @@ package org.eclipse.ecr.common.xmap;
 
 import java.io.IOException;
 
+import org.eclipse.ecr.common.xmap.annotation.XContent;
 import org.w3c.dom.DocumentFragment;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -23,7 +24,6 @@ import org.w3c.dom.ranges.DocumentRange;
 import org.w3c.dom.ranges.Range;
 
 import org.apache.xml.serialize.OutputFormat;
-import org.eclipse.ecr.common.xmap.annotation.XContent;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
