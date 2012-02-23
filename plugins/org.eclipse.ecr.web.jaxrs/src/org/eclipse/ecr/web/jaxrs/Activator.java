@@ -12,8 +12,6 @@
 package org.eclipse.ecr.web.jaxrs;
 
 
-import javax.ws.rs.ext.RuntimeDelegate;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.web.jaxrs.servlet.config.ServletRegistry;
@@ -25,8 +23,6 @@ import org.osgi.service.http.HttpService;
 import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
-
-import com.sun.jersey.server.impl.provider.RuntimeDelegateImpl;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

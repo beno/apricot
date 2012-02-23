@@ -34,8 +34,8 @@ import org.eclipse.ecr.runtime.api.Framework;
  * datasource.
  * <p>
  * (When repositories are looked up through JNDI, the class
- *  org.eclipse.ecr.core.storage.sql.ra.ConnectionFactoryImpl is used
- * instead of this one.) [suppressed link for solving cycle dependencies in eclipse]
+ * org.eclipse.ecr.core.storage.sql.ra.ConnectionFactoryImpl is used instead of
+ * this one.) [suppressed link for solving cycle dependencies in eclipse]
  * <p>
  * This class is constructed by {@link SQLRepositoryFactory}.
  *
@@ -52,8 +52,6 @@ public class SQLRepository implements Repository {
     private final SecurityManager securityManager;
 
     private final String name;
-
-    private boolean initialized;
 
     public SQLRepository(RepositoryDescriptor descriptor) throws Exception {
         schemaManager = Framework.getService(SchemaManager.class);
@@ -95,16 +93,6 @@ public class SQLRepository implements Repository {
     @Override
     public Session getSession(Map<String, Serializable> context)
             throws DocumentException {
-        synchronized (this) {
-            if (!initialized) {
-                initialized = true;
-                if (context != null) {
-                    // Allow AbstractSession (our caller) to send an
-                    // initialization event.
-                    context.put("REPOSITORY_FIRST_ACCESS", Boolean.TRUE);
-                }
-            }
-        }
         org.eclipse.ecr.core.storage.sql.Session session;
         try {
             session = repository.getConnection();
@@ -129,15 +117,6 @@ public class SQLRepository implements Repository {
      */
     @Override
     public void initialize() {
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Override
-    @Deprecated
-    public Session getSession(long sessionId) {
-        throw new UnsupportedOperationException("unused");
     }
 
     /*

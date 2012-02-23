@@ -15,22 +15,15 @@ package org.eclipse.ecr.core.api;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.common.utils.Null;
 import org.eclipse.ecr.common.utils.Path;
-import org.eclipse.ecr.core.api.ClientException;
-import org.eclipse.ecr.core.api.ClientRuntimeException;
-import org.eclipse.ecr.core.api.DataModel;
-import org.eclipse.ecr.core.api.DocumentException;
-import org.eclipse.ecr.core.api.DocumentModel;
-import org.eclipse.ecr.core.api.DocumentRef;
-import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.DocumentModel.DocumentModelRefresh;
 import org.eclipse.ecr.core.api.impl.DataModelImpl;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
@@ -39,13 +32,19 @@ import org.eclipse.ecr.core.api.model.impl.DocumentPartImpl;
 import org.eclipse.ecr.core.api.repository.cache.DirtyUpdateChecker;
 import org.eclipse.ecr.core.lifecycle.LifeCycleException;
 import org.eclipse.ecr.core.model.Document;
-import org.eclipse.ecr.core.model.NoSuchPropertyException;
+import org.eclipse.ecr.core.model.Property;
+import org.eclipse.ecr.core.model.PropertyContainer;
 import org.eclipse.ecr.core.model.Repository;
 import org.eclipse.ecr.core.schema.DocumentType;
 import org.eclipse.ecr.core.schema.FacetNames;
+import org.eclipse.ecr.core.schema.Prefetch;
 import org.eclipse.ecr.core.schema.PrefetchInfo;
+import org.eclipse.ecr.core.schema.SchemaManager;
 import org.eclipse.ecr.core.schema.types.Field;
+import org.eclipse.ecr.core.schema.types.ListType;
 import org.eclipse.ecr.core.schema.types.Schema;
+import org.eclipse.ecr.core.schema.types.Type;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * Bridge between a {@link DocumentModel} and a {@link Document} for creation /
@@ -59,74 +58,6 @@ public class DocumentModelFactory {
     private DocumentModelFactory() {
     }
 
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static DocumentModel newDocument(DocumentModel parent, String type) {
-        return newDocument(parent, null, type);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static DocumentModel newDocument(DocumentModel parent, String name,
-            String type) {
-        DocumentType docType = parent.getCoreSession().getDocumentType(type);
-        return newDocument(parent, name, docType);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static DocumentModel newDocument(DocumentModel parent,
-            DocumentType type) {
-        return newDocument(parent, null, type);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static DocumentModel newDocument(DocumentModel parent, String name,
-            DocumentType type) {
-        return new DocumentModelImpl(null, type.getName(), null,
-                parent.getPath(), null, null, parent.getRef(), null, null,
-                null, parent.getRepositoryName());
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static Map<String, Serializable> updatePrefetch(
-            DocumentModel docModel) {
-        Map<String, Serializable> prefetchMap = new HashMap<String, Serializable>();
-        PrefetchInfo prefetchInfo = docModel.getDocumentType().getPrefetchInfo();
-        if (prefetchInfo != null) {
-            Field[] prefetchFields = prefetchInfo.getFields();
-            for (Field field : prefetchFields) {
-                String typeName = field.getDeclaringType().getName();
-                String typeLocalName = field.getName().getLocalName();
-                String fieldName = typeName + '.' + typeLocalName;
-                Object value;
-                try {
-                    value = docModel.getProperty(typeName, typeLocalName);
-                } catch (ClientException e) {
-                    continue;
-                }
-                prefetchMap.put(fieldName, (Serializable) value);
-            }
-        }
-        return prefetchMap;
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
     public static DocumentModelImpl createDocumentModel(Document doc)
             throws DocumentException {
         DocumentType docType = doc.getType();
@@ -201,43 +132,52 @@ public class DocumentModelFactory {
             docModel.setIsImmutable(true);
         }
 
-        // populate models
-        Schema[] prefetchSchemas = null;
+        // populate prefetch
         PrefetchInfo prefetchInfo = type.getPrefetchInfo();
+        Prefetch prefetch;
+        String[] prefetchSchemas;
         if (prefetchInfo != null) {
+            Set<String> docSchemas = new HashSet<String>(
+                    Arrays.asList(docModel.getSchemas()));
+            prefetch = getPrefetch(doc, prefetchInfo, docSchemas);
             prefetchSchemas = prefetchInfo.getSchemas();
-            Field[] prefetchFields = prefetchInfo.getFields();
-            for (Field field : prefetchFields) {
-                // TODO: the document model don't know to work using prefixed
-                // names -this should be fixed and register the property here
-                // directly
-                // by its prefixed name and not by the "schema.field" id
-                try {
-                    Object value = doc.getPropertyValue(field.getName().getPrefixedName());
-                    docModel.prefetchProperty(
-                            field.getDeclaringType().getName() + '.'
-                                    + field.getName().getLocalName(), value);
-                } catch (NoSuchPropertyException e) {
-                    // skip
-                } catch (DocumentException e) {
-                    log.error("Error while building prefetch fields, "
-                            + "check the document configuration", e);
+        } else {
+            prefetch = null;
+            prefetchSchemas = null;
+        }
+
+        // populate datamodels
+        List<String> loadSchemas = new LinkedList<String>();
+        if (schemas == null) {
+            schemas = prefetchSchemas;
+        }
+        if (schemas != null) {
+            Set<String> validSchemas = new HashSet<String>(
+                    Arrays.asList(docModel.getSchemas()));
+            for (String schemaName : schemas) {
+                if (validSchemas.contains(schemaName)) {
+                    loadSchemas.add(schemaName);
                 }
             }
         }
+        SchemaManager schemaManager;
+        try {
+            schemaManager = Framework.getService(SchemaManager.class);
+        } catch (Exception e) {
+            throw new ClientRuntimeException(e);
+        }
+        for (String schemaName : loadSchemas) {
+            Schema schema = schemaManager.getSchema(schemaName);
+            docModel.addDataModel(createDataModel(doc, schema));
+        }
 
-        if (schemas != null) {
-            for (String schemaName : schemas) {
-                Schema schema = type.getSchema(schemaName);
-                if (schema == null) {
-                    continue;
-                }
-                docModel.addDataModel(createDataModel(doc, schema));
+        if (prefetch != null) {
+            // ignore prefetches already loaded as datamodels
+            for (String schemaName : loadSchemas) {
+                prefetch.clearPrefetch(schemaName);
             }
-        } else if (prefetchSchemas != null) {
-            for (Schema schema : prefetchSchemas) {
-                docModel.addDataModel(createDataModel(doc, schema));
-            }
+            // set prefetch
+            docModel.setPrefetch(prefetch);
         }
 
         // prefetch lifecycle state
@@ -254,6 +194,29 @@ public class DocumentModelFactory {
         DirtyUpdateChecker.check(docModel);
 
         return docModel;
+    }
+
+    /**
+     * Returns a document model computed from its type, querying the
+     * {@link SchemaManager} service.
+     * <p>
+     * The created document model is not linked to any core session.
+     *
+     * @since 5.4.2
+     */
+    public static DocumentModelImpl createDocumentModel(String docType) {
+        try {
+            SchemaManager schemaManager = Framework.getService(SchemaManager.class);
+            if (schemaManager == null) {
+                throw new ClientRuntimeException("SchemaManager is null");
+            }
+            DocumentType type = schemaManager.getDocumentType(docType);
+            return createDocumentModel(type);
+        } catch (ClientRuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ClientRuntimeException(e);
+        }
     }
 
     /**
@@ -277,32 +240,9 @@ public class DocumentModelFactory {
         return docModel;
     }
 
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
     public static DocumentModelImpl createDocumentModel(DocumentType docType)
             throws DocumentException {
         return createDocumentModel(null, docType);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public static DocumentModelImpl createDocumentModel(String parentPath,
-            String id, DocumentType docType, String[] schemas)
-            throws DocumentException {
-        DocumentModelImpl docModel = new DocumentModelImpl(parentPath, id,
-                docType.getName());
-        // populate models
-        if (schemas != null) {
-            for (String schemaName : schemas) {
-                Schema schema = docType.getSchema(schemaName);
-                docModel.addDataModel(createDataModel(null, schema));
-            }
-        }
-        return docModel;
     }
 
     /**
@@ -389,26 +329,11 @@ public class DocumentModelFactory {
         DocumentModelRefresh refresh = new DocumentModelRefresh();
 
         if ((flags & DocumentModel.REFRESH_PREFETCH) != 0) {
-            PrefetchInfo info = doc.getType().getPrefetchInfo();
-            if (info != null) {
-                Schema[] pschemas = info.getSchemas();
-                if (pschemas != null) {
-                    // TODO: this should be returned as document parts of
-                    // the document
-                }
-                Field[] fields = info.getFields();
-                if (fields != null) {
-                    Map<String, Serializable> prefetch = new HashMap<String, Serializable>();
-                    // TODO : should use documentpartreader
-                    for (Field field : fields) {
-                        Object value = doc.getPropertyValue(field.getName().getPrefixedName());
-                        prefetch.put(field.getDeclaringType().getName() + '.'
-                                + field.getName().getLocalName(),
-                                value == null ? Null.VALUE
-                                        : (Serializable) value);
-                    }
-                    refresh.prefetch = prefetch;
-                }
+            PrefetchInfo prefetchInfo = doc.getType().getPrefetchInfo();
+            if (prefetchInfo != null) {
+                Set<String> docSchemas = DocumentModelImpl.computeSchemas(
+                        doc.getType(), Arrays.asList(doc.getFacets()));
+                refresh.prefetch = getPrefetch(doc, prefetchInfo, docSchemas);
             }
         }
 
@@ -426,6 +351,7 @@ public class DocumentModelFactory {
 
         if ((flags & DocumentModel.REFRESH_CONTENT) != 0) {
             if (schemas == null) {
+                // TODO include facets
                 schemas = doc.getType().getSchemaNames();
             }
             DocumentType type = doc.getType();
@@ -440,6 +366,174 @@ public class DocumentModelFactory {
         }
 
         return refresh;
+    }
+
+    /**
+     * Prefetches from a document.
+     */
+    private static Prefetch getPrefetch(Document doc,
+            PrefetchInfo prefetchInfo, Set<String> docSchemas) {
+        SchemaManager schemaManager;
+        try {
+            schemaManager = Framework.getService(SchemaManager.class);
+        } catch (Exception e) {
+            throw new ClientRuntimeException(e);
+        }
+
+        // individual fields
+        Set<String> fieldNames = new HashSet<String>();
+        String[] prefetchFields = prefetchInfo.getFields();
+        if (prefetchFields != null) {
+            fieldNames.addAll(Arrays.asList(prefetchFields));
+        }
+
+        // whole schemas (but NOT their complex properties)
+        String[] prefetchSchemas = prefetchInfo.getSchemas();
+        if (prefetchSchemas != null) {
+            for (String schemaName : prefetchSchemas) {
+                if (docSchemas.contains(schemaName)) {
+                    Schema schema = schemaManager.getSchema(schemaName);
+                    if (schema != null) {
+                        for (Field field : schema.getFields()) {
+                            if (isScalarField(field)) {
+                                fieldNames.add(field.getName().getPrefixedName());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // do the prefetch
+        Prefetch prefetch = new Prefetch();
+        for (String prefixedName : fieldNames) {
+            prefetchValues((Property) doc, null, prefixedName, prefetch,
+                    docSchemas);
+        }
+
+        return prefetch;
+    }
+
+    /**
+     * Computes the keys and values of a document for a given xpath name.
+     * <p>
+     * There may be several results returned as the name may contain wildcards
+     * for the complex lists indices.
+     * <p>
+     * INTERNAL
+     *
+     * @param property the document or a sub-property container
+     * @param start the xpath that led to this property
+     * @param xpath the canonical xpath with allowed list wildcards
+     * @param prefetch the prefetch to fill
+     * @param docSchemas the available schemas on the document
+     * @return {@code true} if the xpath was valid
+     */
+    public static void prefetchValues(Property property, String start,
+            String xpath, Prefetch prefetch, Set<String> docSchemas) {
+        Property p = property;
+        while (xpath != null) {
+            int i = xpath.indexOf('/');
+            String name;
+            if (i == -1) {
+                name = xpath;
+                xpath = null;
+            } else {
+                name = xpath.substring(0, i);
+                xpath = xpath.substring(i + 1);
+            }
+            start = start == null ? name : start + '/' + name;
+            Type type = ((Property) p).getType();
+            if (type.isComplexType() || type.isCompositeType()) {
+                // complex type
+                try {
+                    p = ((PropertyContainer) p).getProperty(name);
+                } catch (DocumentException e) {
+                    return;
+                }
+            } else {
+                if (type.isListType()) {
+                    Type listFieldType = ((ListType) type).getFieldType();
+                    if (!listFieldType.isSimpleType()) {
+                        // complex list
+                        try {
+                            if ("*".equals(name)) {
+                                Collection<Property> props = ((PropertyContainer) p).getProperties();
+                                int n = 0;
+                                String startBase = start.substring(0,
+                                        start.length() - 1);
+                                for (Property subProp : props) {
+                                    prefetchValues(subProp, startBase + n++,
+                                            xpath, prefetch, docSchemas);
+                                }
+                                return; // xpath consumed, return now
+                            } else {
+                                p = ((PropertyContainer) p).getProperty(name);
+                            }
+                        } catch (DocumentException e) {
+                            return;
+                        }
+                    } else {
+                        // array
+                        return;
+                    }
+                } else {
+                    // primitive
+                    return;
+                }
+            }
+        }
+
+        // we have a leaf property
+
+        Type type = ((Property) p).getType();
+        if (type.isComplexType()) {
+            // complex type
+            return;
+        } else {
+            if (type.isListType()) {
+                if (!((ListType) type).getFieldType().isSimpleType()) {
+                    // complex list
+                    return;
+                }
+            }
+        }
+        Serializable value;
+        try {
+            value = (Serializable) p.getValue();
+        } catch (DocumentException e) {
+            log.error(e);
+            return;
+        }
+
+        // we have the value
+
+        // info for lookup by schema + name
+
+        xpath = start;
+
+        String[] returnName = new String[1];
+        String schemaName = DocumentModelImpl.getXPathSchemaName(xpath,
+                docSchemas, returnName);
+        String name = returnName[0]; // call me when java gets tuples
+        prefetch.put(xpath, schemaName, name, value);
+    }
+
+    /**
+     * Checks if a field is a primitive type or array.
+     */
+    private static boolean isScalarField(Field field) {
+        Type type = field.getType();
+        if (type.isComplexType()) {
+            // complex type
+            return false;
+        }
+        if (!type.isListType()) {
+            // primitive type
+            return true;
+        }
+        // array or complex list?
+        return ((ListType) type).getFieldType().isSimpleType();
     }
 
 }

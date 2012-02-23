@@ -29,7 +29,7 @@ import org.eclipse.ecr.runtime.api.Framework;
 /**
  * A login module that will use the current registered authenticator to validate
  * a given username / password pair.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
@@ -111,9 +111,9 @@ public class AuthenticationLoginModule implements LoginModule {
 
     @Override
     public boolean logout() throws LoginException {
-    	if (principal != null) {
-    		subject.getPrincipals().remove(principal);
-    	}
+        if (principal != null) {
+            subject.getPrincipals().remove(principal);
+        }
         return true;
     }
 

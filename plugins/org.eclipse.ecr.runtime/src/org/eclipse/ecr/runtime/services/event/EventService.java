@@ -21,17 +21,16 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.common.collections.ListenerList;
-import org.eclipse.ecr.runtime.model.Adaptable;
-import org.eclipse.ecr.runtime.model.Component;
 import org.eclipse.ecr.runtime.model.ComponentContext;
 import org.eclipse.ecr.runtime.model.ComponentName;
+import org.eclipse.ecr.runtime.model.DefaultComponent;
 import org.eclipse.ecr.runtime.model.Extension;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public class EventService implements Component, Adaptable {
+public class EventService extends DefaultComponent {
 
     public static final ComponentName NAME = new ComponentName(
             "org.eclipse.ecr.runtime.EventService");
@@ -50,11 +49,6 @@ public class EventService implements Component, Adaptable {
         topics = new HashMap<String, ListenerList>();
         // pendingEvents = new HashMap<String, Collection<Event>>();
         contributions = new Hashtable<String, Object[]>();
-    }
-
-    @Override
-    public void activate(ComponentContext context) throws Exception {
-
     }
 
     @Override
@@ -202,7 +196,4 @@ public class EventService implements Component, Adaptable {
         return adapter == getClass() ? (T) this : null;
     }
 
-    @Override
-    public void applicationStarted(ComponentContext context) throws Exception {
-    }
 }

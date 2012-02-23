@@ -23,11 +23,11 @@ import javax.servlet.http.HttpSessionBindingListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.api.CoreSession;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.CoreSessionProvider;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
 import org.eclipse.ecr.web.jaxrs.session.SessionRef;
 import org.eclipse.ecr.web.jaxrs.session.impl.PerSessionCoreProvider.Ref;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

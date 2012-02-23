@@ -84,6 +84,8 @@ public class DialectHSQLDB extends Dialect {
             return jdbcInfo("TINYINT", Types.TINYINT);
         case INTEGER:
             return jdbcInfo("INTEGER", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("INTEGER IDENTITY", Types.INTEGER);
         case FTINDEXED:
             throw new AssertionError(type);
         case FTSTORED:
@@ -250,12 +252,12 @@ public class DialectHSQLDB extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/hsqldb.sql.txt"; // TODO VCS
+        return "nuxeovcs/hsqldb.sql.txt"; // TODO VCS
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/hsqldb.test.sql.txt"; // TODO VCS
+        return "nuxeovcs/hsqldb.test.sql.txt"; // TODO VCS
     }
 
     @Override

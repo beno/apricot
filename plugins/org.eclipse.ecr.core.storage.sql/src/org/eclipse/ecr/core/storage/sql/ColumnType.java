@@ -11,6 +11,8 @@
  */
 package org.eclipse.ecr.core.storage.sql;
 
+import java.io.Serializable;
+
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.SimpleTypeImpl;
 import org.eclipse.ecr.core.schema.types.Type;
@@ -25,7 +27,9 @@ import org.eclipse.ecr.core.schema.types.primitives.StringType;
 /**
  * The database-level column types, including per-type parameters like length.
  */
-public class ColumnType {
+public class ColumnType implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /** Length used internally to flag a string to use CLOB. */
     public static final int CLOB_LENGTH = 999999999;
@@ -76,6 +80,8 @@ public class ColumnType {
     public static final ColumnType TINYINT = new ColumnType(ColumnSpec.TINYINT);
 
     public static final ColumnType INTEGER = new ColumnType(ColumnSpec.INTEGER);
+
+    public static final ColumnType AUTOINC = new ColumnType(ColumnSpec.AUTOINC);
 
     public static final ColumnType FTINDEXED = new ColumnType(
             ColumnSpec.FTINDEXED);

@@ -89,7 +89,8 @@ public class DialectMySQL extends Dialect {
                 // don't use the max 65535 because this max is actually for the
                 // total size of all columns of a given table, so allow several
                 // varchar columns in the same table
-                return jdbcInfo("VARCHAR(500)", Types.VARCHAR);
+                // 255 is max for a column to be primary key in UTF8
+                return jdbcInfo("VARCHAR(255)", Types.VARCHAR);
             } else if (type.isClob() || type.length > 65535) {
                 return jdbcInfo("LONGTEXT", Types.LONGVARCHAR);
             } else {
@@ -121,6 +122,8 @@ public class DialectMySQL extends Dialect {
             return jdbcInfo("TINYINT", Types.TINYINT);
         case INTEGER:
             return jdbcInfo("INTEGER", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("INTEGER AUTO_INCREMENT PRIMARY KEY", Types.INTEGER);
         case FTINDEXED:
             throw new AssertionError(type);
         case FTSTORED:
@@ -204,6 +207,11 @@ public class DialectMySQL extends Dialect {
     }
 
     @Override
+    protected int getMaxNameSize() {
+        return 64;
+    }
+
+    @Override
     public String getCreateFulltextIndexSql(String indexName,
             String quotedIndexName, Table table, List<Column> columns,
             Model model) {
@@ -218,6 +226,7 @@ public class DialectMySQL extends Dialect {
 
     @Override
     public String getDialectFulltextQuery(String query) {
+        query = query.replace("%", "*");
         FulltextQuery ft = analyzeFulltextQuery(query);
         if (ft == null || ft.op == Op.NOTWORD) {
             return "DONTMATCHANYTHINGFOREMPTYQUERY";
@@ -273,7 +282,6 @@ public class DialectMySQL extends Dialect {
             String indexName, int nthMatch, Column mainColumn, Model model,
             Database database) {
         String nthSuffix = nthMatch == 1 ? "" : String.valueOf(nthMatch);
-        String scoreAlias = "_nxscore" + nthSuffix;
         String indexSuffix = model.getFulltextIndexSuffix(indexName);
         Table ft = database.getTable(model.FULLTEXT_TABLE_NAME);
         Column ftMain = ft.getColumn(model.MAIN_KEY);
@@ -297,10 +305,9 @@ public class DialectMySQL extends Dialect {
         // in boolean mode.
         // Note: dividing by 10 is arbitrary, but MySQL cannot really
         // normalize scores.
-        info.scoreExpr = String.format("(%s AGAINST (?) / 10) AS %s", match,
-                scoreAlias);
+        info.scoreExpr = String.format("(%s AGAINST (?) / 10)", match);
         info.scoreExprParam = fulltextQuery;
-        info.scoreAlias = scoreAlias;
+        info.scoreAlias = "_nxscore" + nthSuffix;
         info.scoreCol = new Column(mainColumn.getTable(), null,
                 ColumnType.DOUBLE, null);
         return info;
@@ -357,12 +364,12 @@ public class DialectMySQL extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/mysql.sql.txt";
+        return "nuxeovcs/mysql.sql.txt";
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/mysql.test.sql.txt";
+        return "nuxeovcs/mysql.test.sql.txt";
     }
 
     @Override
@@ -429,6 +436,11 @@ public class DialectMySQL extends Dialect {
     @Override
     public String getPagingClause(long limit, long offset) {
         return String.format("LIMIT %d OFFSET %d", limit, offset);
+    }
+
+    @Override
+    public boolean isIdentityAlreadyPrimary() {
+        return true;
     }
 
 }

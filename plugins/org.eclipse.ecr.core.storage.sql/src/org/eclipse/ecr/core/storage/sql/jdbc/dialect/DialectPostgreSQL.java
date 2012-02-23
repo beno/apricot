@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -49,6 +50,7 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Database;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Join;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
+import org.eclipse.ecr.core.storage.sql.jdbc.dialect.Dialect.FulltextQuery.Op;
 
 /**
  * PostgreSQL-specific dialect.
@@ -63,6 +65,13 @@ public class DialectPostgreSQL extends Dialect {
 
     private static final String DEFAULT_USERS_SEPARATOR = ",";
 
+    private static final String PREFIX_SEARCH = ":*";
+
+    // prefix search syntax foo* or foo% or foo:*-> foo:*
+    private static final Pattern PREFIX_PATTERN = Pattern.compile("(\\*|%|:\\*)( |\"|$)");
+
+    private static final String PREFIX_REPL = PREFIX_SEARCH + "$2";
+
     protected final String fulltextAnalyzer;
 
     protected final boolean supportsWith;
@@ -72,6 +81,8 @@ public class DialectPostgreSQL extends Dialect {
     protected boolean pathOptimizationsEnabled;
 
     protected String usersSeparator;
+
+    protected boolean compatibilityFulltextTable;
 
     public DialectPostgreSQL(DatabaseMetaData metadata,
             BinaryManager binaryManager,
@@ -93,6 +104,26 @@ public class DialectPostgreSQL extends Dialect {
         usersSeparator = repositoryDescriptor == null ? null
                 : repositoryDescriptor.usersSeparatorKey == null ? DEFAULT_USERS_SEPARATOR
                         : repositoryDescriptor.usersSeparatorKey;
+        try {
+            compatibilityFulltextTable = getCompatibilityFulltextTable(metadata);
+        } catch (SQLException e) {
+            throw new StorageException(e);
+        }
+    }
+
+    protected boolean getCompatibilityFulltextTable(DatabaseMetaData metadata)
+            throws SQLException {
+        ResultSet rs = metadata.getColumns(null, null,
+                Model.FULLTEXT_TABLE_NAME, "%");
+        while (rs.next()) {
+            // COLUMN_NAME=fulltext DATA_TYPE=1111 TYPE_NAME=tsvector
+            String columnName = rs.getString("COLUMN_NAME");
+            if (Model.FULLTEXT_FULLTEXT_KEY.equals(columnName)) {
+                String typeName = rs.getString("TYPE_NAME");
+                return "tsvector".equals(typeName);
+            }
+        }
+        return false;
     }
 
     @Override
@@ -150,10 +181,20 @@ public class DialectPostgreSQL extends Dialect {
             return jdbcInfo("int2", Types.SMALLINT);
         case INTEGER:
             return jdbcInfo("int4", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("serial", Types.INTEGER);
         case FTINDEXED:
-            return jdbcInfo("tsvector", Types.OTHER);
+            if (compatibilityFulltextTable) {
+                return jdbcInfo("tsvector", Types.OTHER);
+            } else {
+                return jdbcInfo("text", Types.CLOB);
+            }
         case FTSTORED:
-            return jdbcInfo("tsvector", Types.OTHER);
+            if (compatibilityFulltextTable) {
+                return jdbcInfo("tsvector", Types.OTHER);
+            } else {
+                return jdbcInfo("text", Types.CLOB);
+            }
         case CLUSTERNODE:
             return jdbcInfo("int4", Types.INTEGER);
         case CLUSTERFRAGS:
@@ -177,6 +218,12 @@ public class DialectPostgreSQL extends Dialect {
             return true;
         }
         if (expected == Types.INTEGER && actual == Types.BIGINT) {
+            return true;
+        }
+        // TSVECTOR vs CLOB compatibility during upgrade tests
+        // where column detection is done before upgrade test setup
+        if (expected == Types.CLOB
+                && (actual == Types.OTHER && actualName.equals("tsvector"))) {
             return true;
         }
         return false;
@@ -249,32 +296,212 @@ public class DialectPostgreSQL extends Dialect {
     }
 
     @Override
-    public String getCreateFulltextIndexSql(String indexName,
-            String quotedIndexName, Table table, List<Column> columns,
-            Model model) {
-        return String.format("CREATE INDEX %s ON %s USING GIN(%s)",
-                quotedIndexName.toLowerCase(), table.getQuotedName(),
-                columns.get(0).getQuotedName());
+    protected int getMaxNameSize() {
+        return 63;
     }
 
     @Override
+    public String getCreateFulltextIndexSql(String indexName,
+            String quotedIndexName, Table table, List<Column> columns,
+            Model model) {
+        String sql;
+        if (compatibilityFulltextTable) {
+            sql = "CREATE INDEX %s ON %s USING GIN(%s)";
+        } else {
+            sql = "CREATE INDEX %s ON %s USING GIN(NX_TO_TSVECTOR(%s))";
+        }
+        return String.format(sql, quotedIndexName.toLowerCase(),
+                table.getQuotedName(), columns.get(0).getQuotedName());
+    }
+
+    // must not be interpreted as a regexp, we split on it
+    protected static final String FT_LIKE_SEP = " @#AND#@ ";
+
+    protected static final String FT_LIKE_COL = "??";
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The result of this is passed to {@link #getFulltextScoredMatchInfo}.
+     */
+    @Override
     public String getDialectFulltextQuery(String query) {
         query = query.replace(" & ", " "); // PostgreSQL compatibility BBB
+        query = PREFIX_PATTERN.matcher(query).replaceAll(PREFIX_REPL);
         FulltextQuery ft = analyzeFulltextQuery(query);
         if (ft == null) {
             return ""; // won't match anything
         }
-        if (fulltextHasPhrase(ft)) {
-            throw new QueryMakerException(
-                    "Invalid fulltext query (phrase search): " + query);
+        if (!fulltextHasPhrase(ft)) {
+            return translateFulltext(ft, "|", "&", "& !", "");
         }
-        return translateFulltext(ft, "|", "&", "& !", "");
+        if (compatibilityFulltextTable) {
+            throw new QueryMakerException(
+                    "Cannot use phrase search in fulltext compatibilty mode. "
+                            + "Please upgrade the fulltext table: " + query);
+        }
+        /*
+         * Phrase search.
+         *
+         * We have to do the phrase query using a LIKE, but for performance we
+         * pre-filter using as many fulltext matches as possible by breaking
+         * some of the phrases into words. We do an AND of the two.
+         *
+         * 1. pre-filter using fulltext on a query that is a superset of the
+         * original query,
+         */
+        FulltextQuery broken = breakPhrases(ft);
+        String ftsql = translateFulltext(broken, "|", "&", "& !", "");
+        /*
+         * 2. AND with a LIKE-based search for all terms, except those that are
+         * already exactly matched by the first part, i.e., toplevel ANDed
+         * non-phrases.
+         */
+        FulltextQuery noand = removeToplevelAndedWords(ft);
+        if (noand != null) {
+            StringBuilder buf = new StringBuilder();
+            generateLikeSql(noand, buf);
+            ftsql += FT_LIKE_SEP + buf.toString();
+
+        }
+        return ftsql;
+    }
+
+    /**
+     * Returns a fulltext query that is a superset of the original one and does
+     * not have phrase searches.
+     * <p>
+     * Negative phrases (which are at AND level) are removed, positive phrases
+     * are split into ANDed words.
+     */
+    protected static FulltextQuery breakPhrases(FulltextQuery ft) {
+        FulltextQuery newFt = new FulltextQuery();
+        if (ft.op == Op.AND || ft.op == Op.OR) {
+            List<FulltextQuery> newTerms = new LinkedList<FulltextQuery>();
+            for (FulltextQuery term : ft.terms) {
+                FulltextQuery broken = breakPhrases(term);
+                if (broken == null) {
+                    // remove negative phrase
+                } else if (ft.op == Op.AND && broken.op == Op.AND) {
+                    // associativity (sub-AND hoisting)
+                    newTerms.addAll(broken.terms);
+                } else {
+                    newTerms.add(broken);
+                }
+            }
+            if (newTerms.size() == 1) {
+                // single-term parenthesis elimination
+                newFt = newTerms.get(0);
+            } else {
+                newFt.op = ft.op;
+                newFt.terms = newTerms;
+            }
+        } else {
+            boolean isPhrase = ft.isPhrase();
+            if (!isPhrase) {
+                newFt = ft;
+            } else if (ft.op == Op.WORD) {
+                // positive phrase
+                // split it
+                List<FulltextQuery> newTerms = new LinkedList<FulltextQuery>();
+                for (String subword : ft.word.split(" ")) {
+                    FulltextQuery sft = new FulltextQuery();
+                    sft.op = Op.WORD;
+                    sft.word = subword;
+                    newTerms.add(sft);
+                }
+                newFt.op = Op.AND;
+                newFt.terms = newTerms;
+            } else {
+                // negative phrase
+                // removed
+                newFt = null;
+            }
+        }
+        return newFt;
+    }
+
+    /**
+     * Removes toplevel ANDed simple words from the query.
+     */
+    protected static FulltextQuery removeToplevelAndedWords(FulltextQuery ft) {
+        if (ft.op == Op.OR || ft.op == Op.NOTWORD) {
+            return ft;
+        }
+        if (ft.op == Op.WORD) {
+            if (ft.isPhrase()) {
+                return ft;
+            }
+            return null;
+        }
+        List<FulltextQuery> newTerms = new LinkedList<FulltextQuery>();
+        for (FulltextQuery term : ft.terms) {
+            if (term.op == Op.NOTWORD) {
+                newTerms.add(term);
+            } else { // Op.WORD
+                if (term.isPhrase()) {
+                    newTerms.add(term);
+                }
+            }
+        }
+        if (newTerms.isEmpty()) {
+            return null;
+        } else if (newTerms.size() == 1) {
+            // single-term parenthesis elimination
+            return newTerms.get(0);
+        } else {
+            FulltextQuery newFt = new FulltextQuery();
+            newFt.op = Op.AND;
+            newFt.terms = newTerms;
+            return newFt;
+        }
+    }
+
+    // turn non-toplevel ANDed single words into SQL
+    // abc "foo bar" -"gee man"
+    // -> ?? LIKE '% foo bar %' AND ?? NOT LIKE '% gee man %'
+    // ?? is a pseudo-parameter for the col
+    protected static void generateLikeSql(FulltextQuery ft, StringBuilder buf) {
+        if (ft.op == Op.AND || ft.op == Op.OR) {
+            buf.append('(');
+            boolean first = true;
+            for (FulltextQuery term : ft.terms) {
+                if (!first) {
+                    if (ft.op == Op.AND) {
+                        buf.append(" AND ");
+                    } else { // Op.OR
+                        buf.append(" OR ");
+                    }
+                }
+                first = false;
+                generateLikeSql(term, buf);
+            }
+            buf.append(')');
+        } else {
+            buf.append(FT_LIKE_COL);
+            if (ft.op == Op.NOTWORD) {
+                buf.append(" NOT");
+            }
+            buf.append(" LIKE '% ");
+            String word = ft.word.toLowerCase();
+            // SQL escaping
+            word = word.replace("'", "''");
+            word = word.replace("\\", ""); // don't take chances
+            word = word.replace(PREFIX_SEARCH, "%");
+            buf.append(word);
+            if (!word.endsWith("%")) {
+                buf.append(" %");
+            }
+            buf.append("'");
+        }
     }
 
     // SELECT ..., TS_RANK_CD(fulltext, nxquery, 32) as nxscore
     // FROM ... LEFT JOIN fulltext ON fulltext.id = hierarchy.id
     // , TO_TSQUERY('french', ?) as nxquery
-    // WHERE ... AND fulltext @@ nxquery
+    // WHERE ...
+    // AND NX_TO_TSVECTOR(fulltext) @@ nxquery
+    // AND fulltext LIKE '% foo bar %' -- when phrase search
     // ORDER BY nxscore DESC
     @Override
     public FulltextMatchInfo getFulltextScoredMatchInfo(String fulltextQuery,
@@ -285,9 +512,9 @@ public class DialectPostgreSQL extends Dialect {
         Column ftMain = ft.getColumn(model.MAIN_KEY);
         Column ftColumn = ft.getColumn(model.FULLTEXT_FULLTEXT_KEY
                 + indexSuffix);
+        String ftColumnName = ftColumn.getFullQuotedName();
         String nthSuffix = nthMatch == 1 ? "" : String.valueOf(nthMatch);
         String queryAlias = "_nxquery" + nthSuffix;
-        String scoreAlias = "_nxscore" + nthSuffix;
         FulltextMatchInfo info = new FulltextMatchInfo();
         info.joins = new ArrayList<Join>();
         if (nthMatch == 1) {
@@ -295,17 +522,37 @@ public class DialectPostgreSQL extends Dialect {
             info.joins.add(new Join(Join.INNER, ft.getQuotedName(), null, null,
                     ftMain.getFullQuotedName(), mainColumn.getFullQuotedName()));
         }
+        /*
+         * for phrase search, fulltextQuery may contain a LIKE part
+         */
+        String like;
+        if (fulltextQuery.contains(FT_LIKE_SEP)) {
+            String[] tmp = fulltextQuery.split(FT_LIKE_SEP, 2);
+            fulltextQuery = tmp[0];
+            like = tmp[1].replace(FT_LIKE_COL, ftColumnName);
+        } else {
+            like = null;
+        }
         info.joins.add(new Join(
                 Join.IMPLICIT, //
                 String.format("TO_TSQUERY('%s', ?)", fulltextAnalyzer),
                 queryAlias, // alias
                 fulltextQuery, // param
                 null, null));
-        info.whereExpr = String.format("(%s @@ %s)", queryAlias,
-                ftColumn.getFullQuotedName());
-        info.scoreExpr = String.format("TS_RANK_CD(%s, %s, 32) AS %s",
-                ftColumn.getFullQuotedName(), queryAlias, scoreAlias);
-        info.scoreAlias = scoreAlias;
+        String tsvector;
+        if (compatibilityFulltextTable) {
+            tsvector = ftColumnName;
+        } else {
+            tsvector = String.format("NX_TO_TSVECTOR(%s)", ftColumnName);
+        }
+        String where = String.format("(%s @@ %s)", queryAlias, tsvector);
+        if (like != null) {
+            where += " AND (" + like + ")";
+        }
+        info.whereExpr = where;
+        info.scoreExpr = String.format("TS_RANK_CD(%s, %s, 32)", tsvector,
+                queryAlias);
+        info.scoreAlias = "_nxscore" + nthSuffix;
         info.scoreCol = new Column(mainColumn.getTable(), null,
                 ColumnType.DOUBLE, null);
         return info;
@@ -323,7 +570,7 @@ public class DialectPostgreSQL extends Dialect {
 
     @Override
     public String getFreeVariableSetterForType(ColumnType type) {
-        if (type == ColumnType.FTSTORED) {
+        if (type == ColumnType.FTSTORED && compatibilityFulltextTable) {
             return "NX_TO_TSVECTOR(?)";
         }
         return "?";
@@ -547,12 +794,12 @@ public class DialectPostgreSQL extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/postgresql.sql.txt";
+        return "nuxeovcs/postgresql.sql.txt";
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/postgresql.test.sql.txt";
+        return "nuxeovcs/postgresql.test.sql.txt";
     }
 
     @Override
@@ -578,10 +825,16 @@ public class DialectPostgreSQL extends Dialect {
                         + suffix);
                 Column ftbt = ft.getColumn(model.FULLTEXT_BINARYTEXT_KEY
                         + suffix);
-                String line = String.format(
-                        "  NEW.%s := COALESCE(NEW.%s, ''::TSVECTOR) || COALESCE(NEW.%s, ''::TSVECTOR);",
-                        ftft.getQuotedName(), ftst.getQuotedName(),
-                        ftbt.getQuotedName());
+                String concat;
+                if (compatibilityFulltextTable) {
+                    // tsvector
+                    concat = "  NEW.%s := COALESCE(NEW.%s, ''::TSVECTOR) || COALESCE(NEW.%s, ''::TSVECTOR);";
+                } else {
+                    // text with space at beginning and end
+                    concat = "  NEW.%s := ' ' || COALESCE(NEW.%s, '') || ' ' || COALESCE(NEW.%s, '') || ' ';";
+                }
+                String line = String.format(concat, ftft.getQuotedName(),
+                        ftst.getQuotedName(), ftbt.getQuotedName());
                 lines.add(line);
             }
             properties.put("fulltextTriggerStatements",
@@ -767,6 +1020,16 @@ public class DialectPostgreSQL extends Dialect {
     @Override
     public String getValidationQuery() {
         return "";
+    }
+
+    @Override
+    public String getAncestorsIdsSql() {
+        return "SELECT NX_ANCESTORS(?)";
+    }
+
+    @Override
+    public String getDescending() {
+        return " DESC NULLS LAST";
     }
 
 }

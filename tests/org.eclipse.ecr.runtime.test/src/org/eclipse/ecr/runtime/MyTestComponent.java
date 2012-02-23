@@ -42,6 +42,11 @@ public class MyTestComponent implements Component {
     }
 
     @Override
+    public int getApplicationStartedOrder() {
+        return 0;
+    }
+    
+    @Override
     public void registerExtension(Extension extension) {
         Object[] contribs = extension.getContributions();
         for (Object contrib : contribs) {

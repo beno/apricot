@@ -15,10 +15,12 @@ import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.ecr.core.storage.sql.ACLRow;
 import org.eclipse.ecr.core.storage.sql.Model;
+import org.eclipse.ecr.core.storage.sql.Row;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
 
 /**
@@ -55,6 +57,8 @@ public class ACLCollectionIO implements CollectionIO {
                 user = (String) v;
             } else if (key.equals(model.ACL_GROUP_KEY)) {
                 group = (String) v;
+            } else if (key.equals(model.ACL_POS_KEY)) {
+                // ignore, query already sorts by pos
             } else {
                 throw new RuntimeException(key);
             }
@@ -67,44 +71,65 @@ public class ACLCollectionIO implements CollectionIO {
     }
 
     @Override
-    public void setToPreparedStatement(Serializable id, Serializable[] array,
-            List<Column> columns, PreparedStatement ps, Model model,
-            List<Serializable> debugValues, String sql, JDBCLogger logger)
-            throws SQLException {
-        for (int i = 0; i < array.length; i++) {
-            ACLRow acl = (ACLRow) array[i];
-            int n = 0;
-            for (Column column : columns) {
-                n++;
-                String key = column.getKey();
-                Serializable v;
-                if (key.equals(model.MAIN_KEY)) {
-                    v = id;
-                } else if (key.equals(model.ACL_POS_KEY)) {
-                    v = (long) acl.pos;
-                } else if (key.equals(model.ACL_NAME_KEY)) {
-                    v = acl.name;
-                } else if (key.equals(model.ACL_GRANT_KEY)) {
-                    v = acl.grant;
-                } else if (key.equals(model.ACL_PERMISSION_KEY)) {
-                    v = acl.permission;
-                } else if (key.equals(model.ACL_USER_KEY)) {
-                    v = acl.user;
-                } else if (key.equals(model.ACL_GROUP_KEY)) {
-                    v = acl.group;
-                } else {
-                    throw new RuntimeException(key);
+    public void executeInserts(PreparedStatement ps, List<Row> rows,
+            List<Column> columns, boolean supportsBatchUpdates, String sql,
+            JDBCConnection connection) throws SQLException {
+        List<Serializable> debugValues = connection.logger.isLogEnabled() ? new ArrayList<Serializable>()
+                : null;
+        String loggedSql = supportsBatchUpdates ? sql + " -- BATCHED" : sql;
+        int batch = 0;
+        for (Row row : rows) {
+            batch++;
+            Serializable id = row.id;
+            Serializable[] array = row.values;
+            for (int i = 0; i < array.length; i++) {
+                ACLRow acl = (ACLRow) array[i];
+                int n = 0;
+                for (Column column : columns) {
+                    n++;
+                    String key = column.getKey();
+                    Serializable v;
+                    if (key.equals(Model.MAIN_KEY)) {
+                        v = id;
+                    } else if (key.equals(Model.ACL_POS_KEY)) {
+                        v = (long) acl.pos;
+                    } else if (key.equals(Model.ACL_NAME_KEY)) {
+                        v = acl.name;
+                    } else if (key.equals(Model.ACL_GRANT_KEY)) {
+                        v = acl.grant;
+                    } else if (key.equals(Model.ACL_PERMISSION_KEY)) {
+                        v = acl.permission;
+                    } else if (key.equals(Model.ACL_USER_KEY)) {
+                        v = acl.user;
+                    } else if (key.equals(Model.ACL_GROUP_KEY)) {
+                        v = acl.group;
+                    } else {
+                        throw new RuntimeException(key);
+                    }
+                    column.setToPreparedStatement(ps, n, v);
+                    if (debugValues != null) {
+                        debugValues.add(v);
+                    }
                 }
-                column.setToPreparedStatement(ps, n, v);
                 if (debugValues != null) {
-                    debugValues.add(v);
+                    connection.logger.logSQL(loggedSql, debugValues);
+                    debugValues.clear();
+                }
+                if (supportsBatchUpdates) {
+                    ps.addBatch();
+                    if (batch % JDBCRowMapper.UPDATE_BATCH_SIZE == 0) {
+                        ps.executeBatch();
+                        connection.countExecute();
+                    }
+                } else {
+                    ps.execute();
+                    connection.countExecute();
                 }
             }
-            if (debugValues != null) {
-                logger.logSQL(sql, debugValues);
-                debugValues.clear();
-            }
-            ps.execute();
+        }
+        if (supportsBatchUpdates) {
+            ps.executeBatch();
+            connection.countExecute();
         }
     }
 

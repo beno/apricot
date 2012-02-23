@@ -15,11 +15,13 @@ package org.eclipse.ecr.core.api.blobholder;
 
 import java.io.Serializable;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentModel;
+import org.eclipse.ecr.core.utils.BlobsExtractor;
 
 /**
  * {@link BlobHolder} implementation based on a {@link DocumentModel} and a
@@ -97,12 +99,17 @@ public class
 
     @Override
     public Serializable getProperty(String name) throws ClientException {
-        return doc.getPropertyValue(name);
+        return null;
     }
 
     @Override
     public Map<String, Serializable> getProperties() {
-        return doc.getPrefetch();
+        return null;
+    }
+
+    @Override
+    public List<Blob> getBlobs() throws ClientException {
+        return new BlobsExtractor().getBlobs(doc);
     }
 
 }

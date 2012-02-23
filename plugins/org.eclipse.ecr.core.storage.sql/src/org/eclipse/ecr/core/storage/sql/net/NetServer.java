@@ -22,9 +22,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 
-import org.eclipse.ecr.core.storage.sql.BinaryManager;
-import org.eclipse.ecr.core.storage.sql.Mapper;
-import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.ServerDescriptor;
 import org.mortbay.jetty.Connector;
 import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.Server;
@@ -34,6 +31,9 @@ import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.servlet.ServletHandler;
 import org.mortbay.jetty.servlet.ServletHolder;
 import org.mortbay.jetty.servlet.ServletMapping;
+import org.eclipse.ecr.core.storage.sql.BinaryManager;
+import org.eclipse.ecr.core.storage.sql.Mapper;
+import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.ServerDescriptor;
 
 /**
  * Network server for a repository. Can receive remote connections for

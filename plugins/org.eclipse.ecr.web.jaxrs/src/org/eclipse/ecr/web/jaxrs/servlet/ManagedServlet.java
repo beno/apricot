@@ -18,7 +18,7 @@ import org.eclipse.ecr.web.jaxrs.servlet.config.ServletDescriptor;
  * injected by the container just before the init() method is called.
  * <p>
  * The descriptor can be used to retrieve the bundle declaring the servlet or other settings.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */

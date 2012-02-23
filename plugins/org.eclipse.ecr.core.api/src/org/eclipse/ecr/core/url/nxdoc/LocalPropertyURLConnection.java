@@ -23,9 +23,9 @@ import java.util.Calendar;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentModel;
-import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
+import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
 import org.eclipse.ecr.core.url.nxobj.ObjectURLConnection;
 
 /**
@@ -57,14 +57,14 @@ public class LocalPropertyURLConnection extends ObjectURLConnection {
     @Override
     protected long lastModified() throws IOException {
         try {
-            DocumentPart part = ((DocumentModel) obj).getPart("dublincore");
-
-            if (part != null) {
-                Calendar cal = (Calendar) part.get("modified");
+            try {
+                DocumentModel doc = (DocumentModel) obj;
+                Calendar cal = (Calendar) doc.getPropertyValue("dc:modified");
                 if (cal != null) {
                     return cal.getTimeInMillis();
                 }
-
+            } catch (PropertyNotFoundException e) {
+                // ignore
             }
         } catch (ClientException e) {
             IOException ee = new IOException(

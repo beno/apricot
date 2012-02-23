@@ -13,7 +13,6 @@ Bundle-ManifestVersion: 2
 Import-Package: java_cup.runtime,
  org.eclipse.ecr.common.collections,
  org.eclipse.ecr.common.utils,
- org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.impl,
  org.joda.time,

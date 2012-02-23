@@ -27,10 +27,10 @@ import org.eclipse.ecr.common.utils.XidImpl;
 import org.eclipse.ecr.core.storage.Credentials;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.Mapper;
-import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
-import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
+import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.ServerDescriptor;
+import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 
 /**
  * Mapper sending calls to a remote {@link NetServer}.

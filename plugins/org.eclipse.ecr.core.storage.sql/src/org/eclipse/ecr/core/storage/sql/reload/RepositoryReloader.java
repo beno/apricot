@@ -45,7 +45,8 @@ public class RepositoryReloader implements EventListener {
 
     @Override
     public void handleEvent(Event event) {
-        if ("reloadRepositories".equals(event.getId())) {
+        final String id = event.getId();
+        if ("reloadRepositories".equals(id) || "flush".equals(id)) {
             try {
                 reloadRepositories();
             } catch (Exception e) {
@@ -66,17 +67,24 @@ public class RepositoryReloader implements EventListener {
             } catch (NamingException e) {
                 continue;
             }
-            for (NamingEnumeration<Binding> e = bindings; e.hasMore();) {
-                Binding binding = e.nextElement();
-                String name = binding.getName();
-                if (binding.isRelative()) {
-                    name = prefix + '/' + name;
+            NamingEnumeration<Binding> e = null;
+            try {
+                for (e = bindings; e.hasMore();) {
+                    Binding binding = e.nextElement();
+                    String name = binding.getName();
+                    if (binding.isRelative()) {
+                        name = prefix + '/' + name;
+                    }
+                    Object object = context.lookup(name);
+                    if (!(object instanceof Repository)) {
+                        continue;
+                    }
+                    list.add((Repository) object);
                 }
-                Object object = context.lookup(name);
-                if (!(object instanceof Repository)) {
-                    continue;
+            } finally {
+                if (e != null) {
+                    e.close();
                 }
-                list.add((Repository) object);
             }
         }
         return list;

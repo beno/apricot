@@ -80,6 +80,13 @@ public interface RegistrationInfo extends Serializable {
     Map<String, Property> getProperties();
 
     /**
+     * Gets the list of aliases.
+     *
+     * @return the aliases
+     */
+    Set<ComponentName> getAliases();
+
+    /**
      * Gets the list of the required components.
      *
      * @return the required components
@@ -189,6 +196,15 @@ public interface RegistrationInfo extends Serializable {
      * @return the XML file URL
      */
     URL getXmlFileUrl();
+
+    /**
+     * The component notification order for {@link #notifyApplicationStarted}.
+     *
+     * @return the order, 1000 by default
+     *
+     * @since 5.6
+     */
+    int getApplicationStartedOrder();
 
     /**
      * Notify the component instance that the Nuxeo application started

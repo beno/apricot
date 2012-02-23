@@ -45,7 +45,7 @@ public class Scanner {
 
     public Scanner(Bundle bundle, String packageBase, String ... annotations) {
         this.bundle = bundle;
-        this.packageBase = packageBase;
+        this.packageBase = packageBase == null ? "/" : packageBase;
         this.collectors = new HashMap<String, Collection<Class<?>>>();
         for (String annotation  : annotations) {
             addCollector(annotation);

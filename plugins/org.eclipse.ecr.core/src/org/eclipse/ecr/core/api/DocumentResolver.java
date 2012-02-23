@@ -18,8 +18,6 @@ import java.io.Serializable;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.core.api.DocumentException;
-import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.model.Document;
 import org.eclipse.ecr.core.model.Session;
 

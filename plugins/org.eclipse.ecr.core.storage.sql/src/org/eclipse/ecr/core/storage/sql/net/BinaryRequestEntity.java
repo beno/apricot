@@ -15,9 +15,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import org.apache.commons.httpclient.methods.RequestEntity;
+import org.eclipse.ecr.core.storage.sql.Binary;
 
 import org.apache.commons.io.IOUtils;
-import org.eclipse.ecr.core.storage.sql.Binary;
 
 /**
  * Class defining a {@link RequestEntity} that writes from a {@link Binary}.

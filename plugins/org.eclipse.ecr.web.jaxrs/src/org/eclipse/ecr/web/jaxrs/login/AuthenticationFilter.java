@@ -27,8 +27,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.ecr.common.utils.Base64;
 import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.local.ClientLoginModule;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.HttpFilter;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * Filter using the {@link SimpleLoginModule} to authenticate a request.

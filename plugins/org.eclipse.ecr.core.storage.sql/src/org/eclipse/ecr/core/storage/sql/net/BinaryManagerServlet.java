@@ -21,9 +21,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.io.IOUtils;
 import org.eclipse.ecr.core.storage.sql.Binary;
 import org.eclipse.ecr.core.storage.sql.BinaryManager;
+import org.apache.commons.io.IOUtils;
 
 /**
  * Servlet receiving remote {@link BinaryManagerClient} requests and sending

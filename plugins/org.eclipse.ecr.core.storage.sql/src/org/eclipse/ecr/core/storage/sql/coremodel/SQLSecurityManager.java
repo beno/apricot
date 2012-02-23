@@ -31,7 +31,6 @@ import org.eclipse.ecr.core.api.security.impl.ACLImpl;
 import org.eclipse.ecr.core.api.security.impl.ACPImpl;
 import org.eclipse.ecr.core.model.Document;
 import org.eclipse.ecr.core.model.Property;
-import org.eclipse.ecr.core.model.Session;
 import org.eclipse.ecr.core.security.SecurityException;
 import org.eclipse.ecr.core.security.SecurityManager;
 import org.eclipse.ecr.core.storage.sql.ACLRow;
@@ -86,7 +85,12 @@ public class SQLSecurityManager implements SecurityManager {
             if (doc.getParent() == null) {
                 return acp;
             }
-            ACL acl = getInheritedACLs(doc);
+            // get inherited acls only if no blocking inheritance ACE exists in the top level acp.
+            ACL acl = null;
+            if (acp == null || acp.getAccess(SecurityConstants.EVERYONE,
+                    SecurityConstants.EVERYTHING) != Access.DENY) {
+                acl = getInheritedACLs(doc);
+            }
             if (acp == null) {
                 if (acl == null) {
                     return null;
@@ -114,10 +118,6 @@ public class SQLSecurityManager implements SecurityManager {
         ACP acp = getMergedACP(doc);
         return acp == null ? Access.UNKNOWN : acp.getAccess(username,
                 permission);
-    }
-
-    @Override
-    public void invalidateCache(Session session) {
     }
 
     /*

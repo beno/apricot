@@ -146,7 +146,7 @@ public interface Session extends Connection {
      * Checks if a child node with the given name exists.
      * <p>
      * There are two kinds of children, the regular children documents and the
-     * complex properties. The {@code boolean} {@value complexProp} allows a
+     * complex properties. The {@code boolean} {@value #complexProp} allows a
      * choice between those.
      *
      * @param parent the parent node
@@ -244,12 +244,38 @@ public interface Session extends Connection {
             Node parent, String name, Long pos) throws StorageException;
 
     /**
+     * Sets a proxies' target.
+     *
+     * @param proxy the proxy
+     * @param targetId the new target id
+     * @since 5.5
+     */
+    void setProxyTarget(Node proxy, Serializable targetId)
+            throws StorageException;
+
+    /**
      * Removes a node from the storage.
+     * <p>
+     * This is much more complex that removing a property node (
+     * {@link #removePropertyNode}).
      *
      * @param node the node to remove
      * @throws StorageException
+     * @see {@link #removePropertyNode}
      */
     void removeNode(Node node) throws StorageException;
+
+    /**
+     * Removes a property node from the storage.
+     * <p>
+     * This is much less complex that removing a generic document node (
+     * {@link #removeNode}).
+     *
+     * @param node the property node to remove
+     * @throws StorageException
+     * @see {@link #removeNode}
+     */
+    void removePropertyNode(Node node) throws StorageException;
 
     /**
      * Order the given source child node before the destination child node. The
@@ -399,6 +425,20 @@ public interface Session extends Connection {
      */
     PartialList<Serializable> query(String query, QueryFilter queryFilter,
             boolean countTotal) throws StorageException;
+
+    /**
+     * Makes a query to the database.
+     *
+     * @param query the query
+     * @param query the query type
+     * @param queryFilter the query filter
+     * @param countTotal if {@code true}, also count the total size without
+     *            offset/limit
+     * @return the resulting list with total size included
+     */
+    PartialList<Serializable> query(String query, String queryType,
+            QueryFilter queryFilter, boolean countTotal)
+            throws StorageException;
 
     /**
      * Makes a query to the database and returns an iterable (which must be

@@ -26,7 +26,7 @@ import org.osgi.service.http.HttpContext;
  * <p>
  * A BundleHttpContext is created for every declated servlet when it is registered against to HttpService.
  * The context is removed when the servlet is unregistered.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */

@@ -19,8 +19,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.ecr.runtime.transaction.TransactionHelper;
 import org.eclipse.ecr.web.jaxrs.HttpFilter;
+import org.eclipse.ecr.runtime.transaction.TransactionHelper;
 
 /**
  * Filter using the {@link SimpleLoginModule} to authenticate a request.

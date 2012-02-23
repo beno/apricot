@@ -32,6 +32,7 @@ import org.eclipse.ecr.core.schema.SchemaManager;
 import org.eclipse.ecr.core.security.SecurityManager;
 import org.eclipse.ecr.core.storage.Credentials;
 import org.eclipse.ecr.core.storage.StorageException;
+import org.eclipse.ecr.core.storage.sql.BinaryGarbageCollector;
 import org.eclipse.ecr.core.storage.sql.ConnectionSpecImpl;
 import org.eclipse.ecr.core.storage.sql.Repository;
 import org.eclipse.ecr.core.storage.sql.Session;
@@ -73,9 +74,8 @@ public class ConnectionFactoryImpl implements Repository,
      * constructed by application code and passed our manual
      * {@link ConnectionManagerImpl}.
      */
+    @SuppressWarnings("unused")
     private final boolean managed;
-
-    private boolean firstAccessInitialized;
 
     private boolean servicesInitialized;
 
@@ -215,14 +215,6 @@ public class ConnectionFactoryImpl implements Repository,
         if (context == null) {
             connectionSpec = null;
         } else {
-            synchronized (this) {
-                if (!firstAccessInitialized) {
-                    firstAccessInitialized = true;
-                    // Allow AbstractSession (our caller) to send an
-                    // initialization event.
-                    context.put("REPOSITORY_FIRST_ACCESS", Boolean.TRUE);
-                }
-            }
             NuxeoPrincipal principal = (NuxeoPrincipal) context.get("principal");
             String username = principal == null ? (String) context.get("username")
                     : principal.getName();
@@ -236,16 +228,6 @@ public class ConnectionFactoryImpl implements Repository,
             throw new DocumentException(e);
         }
         return new SQLSession(session, this, context);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Override
-    @Deprecated
-    public org.eclipse.ecr.core.model.Session getSession(long sessionId)
-            throws DocumentException {
-        throw new UnsupportedOperationException("unused");
     }
 
     @Override
@@ -310,6 +292,16 @@ public class ConnectionFactoryImpl implements Repository,
     }
 
     @Override
+    public BinaryGarbageCollector getBinaryGarbageCollector() {
+        return managedConnectionFactory.getBinaryGarbageCollector();
+    }
+
+    @Override
+    public void markReferencedBinaries(BinaryGarbageCollector gc) {
+        managedConnectionFactory.markReferencedBinaries(gc);
+    }
+
+    @Override
     public boolean supportsTags() {
         return true;
     }
@@ -328,7 +320,7 @@ public class ConnectionFactoryImpl implements Repository,
 
     @Override
     public Collection<MapperClientInfo> getClientInfos() {
-       return managedConnectionFactory.getClientInfos();
+        return managedConnectionFactory.getClientInfos();
     }
 
     @Override

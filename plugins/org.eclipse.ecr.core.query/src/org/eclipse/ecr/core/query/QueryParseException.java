@@ -14,12 +14,10 @@
 
 package org.eclipse.ecr.core.query;
 
-import org.eclipse.ecr.core.CoreRuntimeException;
-
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-public class QueryParseException extends CoreRuntimeException {
+public class QueryParseException extends RuntimeException {
 
     private static final long serialVersionUID = -3557588796412733083L;
 

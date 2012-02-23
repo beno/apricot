@@ -28,7 +28,7 @@ import org.osgi.framework.Bundle;
 /**
  * A resource request context.
  * This class is not thread safe.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */

@@ -32,8 +32,10 @@ import javax.sql.XADataSource;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.Invalidations;
+import org.eclipse.ecr.core.storage.sql.Invalidations.InvalidationsPair;
 import org.eclipse.ecr.core.storage.sql.InvalidationsQueue;
 import org.eclipse.ecr.core.storage.sql.Mapper;
 import org.eclipse.ecr.core.storage.sql.Model;
@@ -41,9 +43,10 @@ import org.eclipse.ecr.core.storage.sql.PropertyType;
 import org.eclipse.ecr.core.storage.sql.Row;
 import org.eclipse.ecr.core.storage.sql.RowId;
 import org.eclipse.ecr.core.storage.sql.RowMapper;
+import org.eclipse.ecr.core.storage.sql.SelectionType;
 import org.eclipse.ecr.core.storage.sql.SimpleFragment;
-import org.eclipse.ecr.core.storage.sql.Invalidations.InvalidationsPair;
 import org.eclipse.ecr.core.storage.sql.jdbc.SQLInfo.SQLInfoSelect;
+import org.eclipse.ecr.core.storage.sql.jdbc.SQLInfo.SQLInfoSelection;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Table;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Update;
@@ -52,6 +55,10 @@ import org.eclipse.ecr.core.storage.sql.jdbc.db.Update;
  * A {@link JDBCRowMapper} maps {@link Row}s to and from a JDBC database.
  */
 public class JDBCRowMapper extends JDBCConnection implements RowMapper {
+
+    public static final int UPDATE_BATCH_SIZE = 100; // also insert/delete
+
+    public static final int DEBUG_MAX_TREE = 50;
 
     /**
      * Cluster node handler, or {@code null} if this {@link Mapper} is not the
@@ -72,14 +79,22 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
         this.clusterNodeHandler = clusterNodeHandler;
         queue = new InvalidationsQueue("cluster");
         if (clusterNodeHandler != null) {
-            clusterNodeHandler.propagator.addQueue(queue);
+            clusterNodeHandler.addQueue(queue);
+        }
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        if (clusterNodeHandler != null) {
+            clusterNodeHandler.removeQueue(queue);
         }
     }
 
     @Override
     public InvalidationsPair receiveInvalidations() throws StorageException {
         Invalidations invalidations = null;
-        if (clusterNodeHandler != null) {
+        if (clusterNodeHandler != null && connection != null) {
             receiveClusterInvalidations();
             invalidations = queue.getInvalidations();
         }
@@ -91,8 +106,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
         Invalidations invalidations = clusterNodeHandler.receiveClusterInvalidations();
         // send received invalidations to all mappers
         if (invalidations != null && !invalidations.isEmpty()) {
-            clusterNodeHandler.propagator.propagateInvalidations(invalidations,
-                    null);
+            clusterNodeHandler.propagateInvalidations(invalidations, null);
         }
     }
 
@@ -129,8 +143,16 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
      */
 
     @Override
-    public List<? extends RowId> read(Collection<RowId> rowIds)
-            throws StorageException {
+    public List<? extends RowId> read(Collection<RowId> rowIds,
+            boolean cacheOnly) throws StorageException {
+        List<RowId> res = new ArrayList<RowId>(rowIds.size());
+        if (cacheOnly) {
+            // return no data
+            for (RowId rowId : rowIds) {
+                res.add(new RowId(rowId));
+            }
+            return res;
+        }
         // reorganize by table
         Map<String, Set<Serializable>> tableIds = new HashMap<String, Set<Serializable>>();
         for (RowId rowId : rowIds) {
@@ -141,7 +163,6 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
             ids.add(rowId.id);
         }
         // read on each table
-        List<RowId> res = new ArrayList<RowId>(rowIds.size());
         for (Entry<String, Set<Serializable>> en : tableIds.entrySet()) {
             String tableName = en.getKey();
             Set<Serializable> ids = new HashSet<Serializable>(en.getValue());
@@ -238,6 +259,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                     ps.setObject(i++, id);
                 }
                 ResultSet rs = ps.executeQuery();
+                countExecute();
 
                 // get all values from result set, separate by ids
                 // the result set is ordered by id, pos
@@ -375,6 +397,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
              * Execute query.
              */
             ResultSet rs = ps.executeQuery();
+            countExecute();
 
             /*
              * Construct the maps from the result set.
@@ -399,11 +422,11 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 }
             }
             if (limitToOne) {
-                return null;
+                return Collections.emptyList();
             }
             return list;
         } catch (Exception e) {
-            checkConnectionReset(e);
+            checkConnectionReset(e, true);
             throw new StorageException("Could not select: " + select.sql, e);
         } finally {
             if (ps != null) {
@@ -427,6 +450,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
         if (!batch.deletes.isEmpty()) {
             writeDeletes(batch.deletes);
         }
+        // batch.deletesDependent not executed
     }
 
     protected void writeCreates(List<Row> creates) throws StorageException {
@@ -446,15 +470,9 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
             String tableName = en.getKey();
             List<Row> rows = en.getValue();
             if (model.isCollectionFragment(tableName)) {
-                for (Row row : rows) {
-                    // TODO optimize loop
-                    insertCollectionRows(row);
-                }
+                insertCollectionRows(tableName, rows);
             } else {
-                for (Row row : rows) {
-                    // TODO optimize loop
-                    insertSimpleRow(row);
-                }
+                insertSimpleRows(tableName, rows);
             }
         }
     }
@@ -475,15 +493,9 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
             String tableName = en.getKey();
             List<RowUpdate> rows = en.getValue();
             if (model.isCollectionFragment(tableName)) {
-                for (RowUpdate rowu : rows) {
-                    // TODO optimize loop
-                    updateCollectionRows(rowu.row);
-                }
+                updateCollectionRows(tableName, rows);
             } else {
-                for (RowUpdate rowu : rows) {
-                    // TODO optimize loop
-                    updateSimpleRow(rowu.row, rowu.keys);
-                }
+                updateSimpleRows(tableName, rows);
             }
         }
     }
@@ -503,132 +515,223 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
         for (Entry<String, Set<Serializable>> en : tableIds.entrySet()) {
             String tableName = en.getKey();
             Set<Serializable> ids = en.getValue();
-            for (Serializable id : ids) {
-                // TODO optimize loop
-                deleteRows(tableName, id);
-            }
+            deleteRows(tableName, ids);
         }
     }
 
-    protected void insertSimpleRow(Row row) throws StorageException {
-        PreparedStatement ps = null;
-        try {
-            // insert the row
-            // XXX statement should be already prepared
-            String sql = sqlInfo.getInsertSql(row.tableName);
-            if (sql == null) {
-                throw new StorageException("Unknown table: " + row.tableName);
-            }
-            List<Column> columns = sqlInfo.getInsertColumns(row.tableName);
-            try {
-                if (logger.isLogEnabled()) {
-                    logger.logSQL(sql, columns, row);
-                }
-                ps = connection.prepareStatement(sql);
-                int i = 1;
-                for (Column column : columns) {
-                    column.setToPreparedStatement(ps, i++,
-                            row.get(column.getKey()));
-                }
-                ps.execute();
-            } catch (Exception e) {
-                checkConnectionReset(e);
-                throw new StorageException("Could not insert: " + sql, e);
-            }
-            // TODO DB_IDENTITY : post insert fetch idrow
-        } finally {
-            if (ps != null) {
-                try {
-                    closeStatement(ps);
-                } catch (SQLException e) {
-                    logger.error(e.getMessage(), e);
-                }
-            }
-        }
-        // return row.id;
-    }
-
-    protected void insertCollectionRows(Row row) throws StorageException {
-        PreparedStatement ps = null;
-        try {
-            String sql = sqlInfo.getInsertSql(row.tableName);
-            List<Column> columns = sqlInfo.getInsertColumns(row.tableName);
-            try {
-                List<Serializable> debugValues = null;
-                if (logger.isLogEnabled()) {
-                    debugValues = new ArrayList<Serializable>(3);
-                }
-                ps = connection.prepareStatement(sql);
-                getCollectionIO(row.tableName).setToPreparedStatement(row.id,
-                        row.values, columns, ps, model, debugValues, sql,
-                        logger);
-            } catch (Exception e) {
-                checkConnectionReset(e);
-                throw new StorageException("Could not insert: " + sql, e);
-            }
-            // TODO DB_IDENTITY : post insert fetch idrow
-        } finally {
-            if (ps != null) {
-                try {
-                    closeStatement(ps);
-                } catch (SQLException e) {
-                    logger.error(e.getMessage(), e);
-                }
-            }
-        }
-    }
-
-    protected void updateSimpleRow(Row row, Collection<String> keys)
+    /**
+     * Inserts multiple rows, all for the same table.
+     */
+    protected void insertSimpleRows(String tableName, List<Row> rows)
             throws StorageException {
-        if (keys.isEmpty()) {
+        if (rows.isEmpty()) {
             return;
         }
-        SQLInfoSelect update = sqlInfo.getUpdateById(row.tableName, keys);
+        String sql = sqlInfo.getInsertSql(tableName);
+        if (sql == null) {
+            throw new StorageException("Unknown table: " + tableName);
+        }
+        String loggedSql = supportsBatchUpdates && rows.size() > 1 ? sql
+                + " -- BATCHED" : sql;
+        List<Column> columns = sqlInfo.getInsertColumns(tableName);
         try {
-            PreparedStatement ps = connection.prepareStatement(update.sql);
+            PreparedStatement ps = connection.prepareStatement(sql);
             try {
-                if (logger.isLogEnabled()) {
-                    logger.logSQL(update.sql, update.whatColumns, row);
+                int batch = 0;
+                for (Row row : rows) {
+                    batch++;
+                    if (logger.isLogEnabled()) {
+                        logger.logSQL(loggedSql, columns, row);
+                    }
+                    int i = 1;
+                    for (Column column : columns) {
+                        column.setToPreparedStatement(ps, i++,
+                                row.get(column.getKey()));
+                    }
+                    if (supportsBatchUpdates) {
+                        ps.addBatch();
+                        if (batch % UPDATE_BATCH_SIZE == 0) {
+                            ps.executeBatch();
+                            countExecute();
+                        }
+                    } else {
+                        ps.execute();
+                        countExecute();
+                    }
                 }
-                int i = 1;
-                for (Column column : update.whatColumns) {
-                    column.setToPreparedStatement(ps, i++,
-                            row.get(column.getKey()));
+                if (supportsBatchUpdates) {
+                    ps.executeBatch();
+                    countExecute();
                 }
-                int count = ps.executeUpdate();
-                logger.logCount(count);
             } finally {
                 closeStatement(ps);
             }
         } catch (Exception e) {
             checkConnectionReset(e);
-            throw new StorageException("Could not update: " + update.sql, e);
+            throw new StorageException("Could not insert: " + sql, e);
         }
     }
 
-    protected void updateCollectionRows(Row row) throws StorageException {
-        deleteRows(row.tableName, row.id);
-        insertCollectionRows(row);
+    /**
+     * Updates multiple collection rows, all for the same table.
+     */
+    protected void insertCollectionRows(String tableName, List<Row> rows)
+            throws StorageException {
+        if (rows.isEmpty()) {
+            return;
+        }
+        String sql = sqlInfo.getInsertSql(tableName);
+        List<Column> columns = sqlInfo.getInsertColumns(tableName);
+        CollectionIO io = getCollectionIO(tableName);
+        try {
+            PreparedStatement ps = connection.prepareStatement(sql);
+            try {
+                io.executeInserts(ps, rows, columns, supportsBatchUpdates, sql,
+                        this);
+            } finally {
+                closeStatement(ps);
+            }
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new StorageException("Could not insert: " + sql, e);
+        }
     }
 
-    protected void deleteRows(String tableName, Serializable id)
+    /**
+     * Updates multiple simple rows, all for the same table.
+     */
+    protected void updateSimpleRows(String tableName, List<RowUpdate> rows)
             throws StorageException {
+        if (rows.isEmpty()) {
+            return;
+        }
+
+        // reorganize by unique sets of keys
+        Map<String, List<RowUpdate>> updatesByKeys = new HashMap<String, List<RowUpdate>>();
+        for (RowUpdate rowu : rows) {
+            List<String> keys = new ArrayList<String>(rowu.keys);
+            if (keys.isEmpty()) {
+                continue;
+            }
+            Collections.sort(keys);
+            String k = StringUtils.join(keys, ","); // canonical keys
+            List<RowUpdate> keysUpdates = updatesByKeys.get(k);
+            if (keysUpdates == null) {
+                updatesByKeys.put(k, keysUpdates = new LinkedList<RowUpdate>());
+            }
+            keysUpdates.add(rowu);
+        }
+
+        for (List<RowUpdate> keysUpdates : updatesByKeys.values()) {
+            Collection<String> keys = keysUpdates.iterator().next().keys;
+            SQLInfoSelect update = sqlInfo.getUpdateById(tableName, keys);
+            String loggedSql = supportsBatchUpdates && rows.size() > 1 ? update.sql
+                    + " -- BATCHED"
+                    : update.sql;
+            try {
+                PreparedStatement ps = connection.prepareStatement(update.sql);
+                int batch = 0;
+                try {
+                    for (RowUpdate rowu : keysUpdates) {
+                        batch++;
+                        if (logger.isLogEnabled()) {
+                            logger.logSQL(loggedSql, update.whatColumns,
+                                    rowu.row);
+                        }
+                        int i = 1;
+                        for (Column column : update.whatColumns) {
+                            column.setToPreparedStatement(ps, i++,
+                                    rowu.row.get(column.getKey()));
+                        }
+                        if (supportsBatchUpdates) {
+                            ps.addBatch();
+                            if (batch % UPDATE_BATCH_SIZE == 0) {
+                                int[] counts = ps.executeBatch();
+                                countExecute();
+                                logger.logCounts(counts);
+                            }
+                        } else {
+                            int count = ps.executeUpdate();
+                            countExecute();
+                            logger.logCount(count);
+                        }
+                    }
+                    if (supportsBatchUpdates) {
+                        int[] counts = ps.executeBatch();
+                        countExecute();
+                        logger.logCounts(counts);
+                    }
+                } finally {
+                    closeStatement(ps);
+                }
+            } catch (Exception e) {
+                checkConnectionReset(e);
+                throw new StorageException("Could not update: " + update.sql, e);
+            }
+        }
+    }
+
+    protected void updateCollectionRows(String tableName, List<RowUpdate> rowus)
+            throws StorageException {
+        Set<Serializable> ids = new HashSet<Serializable>(rowus.size());
+        List<Row> rows = new ArrayList<Row>(rowus.size());
+        for (RowUpdate rowu : rowus) {
+            ids.add(rowu.row.id);
+            rows.add(rowu.row);
+        }
+        deleteRows(tableName, ids);
+        insertCollectionRows(tableName, rows);
+    }
+
+    /**
+     * Deletes multiple rows, all for the same table.
+     */
+    protected void deleteRows(String tableName, Set<Serializable> ids)
+            throws StorageException {
+        if (ids.isEmpty()) {
+            return;
+        }
+        int size = ids.size();
+        int chunkSize = sqlInfo.getMaximumArgsForIn();
+        if (size > chunkSize) {
+            List<Serializable> idList = new ArrayList<Serializable>(ids);
+            for (int start = 0; start < size; start += chunkSize) {
+                int end = start + chunkSize;
+                if (end > size) {
+                    end = size;
+                }
+                // needs to be Serializable -> copy
+                List<Serializable> chunkIds = new ArrayList<Serializable>(
+                        idList.subList(start, end));
+                deleteRowsDirect(tableName, chunkIds);
+            }
+        } else {
+            deleteRowsDirect(tableName, ids);
+        }
+    }
+
+    protected void deleteRowsDirect(String tableName,
+            Collection<Serializable> ids) throws StorageException {
         try {
-            String sql = sqlInfo.getDeleteSql(tableName);
+            String sql = sqlInfo.getDeleteSql(tableName, ids.size());
             if (logger.isLogEnabled()) {
-                logger.logSQL(sql, Collections.singletonList(id));
+                logger.logSQL(sql, ids);
             }
             PreparedStatement ps = connection.prepareStatement(sql);
             try {
-                ps.setObject(1, id);
+                int i = 1;
+                for (Serializable id : ids) {
+                    ps.setObject(i++, id);
+                }
                 int count = ps.executeUpdate();
+                countExecute();
                 logger.logCount(count);
             } finally {
                 closeStatement(ps);
             }
         } catch (Exception e) {
             checkConnectionReset(e);
-            throw new StorageException("Could not delete: " + id.toString(), e);
+            throw new StorageException("Could not delete: " + tableName, e);
         }
     }
 
@@ -639,7 +742,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 model.MAIN_KEY, rowId.id);
         List<Row> maps = getSelectRows(rowId.tableName, select, criteriaMap,
                 null, true);
-        return maps == null ? null : maps.get(0);
+        return maps.isEmpty() ? null : maps.get(0);
     }
 
     @Override
@@ -658,6 +761,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 List<Column> columns = sqlInfo.selectFragmentById.get(tableName).whatColumns;
                 ps.setObject(1, id); // assumes only one primary column
                 ResultSet rs = ps.executeQuery();
+                countExecute();
 
                 // construct the resulting collection using each row
                 CollectionIO io = getCollectionIO(tableName);
@@ -685,146 +789,29 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
     }
 
     @Override
-    public Row readChildHierRow(Serializable parentId, String childName,
-            boolean complexProp) throws StorageException {
-        String sql = sqlInfo.getSelectByChildNameSql(complexProp);
-        try {
-            // XXX statement should be already prepared
-            List<Serializable> debugValues = null;
-            if (logger.isLogEnabled()) {
-                debugValues = new ArrayList<Serializable>(2);
-            }
-            PreparedStatement ps = connection.prepareStatement(sql);
-            try {
-                // compute where part
-                int i = 0;
-                for (Column column : sqlInfo.getSelectByChildNameWhereColumns(complexProp)) {
-                    i++;
-                    String key = column.getKey();
-                    Serializable v;
-                    if (key.equals(model.HIER_PARENT_KEY)) {
-                        v = parentId;
-                    } else if (key.equals(model.HIER_CHILD_NAME_KEY)) {
-                        v = childName;
-                    } else {
-                        throw new RuntimeException("Invalid hier column: "
-                                + key);
-                    }
-                    if (v == null) {
-                        throw new IllegalStateException("Null value for key: "
-                                + key);
-                    }
-                    column.setToPreparedStatement(ps, i, v);
-                    if (debugValues != null) {
-                        debugValues.add(v);
-                    }
-                }
-                if (debugValues != null) {
-                    logger.logSQL(sql, debugValues);
-                }
-                ResultSet rs = ps.executeQuery();
-                if (!rs.next()) {
-                    // no match, row doesn't exist
-                    return null;
-                }
-                // construct the row from the results
-                Row row = new Row(model.HIER_TABLE_NAME, (Serializable) null);
-                i = 1;
-                List<Column> columns = sqlInfo.getSelectByChildNameWhatColumns(complexProp);
-                for (Column column : columns) {
-                    row.put(column.getKey(), column.getFromResultSet(rs, i++));
-                }
-                row.put(model.HIER_PARENT_KEY, parentId);
-                row.put(model.HIER_CHILD_NAME_KEY, childName);
-                row.put(model.HIER_CHILD_ISPROPERTY_KEY,
-                        Boolean.valueOf(complexProp));
-                if (logger.isLogEnabled()) {
-                    logger.logResultSet(rs, columns);
-                }
-                // check that we didn't get several rows
-                while (rs.next()) {
-                    // detected a duplicate name, which means that user code
-                    // wasn't careful enough. We can't go back but at least we
-                    // can make the duplicate available under a different name.
-                    String newName = childName + '.'
-                            + System.currentTimeMillis();
-                    i = 0;
-                    Serializable childId = null;
-                    for (Column column : columns) {
-                        i++;
-                        if (column.getKey().equals(model.MAIN_KEY)) {
-                            childId = column.getFromResultSet(rs, i);
-                        }
-                    }
-                    logger.error(String.format(
-                            "Child '%s' appeared twice as child of %s "
-                                    + "(%s and %s), renaming second to '%s'",
-                            childName, parentId, row.id, childId, newName));
-                    Row rename = new Row(model.HIER_TABLE_NAME, childId);
-                    rename.putNew(model.HIER_CHILD_NAME_KEY, newName);
-                    updateSimpleRowWithValues(model.HIER_TABLE_NAME, rename);
-                }
-                return row;
-            } finally {
-                closeStatement(ps);
-            }
-        } catch (Exception e) {
-            checkConnectionReset(e);
-            throw new StorageException("Could not select: " + sql, e);
-        }
-    }
-
-    @Override
-    public List<Row> readChildHierRows(Serializable parentId,
-            boolean complexProp) throws StorageException {
-        if (parentId == null) {
-            throw new IllegalArgumentException("Illegal null parentId");
-        }
-        SQLInfoSelect select = sqlInfo.selectChildrenByIsProperty;
+    public List<Row> readSelectionRows(SelectionType selType,
+            Serializable selId, Serializable filter, Serializable criterion,
+            boolean limitToOne) throws StorageException {
+        SQLInfoSelection selInfo = sqlInfo.getSelection(selType);
         Map<String, Serializable> criteriaMap = new HashMap<String, Serializable>();
-        criteriaMap.put(model.HIER_PARENT_KEY, parentId);
-        criteriaMap.put(model.HIER_CHILD_ISPROPERTY_KEY,
-                Boolean.valueOf(complexProp));
-        return getSelectRows(model.HIER_TABLE_NAME, select, criteriaMap, null,
-                false);
-    }
-
-    @Override
-    public List<Row> getVersionRows(Serializable versionSeriesId)
-            throws StorageException {
-        SQLInfoSelect select = sqlInfo.selectVersionsBySeries;
-        Map<String, Serializable> criteriaMap = new HashMap<String, Serializable>();
-        criteriaMap.put(model.VERSION_VERSIONABLE_KEY, versionSeriesId);
-        criteriaMap.put(model.MAIN_IS_VERSION_KEY, Boolean.TRUE);
-        return getSelectRows(model.VERSION_TABLE_NAME, select, criteriaMap,
-                null, false);
-    }
-
-    @Override
-    public List<Row> getProxyRows(Serializable searchId, boolean byTarget,
-            Serializable parentId) throws StorageException {
-        Map<String, Serializable> criteriaMap = Collections.singletonMap(
-                byTarget ? model.PROXY_TARGET_KEY : model.PROXY_VERSIONABLE_KEY,
-                searchId);
+        criteriaMap.put(selType.selKey, selId);
         SQLInfoSelect select;
-        Map<String, Serializable> joinMap;
-        if (parentId == null) {
-            select = byTarget ? sqlInfo.selectProxiesByTarget
-                    : sqlInfo.selectProxiesBySeries;
-            joinMap = null;
+        if (filter == null) {
+            select = selInfo.selectAll;
         } else {
-            select = byTarget ? sqlInfo.selectProxiesByTargetAndParent
-                    : sqlInfo.selectProxiesByVersionSeriesAndParent;
-            joinMap = Collections.singletonMap(model.HIER_PARENT_KEY, parentId);
+            select = selInfo.selectFiltered;
+            criteriaMap.put(selType.filterKey, filter);
         }
-        return getSelectRows(model.PROXY_TABLE_NAME, select, criteriaMap,
-                joinMap, false);
+        if (selType.criterionKey != null) {
+            criteriaMap.put(selType.criterionKey, criterion);
+        }
+        return getSelectRows(selType.tableName, select, criteriaMap, null,
+                limitToOne);
     }
 
     @Override
-    public CopyHierarchyResult copyHierarchy(IdWithTypes source,
-            Serializable destParentId, String destName, Row overwriteRow)
-            throws StorageException {
+    public CopyResult copy(IdWithTypes source, Serializable destParentId,
+            String destName, Row overwriteRow) throws StorageException {
         // assert !model.separateMainTable; // other case not implemented
         Invalidations invalidations = new Invalidations();
         try {
@@ -852,34 +839,41 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                         invalParentId));
             }
             // copy all collected fragments
+            Set<Serializable> proxyIds = new HashSet<Serializable>();
             for (Entry<String, Set<Serializable>> entry : model.getPerFragmentIds(
                     idToTypes).entrySet()) {
                 String tableName = entry.getKey();
-                // TODO move ACL skip logic higher
-                if (tableName.equals(model.ACL_TABLE_NAME)) {
+                if (tableName.equals(model.HIER_TABLE_NAME)) {
+                    // already done
+                    continue;
+                }
+                if (tableName.equals(model.VERSION_TABLE_NAME)) {
+                    // versions not fileable
+                    // restore must not copy versions either
                     continue;
                 }
                 Set<Serializable> ids = entry.getValue();
-                // boolean overwrite = overwriteId != null
-                // && !tableName.equals(model.hierTableName);
-                // overwrite ? overwriteId : null
+                if (tableName.equals(model.PROXY_TABLE_NAME)) {
+                    for (Serializable id : ids) {
+                        proxyIds.add(idMap.get(id)); // copied ids
+                    }
+                }
                 Boolean invalidation = copyRows(tableName, ids, idMap,
                         overwriteId);
-                // TODO XXX check code:
                 if (invalidation != null) {
                     // overwrote something
                     // make sure things are properly invalidated in this and
                     // other sessions
                     if (Boolean.TRUE.equals(invalidation)) {
-                        invalidations.addModified(Collections.singleton(new RowId(
-                                tableName, overwriteId)));
+                        invalidations.addModified(new RowId(tableName,
+                                overwriteId));
                     } else {
-                        invalidations.addDeleted(Collections.singleton(new RowId(
-                                tableName, overwriteId)));
+                        invalidations.addDeleted(new RowId(tableName,
+                                overwriteId));
                     }
                 }
             }
-            return new CopyHierarchyResult(newRootId, invalidations);
+            return new CopyResult(newRootId, invalidations, proxyIds);
         } catch (Exception e) {
             checkConnectionReset(e);
             throw new StorageException("Could not copy: "
@@ -915,6 +909,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 }
                 ps.setObject(i, row.id); // id last in SQL
                 int count = ps.executeUpdate();
+                countExecute();
                 logger.logCount(count);
             } finally {
                 closeStatement(ps);
@@ -974,12 +969,11 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
     protected Serializable copyHier(Serializable id, Serializable parentId,
             String name, Map<Serializable, Serializable> idMap)
             throws SQLException {
-        boolean createVersion = parentId == null;
         boolean explicitName = name != null;
         Serializable newId = null;
 
-        String sql = sqlInfo.getCopyHierSql(explicitName, createVersion);
-        PreparedStatement ps = connection.prepareStatement(sql);
+        SQLInfoSelect copy = sqlInfo.getCopyHier(explicitName);
+        PreparedStatement ps = connection.prepareStatement(copy.sql);
         try {
             // TODO DB_IDENTITY
             newId = model.generateNewId();
@@ -988,11 +982,8 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
             if (logger.isLogEnabled()) {
                 debugValues = new ArrayList<Serializable>(4);
             }
-            List<Column> columns = sqlInfo.getCopyHierColumns(explicitName,
-                    createVersion);
-            Column whereColumn = sqlInfo.getCopyHierWhereColumn();
             int i = 1;
-            for (Column column : columns) {
+            for (Column column : copy.whatColumns) {
                 String key = column.getKey();
                 Serializable v;
                 if (key.equals(model.HIER_PARENT_KEY)) {
@@ -1003,8 +994,8 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 } else if (key.equals(model.MAIN_KEY)) {
                     // present if APP_UUID generation
                     v = newId;
-                } else if (createVersion
-                        && (key.equals(model.MAIN_BASE_VERSION_KEY) || key.equals(model.MAIN_CHECKED_IN_KEY))) {
+                } else if (key.equals(model.MAIN_BASE_VERSION_KEY)
+                        || key.equals(model.MAIN_CHECKED_IN_KEY)) {
                     v = null;
                 } else {
                     throw new RuntimeException(column.toString());
@@ -1015,12 +1006,14 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                 }
             }
             // last parameter is for 'WHERE "id" = ?'
+            Column whereColumn = copy.whereColumns.get(0);
             whereColumn.setToPreparedStatement(ps, i, id);
             if (debugValues != null) {
                 debugValues.add(id);
-                logger.logSQL(sql, debugValues);
+                logger.logSQL(copy.sql, debugValues);
             }
             int count = ps.executeUpdate();
+            countExecute();
             logger.logCount(count);
 
             // TODO DB_IDENTITY
@@ -1052,6 +1045,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
             }
             ps.setObject(1, id); // parent id
             ResultSet rs = ps.executeQuery();
+            countExecute();
             while (rs.next()) {
                 Serializable childId = null;
                 String childPrimaryType = null;
@@ -1072,7 +1066,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                         childMixinTypes));
                 if (debugValues != null) {
                     debugValues.add(childId + "/" + childPrimaryType + "/"
-                            + childMixinTypes);
+                            + Arrays.toString(childMixinTypes));
                 }
             }
             if (debugValues != null) {
@@ -1117,6 +1111,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                     }
                     deletePs.setObject(1, newId);
                     int delCount = deletePs.executeUpdate();
+                    countExecute();
                     logger.logCount(delCount);
                     before = delCount > 0;
                 }
@@ -1126,6 +1121,7 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
                     logger.logSQL(copySql, Arrays.asList(newId, id));
                 }
                 int copyCount = copyPs.executeUpdate();
+                countExecute();
                 logger.logCount(copyCount);
                 if (overwrite) {
                     after = copyCount > 0;
@@ -1138,6 +1134,89 @@ public class JDBCRowMapper extends JDBCConnection implements RowMapper {
         } finally {
             closeStatement(copyPs);
             closeStatement(deletePs);
+        }
+    }
+
+    @Override
+    public List<NodeInfo> remove(NodeInfo rootInfo) throws StorageException {
+        Serializable rootId = rootInfo.id;
+        List<NodeInfo> info = getDescendantsInfo(rootId);
+        info.add(rootInfo);
+        deleteRowsDirect(model.HIER_TABLE_NAME, Collections.singleton(rootId));
+        return info;
+    }
+
+    protected List<NodeInfo> getDescendantsInfo(Serializable rootId)
+            throws StorageException {
+        List<NodeInfo> descendants = new LinkedList<NodeInfo>();
+        String sql = sqlInfo.getSelectDescendantsInfoSql();
+        if (logger.isLogEnabled()) {
+            logger.logSQL(sql, Collections.singletonList(rootId));
+        }
+        List<Column> columns = sqlInfo.getSelectDescendantsInfoWhatColumns();
+        PreparedStatement ps = null;
+        try {
+            ps = connection.prepareStatement(sql);
+            List<String> debugValues = null;
+            if (logger.isLogEnabled()) {
+                debugValues = new LinkedList<String>();
+            }
+            ps.setObject(1, rootId); // parent id
+            ResultSet rs = ps.executeQuery();
+            countExecute();
+            while (rs.next()) {
+                Serializable id = null;
+                Serializable parentId = null;
+                String primaryType = null;
+                Boolean isProperty = null;
+                Serializable targetId = null;
+                Serializable versionableId = null;
+                int i = 1;
+                for (Column column : columns) {
+                    String key = column.getKey();
+                    Serializable value = column.getFromResultSet(rs, i++);
+                    if (key.equals(model.MAIN_KEY)) {
+                        id = value;
+                    } else if (key.equals(model.HIER_PARENT_KEY)) {
+                        parentId = value;
+                    } else if (key.equals(model.MAIN_PRIMARY_TYPE_KEY)) {
+                        primaryType = (String) value;
+                    } else if (key.equals(model.HIER_CHILD_ISPROPERTY_KEY)) {
+                        isProperty = (Boolean) value;
+                    } else if (key.equals(model.PROXY_TARGET_KEY)) {
+                        targetId = value;
+                    } else if (key.equals(model.PROXY_VERSIONABLE_KEY)) {
+                        versionableId = value;
+                    }
+                    // no mixins (not useful to caller)
+                    // no versions (not fileable)
+                }
+                descendants.add(new NodeInfo(id, parentId, primaryType,
+                        isProperty, versionableId, targetId));
+                if (debugValues != null) {
+                    if (debugValues.size() < DEBUG_MAX_TREE) {
+                        debugValues.add(id + "/" + primaryType);
+                    }
+                }
+            }
+            if (debugValues != null) {
+                if (debugValues.size() >= DEBUG_MAX_TREE) {
+                    debugValues.add("... (" + descendants.size() + ") results");
+                }
+                logger.log("  -> " + debugValues);
+            }
+            return descendants;
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new StorageException("Failed to get descendants", e);
+        } finally {
+            if (ps != null) {
+                try {
+                    closeStatement(ps);
+                } catch (SQLException e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
         }
     }
 

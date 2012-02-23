@@ -9,7 +9,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     Nuxeo - added generics in method signatures
- *******************************************************************************/
+ */
 package org.eclipse.ecr.runtime.model;
 
 

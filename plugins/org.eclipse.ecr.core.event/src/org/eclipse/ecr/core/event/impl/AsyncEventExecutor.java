@@ -16,6 +16,7 @@ package org.eclipse.ecr.core.event.impl;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +47,31 @@ public class AsyncEventExecutor {
 
     protected final BlockingQueue<Runnable> mono_queue;
 
+    protected static class ShutdownHandler implements RejectedExecutionHandler {
+
+        protected final RejectedExecutionHandler runningHandler;
+
+        protected ShutdownHandler(RejectedExecutionHandler handler) {
+            runningHandler = handler;
+        }
+
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (!executor.isShutdown()) {
+                runningHandler.rejectedExecution(r, executor);
+            } else {
+                r.run();
+            }
+        }
+
+        public static void install(ThreadPoolExecutor executor) {
+            RejectedExecutionHandler runningHandler = executor.getRejectedExecutionHandler();
+            RejectedExecutionHandler shutdownHandler = new ShutdownHandler(runningHandler);
+            executor.setRejectedExecutionHandler(shutdownHandler);
+        }
+
+    }
+
     public static AsyncEventExecutor create() {
         String val = Framework.getProperty("org.eclipse.ecr.core.event.async.poolSize");
         int poolSize = val == null ? 4 : Integer.parseInt(val);
@@ -63,19 +89,47 @@ public class AsyncEventExecutor {
         shutdown(0);
     }
 
-    public void shutdown(long timeout) {
+    public boolean shutdown(long timeout) {
+        // schedule shutdown
+        ShutdownHandler.install(executor);
         executor.shutdown();
-        // wait for thread pool to drain
-        long t0 = System.currentTimeMillis();
-        while (executor.getPoolSize() > 0) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
+        ShutdownHandler.install(mono_executor);
+        mono_executor.shutdown();
+
+        if (timeout <= 0) {
+            return false;
+        }
+
+        // wait for asynch executor termination
+        long ts = System.currentTimeMillis();
+        try {
+            boolean terminated =executor.awaitTermination(timeout, TimeUnit.MILLISECONDS);
+            if (!terminated) {
+                return false;
             }
-            if (timeout > 0 && System.currentTimeMillis() > t0 + timeout) {
-                break;
+        } catch (InterruptedException e) {
+           return false;
+        }
+
+        // check remaining time
+        timeout -= System.currentTimeMillis() - ts;
+        if (timeout <= 0) {
+            if (!mono_executor.isTerminated()) {
+                return false;
             }
         }
+
+        // wait for mono executor termination
+        try {
+            boolean terminated = mono_executor.awaitTermination(timeout, TimeUnit.MILLISECONDS);
+            if (!terminated) {
+                return false;
+            }
+        } catch (InterruptedException e) {
+           return false;
+        }
+
+        return true;
     }
 
     public AsyncEventExecutor(int poolSize, int maxPoolSize, int keepAliveTime,
@@ -90,10 +144,6 @@ public class AsyncEventExecutor {
     }
 
     public void run(List<EventListenerDescriptor> listeners, EventBundle event) {
-        // The following avoids incorrect counts, because ThreadPool workers
-        // started normally may be holding on to a firstTask about to start that
-        // isn't accounted for anywhere (getActiveCount doesn't return it).
-        executor.prestartAllCoreThreads();
         for (EventListenerDescriptor listener : listeners) {
             if (listener.isSingleThreaded()) {
                 mono_executor.execute(new Job(listener, event));
@@ -152,26 +202,26 @@ public class AsyncEventExecutor {
         @Override
         public void run() {
             EventBundleTransactionHandler txh = new EventBundleTransactionHandler();
+            long t0 = System.currentTimeMillis();
+            txh.beginNewTransaction(listener.getTransactionTimeout());
             try {
-                long t0 = System.currentTimeMillis();
-                txh.beginNewTransaction(listener.getTransactionTimeout());
                 listener.asPostCommitListener().handleEvent(bundle);
-                txh.commitOrRollbackTransaction();
-                EventStats stats = getEventStats();
-                if (stats != null) {
-                    stats.logAsyncExec(listener, System.currentTimeMillis()-t0);
-                }
-                log.debug("Async listener executed, commited tx");
             } catch (Throwable t) {
                 log.error("Failed to execute async event " + bundle.getName()
                         + " on listener " + listener.getName(), t);
-                txh.rollbackTransaction();
+                txh.setTransactionRollbackOnly();
             } finally {
                 bundle.disconnect();
             }
-
-            //Thread.currentThread().interrupt();
+            txh.commitOrRollbackTransaction();
+            EventStats stats = getEventStats();
+            if (stats != null) {
+                stats.logAsyncExec(listener, System.currentTimeMillis() - t0);
+            }
+            log.debug("Async listener executed, commited tx");
         }
+
+        // Thread.currentThread().interrupt();
     }
 
     /**

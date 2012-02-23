@@ -16,9 +16,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.GregorianCalendar;
@@ -32,6 +34,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -40,24 +43,30 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.nuxeo.osgi.BundleImpl;
 import org.eclipse.ecr.common.utils.XidImpl;
+import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.Lock;
 import org.eclipse.ecr.core.query.QueryFilter;
 import org.eclipse.ecr.core.storage.PartialList;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.FulltextIndexDescriptor;
+import org.eclipse.ecr.core.storage.sql.jdbc.ClusterNodeHandler;
+import org.eclipse.ecr.core.storage.sql.jdbc.JDBCBackend;
+import org.eclipse.ecr.core.storage.sql.jdbc.JDBCConnection;
+import org.eclipse.ecr.core.storage.sql.jdbc.JDBCConnectionPropagator;
 import org.eclipse.ecr.core.storage.sql.jdbc.JDBCMapper;
 import org.eclipse.ecr.core.storage.sql.testlib.DatabaseHelper;
+import org.eclipse.ecr.core.storage.sql.testlib.DatabaseOracle;
+import org.eclipse.ecr.core.storage.sql.testlib.DatabasePostgreSQL;
+import org.eclipse.ecr.core.storage.sql.testlib.DatabaseSQLServer;
 
 public class TestSQLBackend extends SQLBackendTestCase {
 
     private static final Log log = LogFactory.getLog(TestSQLBackend.class);
 
-    public static final String TEST_BUNDLE = "org.eclipse.ecr.core.storage.sql.test";
-
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        deployContrib(TEST_BUNDLE,
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
                 "OSGI-INF/test-backend-core-types-contrib.xml");
     }
 
@@ -80,13 +89,14 @@ public class TestSQLBackend extends SQLBackendTestCase {
     }
 
     public void testSchemaWithLongName() throws Exception {
-        deployContrib(TEST_BUNDLE, "OSGI-INF/test-schema-longname.xml");
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
+                "OSGI-INF/test-schema-longname.xml");
         Session session = repository.getConnection();
         session.getRootNode();
     }
 
     protected int getChildrenHardSize(Session session) {
-        return ((SessionImpl) session).context.hierContext.childrenRegularHard.size();
+        return ((SessionImpl) session).context.hierNonComplex.hardMap.size();
     }
 
     public void testChildren() throws Exception {
@@ -412,7 +422,6 @@ public class TestSQLBackend extends SQLBackendTestCase {
         assertEquals("900150983cd24fb0d6963f7d28e17f72", bin.getDigest());
         assertEquals("abc", readAllBytes(bin.getStream()));
         assertEquals("abc", readAllBytes(bin.getStream())); // readable twice
-
     }
 
     // assumes one read will read everything
@@ -426,6 +435,84 @@ public class TestSQLBackend extends SQLBackendTestCase {
         assertEquals(len, read);
         assertEquals(-1, in.read()); // EOF
         return new String(bytes, "ISO-8859-1");
+    }
+
+    public void testBinaryGC() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // windows doesn't have enough time granularity for such a test
+            return;
+        }
+
+        Session session = repository.getConnection();
+
+        // store some binaries
+        for (String str : Arrays.asList("ABC", "DEF", "GHI", "JKL")) {
+            addBinary(session, str, str);
+            addBinary(session, str, str + "2");
+        }
+        session.save();
+
+        BinaryManagerStatus status = runBinariesGC(0, null);
+        assertEquals(4, status.numBinaries); // ABC, DEF, GHI, JKL
+        assertEquals(4 * 3, status.sizeBinaries);
+        assertEquals(0, status.numBinariesGC);
+        assertEquals(0, status.sizeBinariesGC);
+
+        // remove some binaries
+        session.removeNode(session.getNodeByPath("/ABC", null));
+        session.removeNode(session.getNodeByPath("/ABC2", null));
+        session.removeNode(session.getNodeByPath("/DEF", null));
+        session.removeNode(session.getNodeByPath("/DEF2", null));
+        session.removeNode(session.getNodeByPath("/GHI", null)); // GHI2 remains
+        session.save();
+
+        // add a new binary during GC and revive one which was about to die
+        Thread.sleep(3 * 1000); // sleep before GC to pass its time threshold
+        status = runBinariesGC(1, session);
+        assertEquals(4, status.numBinaries); // DEF3, GHI2, JKL, MNO
+        assertEquals(4 * 3, status.sizeBinaries);
+        assertEquals(1, status.numBinariesGC); // ABC
+        assertEquals(1 * 3, status.sizeBinariesGC);
+
+        Thread.sleep(3 * 1000);
+        status = runBinariesGC(0, null);
+        assertEquals(4, status.numBinaries); // DEF3, GHI2, JKL, MNO
+        assertEquals(4 * 3, status.sizeBinaries);
+        assertEquals(0, status.numBinariesGC);
+        assertEquals(0, status.sizeBinariesGC);
+    }
+
+    protected void addBinary(Session session, String binstr, String name)
+            throws Exception {
+        Binary bin = session.getBinary(new ByteArrayInputStream(
+                binstr.getBytes("UTF-8")));
+        session.addChildNode(session.getRootNode(), name, null, "TestDoc",
+                false).setSimpleProperty("tst:bin", bin);
+    }
+
+    protected BinaryManagerStatus runBinariesGC(int moreWork, Session session)
+            throws Exception {
+        BinaryGarbageCollector gc = repository.getBinaryGarbageCollector();
+        assertFalse(gc.isInProgress());
+        gc.start();
+        assertTrue(gc.isInProgress());
+        repository.markReferencedBinaries(gc);
+        if (moreWork == 1) {
+            // while GC is in progress
+            // add a new binary
+            addBinary(session, "MNO", "MNO");
+            // and revive one that was about to be deleted
+            // note that this wouldn't work if we didn't recreate the Binary
+            // object from an InputStream and reused an old one
+            addBinary(session, "DEF", "DEF3");
+            session.save();
+        }
+        gc.stop(true);
+        return gc.getStatus();
     }
 
     public void testACLs() throws Exception {
@@ -585,6 +672,8 @@ public class TestSQLBackend extends SQLBackendTestCase {
         session2.save(); // process invalidations (non-transactional)
         children2 = session2.getChildren(folder2, null, false);
         assertEquals(0, children2.size());
+        // and doc1 seen as removed
+        assertNull(session2.getNodeById(doc1.getId()));
     }
 
     public void testCrossSessionChildrenInvalidationMove() throws Exception {
@@ -655,6 +744,129 @@ public class TestSQLBackend extends SQLBackendTestCase {
         assertEquals(1, childrenb2.size());
     }
 
+    public void testCrossSessionVersionsInvalidationAdd() throws Exception {
+        // in first session, create base folder
+        Session session1 = repository.getConnection();
+        Node root1 = session1.getRootNode();
+        Node node1 = session1.addChildNode(root1, "foo", null, "TestDoc", false);
+        Serializable id = node1.getId();
+        session1.save();
+
+        // in second session, list versions (empty)
+        Session session2 = repository.getConnection();
+        assertEquals(0, session2.getVersions(id).size());
+
+        // in first session, create version
+        session1.checkIn(node1, "v1", "comment");
+        session1.save();
+        assertEquals(1, session1.getVersions(id).size());
+
+        // in second session, list versions
+        session2.save(); // process invalidations (non-transactional)
+        assertEquals(1, session2.getVersions(id).size());
+    }
+
+    public void testCrossSessionVersionsInvalidationRemove() throws Exception {
+        // in first session, create base folder and version
+        Session session1 = repository.getConnection();
+        Node root1 = session1.getRootNode();
+        Node node1 = session1.addChildNode(root1, "foo", null, "TestDoc", false);
+        Serializable id = node1.getId();
+        Node ver1 = session1.checkIn(node1, "v1", "comment");
+
+        // in second session, list versions (empty)
+        Session session2 = repository.getConnection();
+        assertEquals(1, session2.getVersions(id).size());
+
+        // in first session, remove version
+        session1.removeNode(ver1);
+        session1.save();
+        assertEquals(0, session1.getVersions(id).size());
+
+        // in second session, list versions
+        session2.save(); // process invalidations (non-transactional)
+        assertEquals(0, session2.getVersions(id).size());
+    }
+
+    public void testCrossSessionProxiesInvalidationAdd() throws Exception {
+        // in first session, create base stuff
+        Session session1 = repository.getConnection();
+        Node root1 = session1.getRootNode();
+        Node node1 = session1.addChildNode(root1, "foo", null, "TestDoc", false);
+        Serializable id = node1.getId();
+        Node ver1 = session1.checkIn(node1, "v1", "comment");
+        Serializable verId = ver1.getId();
+        session1.save();
+
+        // in second session, list proxies (empty)
+        Session session2 = repository.getConnection();
+        Node ver2 = session2.getNodeById(verId);
+        assertEquals(0, session2.getProxies(ver2, null).size()); // by target
+
+        // in first session, create proxy
+        Node proxy1 = session1.addProxy(ver1.getId(), id, root1, "proxy", null);
+        session1.save();
+        assertEquals(1, session1.getProxies(ver1, null).size()); // by target
+
+        // in second session, list proxies
+        session2.save(); // process invalidations (non-transactional)
+        assertEquals(1, session2.getProxies(ver1, null).size()); // by target
+    }
+
+    public void testCrossSessionProxiesInvalidationRemove() throws Exception {
+        // in first session, create base stuff
+        Session session1 = repository.getConnection();
+        Node root1 = session1.getRootNode();
+        Node folder1 = session1.addChildNode(root1, "fold", null, "TestDoc",
+                false);
+        Node node1 = session1.addChildNode(root1, "foo", null, "TestDoc", false);
+        Serializable id = node1.getId();
+        Node ver1 = session1.checkIn(node1, "v1", "comment");
+        Serializable verId = ver1.getId();
+        Node proxy1 = session1.addProxy(ver1.getId(), id, folder1, "proxy",
+                null);
+        session1.save();
+
+        // in second session, list proxies
+        Session session2 = repository.getConnection();
+        Node ver2 = session2.getNodeById(verId);
+        assertEquals(1, session2.getProxies(ver2, null).size()); // by target
+
+        // in first session, remove proxy
+        session1.removeNode(proxy1);
+        session1.save();
+        assertEquals(0, session1.getProxies(ver1, null).size()); // by target
+
+        // in second session, list proxies
+        session2.save(); // process invalidations (non-transactional)
+        assertEquals(0, session2.getProxies(ver1, null).size()); // by target
+    }
+
+    public void testCrossSessionACLInvalidation() throws Exception {
+        // init repo and root ACL
+        Session session1 = repository.getConnection();
+        session1.close();
+
+        // read roots (with ACL) in two sessions
+        session1 = repository.getConnection();
+        Session session2 = repository.getConnection();
+        Node root1 = session1.getRootNode();
+        Node root2 = session2.getRootNode();
+        CollectionProperty prop1 = root1.getCollectionProperty(Model.ACL_PROP);
+        CollectionProperty prop2 = root2.getCollectionProperty(Model.ACL_PROP);
+
+        // change ACL in session 1
+        ACLRow acl = new ACLRow(0, "test", true, "Read", null, "Members");
+        prop1.setValue(new ACLRow[] { acl });
+        session1.save();
+
+        // process invalidations in session 2
+        session2.save();
+
+        // read invalidated ACL in session 2
+        prop2.getValue();
+    }
+
     public void testClustering() throws Exception {
         if (this instanceof TestSQLBackendNet
                 || this instanceof ITSQLBackendNet) {
@@ -663,6 +875,10 @@ public class TestSQLBackend extends SQLBackendTestCase {
         if (!DatabaseHelper.DATABASE.supportsClustering()) {
             System.out.println("Skipping clustering test for unsupported database: "
                     + DatabaseHelper.DATABASE.getClass().getName());
+            return;
+        }
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // windows doesn't have enough time granularity for such a test
             return;
         }
 
@@ -699,7 +915,7 @@ public class TestSQLBackend extends SQLBackendTestCase {
         // immediate check, invalidation delay means not done yet
         session2.save();
         Node doc2 = session2.getChildNode(folder2, "gee", false);
-        assertNull(doc2);
+        // assertNull(doc2); // could fail if machine very slow
         Thread.sleep(DELAY + 1); // wait invalidation delay
         session2.save(); // process invalidations (non-transactional)
         doc2 = session2.getChildNode(folder2, "gee", false);
@@ -714,7 +930,7 @@ public class TestSQLBackend extends SQLBackendTestCase {
         assertNull(title2.getString());
         // immediate check, invalidation delay means not done yet
         session2.save();
-        assertNull(title2.getString());
+        // assertNull(title2.getString()); // could fail if machine very slow
         Thread.sleep(DELAY + 1); // wait invalidation delay
         session2.save();
         // after commit, invalidations have been processed
@@ -1207,6 +1423,81 @@ public class TestSQLBackend extends SQLBackendTestCase {
         SimpleProperty sp = nodeac3.getSimpleProperty("tst:title");
         assertNotNull(sp);
         assertNull(sp.getString());
+
+        /*
+         * Test checkout + checkin after restore.
+         */
+        session.checkOut(nodea);
+        session.checkIn(nodea, "hop", null);
+    }
+
+    public void testVersionFetching() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node folder = session.addChildNode(root, "folder", null, "TestDoc",
+                false);
+        Node node = session.addChildNode(folder, "node", null, "TestDoc", false);
+        session.save();
+
+        // create two versions
+        Node ver1 = session.checkIn(node, "foolab1", "desc1");
+        session.checkOut(node);
+        Node ver2 = session.checkIn(node, "foolab2", "desc2");
+
+        // get list
+        List<Node> list = session.getVersions(node.getId());
+        assertEquals(2, list.size());
+        assertEquals(ver1.getId(), list.get(0).getId());
+        assertEquals(ver2.getId(), list.get(1).getId());
+        // get by label
+        Node v = session.getVersionByLabel(node.getId(), "foolab1");
+        assertEquals(ver1.getId(), v.getId());
+        // get last
+        v = session.getLastVersion(node.getId());
+        assertEquals(ver2.getId(), v.getId());
+
+        // remove version
+        session.removeNode(ver1);
+
+        // get list
+        list = session.getVersions(node.getId());
+        assertEquals(1, list.size());
+        assertEquals(ver2.getId(), list.get(0).getId());
+
+        // copy version
+        // session.copy(ver1, null, "bar"); not possible right now
+    }
+
+    public void testVersionCopy() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node foldera = session.addChildNode(root, "foldera", null, "TestDoc",
+                false);
+        Node nodea = session.addChildNode(foldera, "nodea", null, "TestDoc",
+                false);
+        Node ver = session.checkIn(nodea, "1", "ver 1");
+        session.save();
+
+        // copy checked in doc
+        assertEquals(Boolean.TRUE,
+                nodea.getSimpleProperty("ecm:isCheckedIn").getValue());
+        assertNotNull(nodea.getSimpleProperty("ecm:baseVersion").getValue());
+        Node nodeb = session.copy(nodea, root, "nodeb");
+        assertNull(nodeb.getSimpleProperty("ecm:isCheckedIn").getValue());
+        assertNull(nodeb.getSimpleProperty("ecm:baseVersion").getValue());
+
+        // copy folder including checked in doc
+        Node folderb = session.copy(foldera, root, "folderb");
+        Node nodec = session.getChildNode(folderb, "nodea", false);
+        assertNull(nodec.getSimpleProperty("ecm:isCheckedIn").getValue());
+
+        // copy version as new doc
+        assertTrue(ver.isVersion());
+        assertEquals("1", ver.getSimpleProperty("ecm:versionLabel").getValue());
+        Node vercop = session.copy(ver, root, "vercop");
+        assertFalse(vercop.isVersion());
+        assertNull(vercop.getSimpleProperty("ecm:versionLabel").getValue());
+        assertNull(vercop.getSimpleProperty("ecm:isCheckedIn").getValue());
     }
 
     public void testProxies() throws Exception {
@@ -1268,6 +1559,150 @@ public class TestSQLBackend extends SQLBackendTestCase {
         assertEquals(0, proxies.size());
     }
 
+    public void testProxyFetching() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node folder1 = session.addChildNode(root, "folder1", null, "TestDoc",
+                false);
+        Node folder2 = session.addChildNode(root, "folder2", null, "TestDoc",
+                false);
+        Node node = session.addChildNode(folder1, "node", null, "TestDoc",
+                false);
+        session.save();
+
+        // create two versions
+        Node ver1 = session.checkIn(node, "foolab1", "desc1");
+        session.checkOut(node);
+        Node ver2 = session.checkIn(node, "foolab2", "desc2");
+
+        // make proxies
+        Node proxy1a = session.addProxy(ver1.getId(), node.getId(), folder1,
+                "proxy1a", null);
+        Node proxy1b = session.addProxy(ver1.getId(), node.getId(), folder2,
+                "proxy1b", null);
+        Node proxy2 = session.addProxy(ver2.getId(), node.getId(), folder1,
+                "proxy2", null);
+
+        // get by versionable id
+        List<Node> list = session.getProxies(node, null);
+        assertSameSet(list, proxy1a, proxy1b, proxy2);
+        // get by proxy (same versionable id)
+        list = session.getProxies(proxy1a, null);
+        assertSameSet(list, proxy1a, proxy1b, proxy2);
+        // get by target id
+        list = session.getProxies(ver1, null);
+        assertSameSet(list, proxy1a, proxy1b);
+        list = session.getProxies(ver2, null);
+        assertSameSet(list, proxy2);
+        // get by versionable id and parent
+        list = session.getProxies(node, folder2);
+        assertSameSet(list, proxy1b);
+
+        // remove proxy1a
+        session.removeNode(proxy1a);
+        list = session.getProxies(ver1, null);
+        assertSameSet(list, proxy1b);
+        list = session.getProxies(ver2, null);
+        assertSameSet(list, proxy2);
+        list = session.getProxies(node, null);
+        assertSameSet(list, proxy1b, proxy2);
+
+        // retarget proxy2 to ver1
+        session.setProxyTarget(proxy2, ver1.getId());
+        list = session.getProxies(ver1, null);
+        assertSameSet(list, proxy1b, proxy2);
+        list = session.getProxies(ver2, null);
+        assertEquals(0, list.size());
+
+        // copy proxy1b through its container folder2
+        session.copy(folder2, root, "folder3");
+        // don't fetch proxy3 yet
+        list = session.getProxies(node, null);
+        assertEquals(3, list.size()); // selection properly updated
+    }
+
+    public void testProxyDeepRemoval() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node folder1 = session.addChildNode(root, "folder1", null, "TestDoc",
+                false);
+        Node folder2 = session.addChildNode(root, "folder2", null, "TestDoc",
+                false);
+        Node folder3 = session.addChildNode(root, "folder3", null, "TestDoc",
+                false);
+        // create node in folder1
+        Node node = session.addChildNode(folder1, "node", null, "TestDoc",
+                false);
+        // create version
+        Node ver = session.checkIn(node, "foolab1", "desc1");
+        // create proxy2 in folder2
+        session.addProxy(ver.getId(), node.getId(), folder2, "proxy2", null);
+        // create proxy3 in folder3
+        session.addProxy(ver.getId(), node.getId(), folder3, "proxy3", null);
+
+        List<Node> list;
+        list = session.getProxies(ver, null); // by target
+        assertEquals(2, list.size());
+        list = session.getProxies(node, null); // by series
+        assertEquals(2, list.size());
+
+        // remove proxy through container folder2
+        session.removeNode(folder2);
+
+        // only proxy3 left
+        list = session.getProxies(ver, null); // by target
+        assertEquals(1, list.size());
+        list = session.getProxies(node, null); // by series
+        assertEquals(1, list.size());
+
+        // remove target, should remove proxies as well
+        session.removeNode(ver);
+        list = session.getProxies(ver, null); // by target
+        assertEquals(0, list.size());
+    }
+
+    public void testProxyDeepCopy() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node folder1 = session.addChildNode(root, "folder1", null, "TestDoc",
+                false);
+        Node folder2 = session.addChildNode(root, "folder2", null, "TestDoc",
+                false);
+        // create node in folder1
+        Node node = session.addChildNode(folder1, "node", null, "TestDoc",
+                false);
+        // create version
+        Node ver = session.checkIn(node, "foolab1", "desc1");
+        // create proxy in folder2
+        session.addProxy(ver.getId(), node.getId(), folder2, "proxy2", null);
+
+        List<Node> list;
+        list = session.getProxies(ver, null); // by target
+        assertEquals(1, list.size());
+        list = session.getProxies(node, null); // by series
+        assertEquals(1, list.size());
+
+        // copy folder2 to folder3
+        session.copy(folder2, root, "fodler3");
+        // one more proxy
+        list = session.getProxies(ver, null); // by target
+        assertEquals(2, list.size());
+        list = session.getProxies(node, null); // by series
+        assertEquals(2, list.size());
+    }
+
+    private static void assertSameSet(Collection<Node> actual, Node... expected) {
+        assertEquals(idSet(Arrays.asList(expected)), idSet(actual));
+    }
+
+    private static Set<Serializable> idSet(Collection<Node> nodes) {
+        Set<Serializable> set = new HashSet<Serializable>();
+        for (Node node : nodes) {
+            set.add(node.getId());
+        }
+        return set;
+    }
+
     public void testDelete() throws Exception {
         Session session = repository.getConnection();
         Node root = session.getRootNode();
@@ -1283,6 +1718,60 @@ public class TestSQLBackend extends SQLBackendTestCase {
         nodeb.setSimpleProperty("tst:title", "bar2");
         nodec.setSimpleProperty("tst:title", "gee2");
         session.removeNode(nodea);
+        session.save();
+    }
+
+    public void testBulkUpdates() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+
+        // bulk insert
+        Node nodea = session.addChildNode(root, "foo", null, "TestDoc", false);
+        Node nodeb = session.addChildNode(nodea, "bar", null, "TestDoc", false);
+        Node nodec = session.addChildNode(nodeb, "gee", null, "TestDoc", false);
+        nodea.setSimpleProperty("tst:title", "foo");
+        nodeb.setSimpleProperty("tst:title", "bar");
+        nodec.setSimpleProperty("tst:title", "gee");
+        nodea.setCollectionProperty("tst:subjects", new String[] { "a", "b",
+                "c" });
+        nodeb.setCollectionProperty("tst:subjects", new String[] { "d", "e",
+                "f" });
+        nodec.setCollectionProperty("tst:subjects", new String[] { "g", "h" });
+        session.save();
+
+        // bulk update
+        nodea.setSimpleProperty("tst:title", "foo2");
+        nodeb.setSimpleProperty("tst:title", "bar2");
+        nodec.setSimpleProperty("tst:title", "gee2");
+        nodea.setCollectionProperty("tst:subjects", new String[] { "a2", "b2",
+                "c2" });
+        nodeb.setCollectionProperty("tst:subjects", new String[] { "d2", "e2" });
+        nodec.setCollectionProperty("tst:subjects", new String[] {});
+        session.save();
+
+        // bulk update, not identical groups of keys
+        nodea.setSimpleProperty("tst:title", "foo3");
+        nodea.setSimpleProperty("tst:count", Long.valueOf(333));
+        nodeb.setSimpleProperty("tst:title", "bar3");
+        nodec.setSimpleProperty("tst:title", "gee3");
+        session.save();
+
+        // bulk update, ACLs
+        ACLRow acl1 = new ACLRow(1, "test", true, "Write", "steve", null);
+        ACLRow acl2 = new ACLRow(0, "test", true, "Read", null, "Members");
+        ACLRow acl3 = new ACLRow(2, "local", true, "ReadWrite", "bob", null);
+        nodea.getCollectionProperty(Model.ACL_PROP).setValue(
+                new ACLRow[] { acl1, acl2, acl3 });
+        nodeb.getCollectionProperty(Model.ACL_PROP).setValue(
+                new ACLRow[] { acl2 });
+        nodec.getCollectionProperty(Model.ACL_PROP).setValue(
+                new ACLRow[] { acl3 });
+        session.save();
+
+        // bulk delete
+        session.removeNode(nodea);
+        session.removeNode(nodeb);
+        session.removeNode(nodec);
         session.save();
     }
 
@@ -1439,6 +1928,75 @@ public class TestSQLBackend extends SQLBackendTestCase {
                 "SELECT * FROM TestDoc WHERE ecm:fulltext = 'world' AND  ecm:fulltext = 'barbar'",
                 QueryFilter.EMPTY, false);
         assertEquals(0, res.list.size());
+
+        // other query generation cases
+
+        // no union and implicit score sort
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'world' AND ecm:isProxy = 0",
+                QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+
+        // order by so no implicit score sort
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'world'"
+                        + " ORDER BY dc:title", QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+
+        // order by and no union so no implicit score sort
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'world' AND ecm:isProxy = 0"
+                        + " ORDER BY dc:title", QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+
+        // no union but distinct so no implicit score sort
+        res = session.query(
+                "SELECT DISTINCT * FROM TestDoc WHERE ecm:fulltext = 'world' AND ecm:isProxy = 0",
+                QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+    }
+
+    public void testFulltextCustomParser() throws Exception {
+        // custom fulltext config
+        repository.close();
+        RepositoryDescriptor descriptor = newDescriptor(-1, false);
+        descriptor.fulltextParser = DummyFulltextParser.class.getName();
+        repository = new RepositoryImpl(descriptor);
+
+        Session session = repository.getConnection();
+        DummyFulltextParser.collected = new HashSet<String>();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+        DatabaseHelper.DATABASE.sleepForFulltext();
+
+        assertEquals(new HashSet<String>(Arrays.asList( //
+                "tst:title=hello world", //
+                "tst:subjects=foo", //
+                "tst:subjects=bar", //
+                "tst:subjects=moo", //
+                "tst:owner/firstname=Bruce", //
+                "tst:owner/lastname=Willis", //
+                "tst:couple/first/firstname=Steve", //
+                "tst:couple/first/lastname=Jobs", //
+                "tst:couple/second/firstname=Steve", //
+                "tst:couple/second/lastname=McQueen", //
+                "tst:friends/*/firstname=John", //
+                "tst:friends/*/lastname=Smith", //
+                "tst:friends/*/lastname=Lennon")),
+                DummyFulltextParser.collected);
+        DummyFulltextParser.collected = null;
+
+        PartialList<Serializable> res;
+
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'lennon'",
+                QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // with custom parsing
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'lennonyeah'",
+                QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
     }
 
     public void testFulltextDisabled() throws Exception {
@@ -1517,6 +2075,107 @@ public class TestSQLBackend extends SQLBackendTestCase {
         }
         res = session.query(
                 "SELECT * FROM TestDoc WHERE ecm:fulltext.tst:title = 'testing'",
+                QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+    }
+
+    public void testFulltextPrefix() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node node = session.addChildNode(root, "foo", null, "TestDoc", false);
+        node.setSimpleProperty("tst:title", "hello world citizens");
+        session.save();
+        DatabaseHelper.DATABASE.sleepForFulltext();
+
+        PartialList<Serializable> res;
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'wor*'",
+                QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+        res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'wor%'",
+                QueryFilter.EMPTY, false);
+        assertEquals(1, res.list.size());
+
+        // BBB for direct PostgreSQL syntax
+        if (DatabaseHelper.DATABASE instanceof DatabasePostgreSQL) {
+            res = session.query(
+                    "SELECT * FROM TestDoc WHERE ecm:fulltext = 'wor:*'",
+                    QueryFilter.EMPTY, false);
+            assertEquals(1, res.list.size());
+        }
+
+        // prefix in phrase search
+        // not in H2 (with Lucene default parser)
+        // not in MySQL
+        if (DatabaseHelper.DATABASE instanceof DatabasePostgreSQL
+                || DatabaseHelper.DATABASE instanceof DatabaseOracle
+                || DatabaseHelper.DATABASE instanceof DatabaseSQLServer) {
+            res = session.query(
+                    "SELECT * FROM TestDoc WHERE ecm:fulltext = '\"hello wor*\"'",
+                    QueryFilter.EMPTY, false);
+            assertEquals(1, res.list.size());
+        }
+        // prefix wildcard in the middle of a phrase
+        // really only in Oracle, and approximation in PostgreSQL
+        if (DatabaseHelper.DATABASE instanceof DatabasePostgreSQL
+                || DatabaseHelper.DATABASE instanceof DatabaseOracle) {
+            res = session.query(
+                    "SELECT * FROM TestDoc WHERE ecm:fulltext = '\"hel* world\"'",
+                    QueryFilter.EMPTY, false);
+            assertEquals(1, res.list.size());
+            res = session.query(
+                    "SELECT * FROM TestDoc WHERE ecm:fulltext = '\"hel* wor*\"'",
+                    QueryFilter.EMPTY, false);
+            assertEquals(1, res.list.size());
+            // PostgreSQL mid-phrase wildcards are too greedy
+            if (DatabaseHelper.DATABASE instanceof DatabaseOracle) {
+                // no match wanted here
+                res = session.query(
+                        "SELECT * FROM TestDoc WHERE ecm:fulltext = '\"hel* citizens\"'",
+                        QueryFilter.EMPTY, false);
+                assertEquals(0, res.list.size());
+            }
+        }
+    }
+
+    public void testFulltextCompatibilityPostgreSQL() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+        if (!(DatabaseHelper.DATABASE instanceof DatabasePostgreSQL)) {
+            return;
+        }
+        JDBCMapper.testProps.put(JDBCMapper.TEST_UPGRADE, Boolean.TRUE);
+        JDBCMapper.testProps.put(JDBCMapper.TEST_UPGRADE_FULLTEXT, Boolean.TRUE);
+        try {
+            // first init to create old fulltext table
+            repository.getConnection();
+            repository.close();
+        } finally {
+            JDBCMapper.testProps.clear();
+        }
+
+        // reinit to have a proper sqlInfo and model
+        repository = newRepository(-1, false);
+
+        // test with pre-existing fulltext table in compatibility mode
+
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node node = session.addChildNode(root, "foo", null, "TestDoc", false);
+        node.setSimpleProperty("tst:title", "hello world");
+        session.save();
+        DatabaseHelper.DATABASE.sleepForFulltext(); // postgresql, not needed
+
+        PartialList<Serializable> res = session.query(
+                "SELECT * FROM TestDoc WHERE ecm:fulltext = 'world'",
                 QueryFilter.EMPTY, false);
         assertEquals(1, res.list.size());
     }
@@ -1872,18 +2531,62 @@ public class TestSQLBackend extends SQLBackendTestCase {
         session.save();
     }
 
+    public void testMixinWithSamePropertyName() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node node = session.addChildNode(root, "foo", null, "TestDoc", false);
+        node.setSimpleProperty("tst:title", "bar");
+        session.save();
+
+        node.addMixinType("Aged");
+        node.setSimpleProperty("age:title", "gee");
+        session.save();
+
+        assertEquals("bar", node.getSimpleProperty("tst:title").getValue());
+        assertEquals("gee", node.getSimpleProperty("age:title").getValue());
+    }
+
     public void testMixinCopy() throws Exception {
         Session session = repository.getConnection();
         Node root = session.getRootNode();
         Node node = session.addChildNode(root, "foo", null, "TestDoc", false);
         node.addMixinType("Aged");
         node.setSimpleProperty("age:age", "123");
+        node.setCollectionProperty("age:nicknames",
+                new String[] { "bar", "gee" });
         session.save();
 
         // copy the doc
         Node copy = session.copy(node, root, "foo2");
         SimpleProperty p = copy.getSimpleProperty("age:age");
         assertEquals("123", p.getValue());
+        CollectionProperty p2 = copy.getCollectionProperty("age:nicknames");
+        assertEquals(Arrays.asList("bar", "gee"), Arrays.asList(p2.getValue()));
+    }
+
+    public void testMixinCopyDeep() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+
+        Node folder = session.addChildNode(root, "folder", null, "TestDoc",
+                false);
+        session.save();
+
+        Node node = session.addChildNode(folder, "foo", null, "TestDoc", false);
+        node.addMixinType("Aged");
+        node.setSimpleProperty("age:age", "123");
+        node.setCollectionProperty("age:nicknames",
+                new String[] { "bar", "gee" });
+        session.save();
+
+        // copy the folder
+        session.copy(folder, root, "folder2");
+
+        Node copy = session.getNodeByPath("/folder2/foo", null);
+        SimpleProperty p = copy.getSimpleProperty("age:age");
+        assertEquals("123", p.getValue());
+        CollectionProperty p2 = copy.getCollectionProperty("age:nicknames");
+        assertEquals(Arrays.asList("bar", "gee"), Arrays.asList(p2.getValue()));
     }
 
     public void testMixinFulltext() throws Exception {
@@ -1953,8 +2656,6 @@ public class TestSQLBackend extends SQLBackendTestCase {
         runParallelLocking(nodeId, repository, repository);
     }
 
-    // TODO disabled as there still are problems in cluster mode
-    // due to invalidations not really being synchronous
     public void testLockingParallelClustered() throws Throwable {
         if (this instanceof TestSQLBackendNet
                 || this instanceof ITSQLBackendNet) {
@@ -1996,22 +2697,37 @@ public class TestSQLBackend extends SQLBackendTestCase {
                 firstReady, barrier);
         LockingJob r2 = new LockingJob(repository2, "t2-", nodeId, TIME, null,
                 barrier);
-        Thread t1 = new Thread(r1, "t1");
-        Thread t2 = new Thread(r2, "t2");
-        t1.start();
-        firstReady.await();
-        t2.start();
+        Thread t1 = null;
+        Thread t2 = null;
+        try {
+            t1 = new Thread(r1, "t1");
+            t2 = new Thread(r2, "t2");
+            t1.start();
+            if (firstReady.await(60, TimeUnit.SECONDS)) {
+                t2.start();
 
-        t1.join();
-        t2.join();
-        if (r1.throwable != null) {
-            throw r1.throwable;
+                t1.join();
+                t1 = null;
+                t2.join();
+                t2 = null;
+                if (r1.throwable != null) {
+                    throw r1.throwable;
+                }
+                if (r2.throwable != null) {
+                    throw r2.throwable;
+                }
+                int count = r1.count + r2.count;
+                log.warn("Parallel locks per second: " + count);
+            } // else timed out
+        } finally {
+            // error condition recovery
+            if (t1 != null) {
+                t1.interrupt();
+            }
+            if (t2 != null) {
+                t2.interrupt();
+            }
         }
-        if (r2.throwable != null) {
-            throw r2.throwable;
-        }
-        int count = r1.count + r2.count;
-        log.warn("Parallel locks per second: " + count);
     }
 
     protected static class LockingJob implements Runnable {
@@ -2024,9 +2740,9 @@ public class TestSQLBackend extends SQLBackendTestCase {
 
         protected final long waitMillis;
 
-        public final CountDownLatch ready;
+        public CountDownLatch ready;
 
-        public final CyclicBarrier barrier;
+        public CyclicBarrier barrier;
 
         public Throwable throwable;
 
@@ -2050,6 +2766,16 @@ public class TestSQLBackend extends SQLBackendTestCase {
             } catch (Throwable t) {
                 t.printStackTrace();
                 throwable = t;
+            } finally {
+                // error recovery
+                // still count down as main thread is awaiting us
+                if (ready != null) {
+                    ready.countDown();
+                }
+                // break barrier for other thread
+                if (barrier != null) {
+                    barrier.reset(); // break barrier
+                }
             }
         }
 
@@ -2057,8 +2783,10 @@ public class TestSQLBackend extends SQLBackendTestCase {
             Session session = repository.getConnection();
             if (ready != null) {
                 ready.countDown();
+                ready = null;
             }
-            barrier.await();
+            barrier.await(30, TimeUnit.SECONDS); // throws on timeout
+            barrier = null;
             // System.err.println(namePrefix + " starting");
             long start = System.currentTimeMillis();
             do {
@@ -2117,6 +2845,740 @@ public class TestSQLBackend extends SQLBackendTestCase {
         id = "11111111-2222-3333-4444-555555555555";
         lock = session.getLock(id);
         assertNull(lock);
+    }
+
+    public void testJDBCConnectionPropagatorLeak() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+        assertEquals(0, getJDBCConnectionPropagatorSize());
+        repository.getConnection().close();
+        // 1 connection remains for the lock manager
+        assertEquals(1, getJDBCConnectionPropagatorSize());
+        Session s1 = repository.getConnection();
+        Session s2 = repository.getConnection();
+        Session s3 = repository.getConnection();
+        assertEquals(1 + 3, getJDBCConnectionPropagatorSize());
+        s1.close();
+        s2.close();
+        s3.close();
+        assertEquals(1, getJDBCConnectionPropagatorSize());
+    }
+
+    protected int getJDBCConnectionPropagatorSize() throws Exception {
+        Field backendField = RepositoryImpl.class.getDeclaredField("backend");
+        backendField.setAccessible(true);
+        JDBCBackend backend = (JDBCBackend) backendField.get(repository);
+        Field propagatorField = JDBCBackend.class.getDeclaredField("connectionPropagator");
+        propagatorField.setAccessible(true);
+        JDBCConnectionPropagator propagator = (JDBCConnectionPropagator) propagatorField.get(backend);
+        return propagator.connections.size();
+    }
+
+    public void testCacheInvalidationsPropagatorLeak() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+        assertEquals(0, getCacheInvalidationsPropagatorSize());
+        Session session = repository.getConnection();
+        assertEquals(1, getCacheInvalidationsPropagatorSize());
+        session.close();
+        assertEquals(0, getCacheInvalidationsPropagatorSize());
+        Session s1 = repository.getConnection();
+        Session s2 = repository.getConnection();
+        Session s3 = repository.getConnection();
+        assertEquals(3, getCacheInvalidationsPropagatorSize());
+        s1.close();
+        s2.close();
+        s3.close();
+        assertEquals(0, getCacheInvalidationsPropagatorSize());
+    }
+
+    protected int getCacheInvalidationsPropagatorSize() throws Exception {
+        Field propagatorField = RepositoryImpl.class.getDeclaredField("cachePropagator");
+        propagatorField.setAccessible(true);
+        InvalidationsPropagator propagator = (InvalidationsPropagator) propagatorField.get(repository);
+        return propagator.queues.size();
+    }
+
+    public void testClusterInvalidationsPropagatorLeak() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+        if (!DatabaseHelper.DATABASE.supportsClustering()) {
+            System.out.println("Skipping clustering test for unsupported database: "
+                    + DatabaseHelper.DATABASE.getClass().getName());
+            return;
+        }
+        repository.close();
+
+        // get a clustered repository
+        long DELAY = 500; // ms
+        repository = newRepository(DELAY, false);
+
+        assertEquals(0, getClusterInvalidationsPropagatorSize());
+        Session session = repository.getConnection();
+        // lock manager + session
+        assertEquals(1 + 1, getClusterInvalidationsPropagatorSize());
+        session.close();
+        // 1 connection remains for the lock manager
+        assertEquals(1, getClusterInvalidationsPropagatorSize());
+    }
+
+    protected int getClusterInvalidationsPropagatorSize() throws Exception {
+        Field backendField = RepositoryImpl.class.getDeclaredField("backend");
+        backendField.setAccessible(true);
+        JDBCBackend backend = (JDBCBackend) backendField.get(repository);
+        Field handlerField = JDBCBackend.class.getDeclaredField("clusterNodeHandler");
+        handlerField.setAccessible(true);
+        ClusterNodeHandler clusterNodeHandler = (ClusterNodeHandler) handlerField.get(backend);
+        if (clusterNodeHandler == null) {
+            return 0;
+        }
+        Field propagatorField = ClusterNodeHandler.class.getDeclaredField("propagator");
+        propagatorField.setAccessible(true);
+        InvalidationsPropagator propagator = (InvalidationsPropagator) propagatorField.get(clusterNodeHandler);
+        return propagator.queues.size();
+    }
+
+    @SuppressWarnings("boxing")
+    protected List<Serializable> makeComplexDoc(Session session)
+            throws StorageException {
+        Node root = session.getRootNode();
+
+        Node doc = session.addChildNode(root, "doc", null, "TestDoc", false);
+        Serializable docId = doc.getId();
+
+        // tst:title = 'hello world'
+        doc.setSimpleProperty("tst:title", "hello world");
+        // tst:subjects = ['foo', 'bar', 'moo']
+        // tst:subjects/item[0] = 'foo'
+        // tst:subjects/0 = 'foo'
+        doc.setCollectionProperty("tst:subjects", new String[] { "foo", "bar",
+                "moo" });
+
+        Node owner = session.addChildNode(doc, "tst:owner", null, "person",
+                true);
+        // tst:owner/firstname = 'Bruce'
+        owner.setSimpleProperty("firstname", "Bruce");
+        // tst:owner/lastname = 'Willis'
+        owner.setSimpleProperty("lastname", "Willis");
+
+        Node duo = session.addChildNode(doc, "tst:couple", null, "duo", true);
+        Node first = session.addChildNode(duo, "first", null, "person", true);
+        Node second = session.addChildNode(duo, "second", null, "person", true);
+        // tst:couple/first/firstname = 'Steve'
+        first.setSimpleProperty("firstname", "Steve");
+        // tst:couple/first/lastname = 'Jobs'
+        first.setSimpleProperty("lastname", "Jobs");
+        // tst:couple/second/firstname = 'Steve'
+        second.setSimpleProperty("firstname", "Steve");
+        // tst:couple/second/lastname = 'McQueen'
+        second.setSimpleProperty("lastname", "McQueen");
+
+        Node friend0 = session.addChildNode(doc, "tst:friends", 0L, "person",
+                true);
+        Node friend1 = session.addChildNode(doc, "tst:friends", 1L, "person",
+                true);
+        // tst:friends/item[0]/firstname = 'John'
+        // tst:friends/0/firstname = 'John'
+        friend0.setSimpleProperty("firstname", "John");
+        // tst:friends/0/lastname = 'Lennon'
+        friend0.setSimpleProperty("lastname", "Lennon");
+        // tst:friends/1/firstname = 'John'
+        friend1.setSimpleProperty("firstname", "John");
+        // tst:friends/1/lastname = 'Smith'
+        friend1.setSimpleProperty("lastname", "Smith");
+
+        session.save();
+
+        return Arrays.asList(docId);
+    }
+
+    protected static String FROM_WHERE = " FROM TestDoc WHERE ecm:isProxy = 0 AND ";
+
+    protected static String SELECT_WHERE = "SELECT *" + FROM_WHERE;
+
+    protected static String SELECT_TITLE_WHERE = "SELECT tst:title"
+            + FROM_WHERE;
+
+    public void testQueryComplexMakeDoc() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+        IterableQueryResult it;
+
+        clause = "tst:title = 'hello world'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(SELECT_TITLE_WHERE + clause, "NXQL",
+                QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("hello world", it.iterator().next().get("tst:title"));
+        it.close();
+
+        clause = "tst:subjects = 'foo'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(SELECT_TITLE_WHERE + clause, "NXQL",
+                QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("hello world", it.iterator().next().get("tst:title"));
+        it.close();
+    }
+
+    public void testQueryComplexWhere() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+        IterableQueryResult it;
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:owner'
+        // AND p.firstname = 'Bruce'
+        clause = "tst:owner/firstname = 'Bruce'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:title, tst:owner/lastname"
+                + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("Willis", it.iterator().next().get("tst:owner/lastname"));
+        it.close();
+
+        // check other operators
+
+        clause = "tst:owner/firstname LIKE 'B%'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:owner/firstname IS NOT NULL";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:owner/firstname IN ('Bruce', 'Bilbo')";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // JOIN hierarchy h3 ON h3.parentid = h2.id
+        // LEFT JOIN person p ON p.id = h3.id
+        // WHERE h2.name = 'tst:couple'
+        // AND h3.name = 'first'
+        // AND p.firstname = 'Steve'
+        clause = "tst:couple/first/firstname = 'Steve'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(
+                "SELECT tst:title, tst:couple/first/lastname" + FROM_WHERE
+                        + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("Jobs",
+                it.iterator().next().get("tst:couple/first/lastname"));
+        it.close();
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends' AND h2.pos = 0
+        // AND p.firstname = 'John'
+        clause = "tst:friends/0/firstname = 'John'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:title, tst:friends/0/lastname"
+                + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("Lennon",
+                it.iterator().next().get("tst:friends/0/lastname"));
+        it.close();
+
+        // alternate xpath syntax
+        clause = "tst:friends/item[0]/firstname = 'John'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends'
+        // AND p.firstname = 'John'
+        clause = "tst:friends/*/firstname = 'John'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(SELECT_TITLE_WHERE + clause, "NXQL",
+                QueryFilter.EMPTY);
+        assertEquals(2, it.size()); // two uncorrelated stars
+        it.close();
+
+        // alternate xpath syntax
+        clause = "tst:friends/item[*]/firstname = 'John'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends'
+        // AND p.firstname = 'John'
+        clause = "tst:friends/*/firstname = 'John'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(SELECT_TITLE_WHERE + clause, "NXQL",
+                QueryFilter.EMPTY);
+        assertEquals(2, it.size()); // two uncorrelated stars
+        it.close();
+
+        // hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends'
+        // AND p.firstname = 'John'
+        // AND p.lastname = 'Smith'
+        clause = "tst:friends/*1/firstname = 'John'"
+                + " AND tst:friends/*1/lastname = 'Smith'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:title, tst:friends/*1/lastname"
+                + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size()); // correlated stars
+        assertEquals("Smith",
+                it.iterator().next().get("tst:friends/*1/lastname"));
+        it.close();
+
+        // alternate xpath syntax
+        clause = "tst:friends/item[*1]/firstname = 'John'"
+                + " AND tst:friends/item[*1]/lastname = 'Smith'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+    }
+
+    public void testQueryComplexReturned() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+        IterableQueryResult it;
+        Set<String> set;
+
+        // SELECT p.lastname
+        // FROM hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends'
+        clause = "tst:title = 'hello world'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:friends/*/lastname" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(2, it.size());
+        set = new HashSet<String>();
+        for (Map<String, Serializable> map : it) {
+            set.add((String) map.get("tst:friends/*/lastname"));
+        }
+        assertEquals(new HashSet<String>(Arrays.asList("Lennon", "Smith")), set);
+        it.close();
+
+        // SELECT p.firstname, p.lastname
+        // FROM hierarchy h
+        // JOIN hierarchy h2 ON h2.parentid = h.id
+        // LEFT JOIN person p ON p.id = h2.id
+        // WHERE h2.name = 'tst:friends'
+        clause = "tst:title = 'hello world'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch(
+                "SELECT tst:friends/*1/firstname, tst:friends/*1/lastname"
+                        + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(2, it.size());
+        Set<String> fn = new HashSet<String>();
+        Set<String> ln = new HashSet<String>();
+        for (Map<String, Serializable> map : it) {
+            fn.add((String) map.get("tst:friends/*1/firstname"));
+            ln.add((String) map.get("tst:friends/*1/lastname"));
+        }
+        assertEquals(Collections.singleton("John"), fn);
+        assertEquals(new HashSet<String>(Arrays.asList("Lennon", "Smith")), ln);
+        it.close();
+
+    }
+
+    public void testQueryComplexListElement() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+        IterableQueryResult it;
+        Set<String> set;
+
+        // hierarchy h
+        // JOIN tst_subjects s ON h.id = s.id // not LEFT JOIN
+        // WHERE s.pos = 0
+        // AND s.item = 'foo'
+        clause = "tst:subjects/0 = 'foo'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        clause = "tst:subjects/0 = 'bar'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(0, res.list.size());
+
+        // SELECT s.item
+        // FROM hierarchy h
+        // JOIN tst_subjects s ON h.id = s.id // not LEFT JOIN
+        // WHERE s.pos = 0
+        // AND s.item = 'bar'
+        clause = "tst:subjects/0 = 'foo'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:subjects/0" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("foo", it.iterator().next().get("tst:subjects/0"));
+        it.close();
+
+        // SELECT s1.item
+        // FROM hierarchy h
+        // JOIN tst_subjects s0 ON h.id = s0.id // not LEFT JOIN
+        // JOIN tst_subjects s1 ON h.id = s1.id // not LEFT JOIN
+        // WHERE s0.pos = 0 AND s1.pos = 1
+        // AND s0.item = 'foo'
+        clause = "tst:subjects/0 = 'foo'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:subjects/1" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(1, it.size());
+        assertEquals("bar", it.iterator().next().get("tst:subjects/1"));
+        it.close();
+
+        // SELECT s.item
+        // FROM hierarchy h
+        // LEFT JOIN tst_subjects s ON h.id = s.id
+        // WHERE s.item LIKE '%oo'
+        clause = "tst:subjects/*1 LIKE '%oo'";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        it = session.queryAndFetch("SELECT tst:subjects/*1" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(2, it.size());
+        set = new HashSet<String>();
+        for (Map<String, Serializable> map : it) {
+            set.add((String) map.get("tst:subjects/*1"));
+        }
+        assertEquals(new HashSet<String>(Arrays.asList("foo", "moo")), set);
+        it.close();
+
+        // WHAT
+        clause = "tst:title = 'hello world'";
+        it = session.queryAndFetch("SELECT tst:subjects/*" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(3, it.size());
+        set = new HashSet<String>();
+        for (Map<String, Serializable> map : it) {
+            set.add((String) map.get("tst:subjects/*"));
+        }
+        assertEquals(new HashSet<String>(Arrays.asList("foo", "bar", "moo")),
+                set);
+        it.close();
+    }
+
+    public void testQueryComplexOrderBy() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+        IterableQueryResult it;
+        List<String> list;
+
+        clause = "tst:title LIKE '%' ORDER BY tst:owner/firstname";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:owner/firstname = 'Bruce' ORDER BY tst:title";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:owner/firstname = 'Bruce' ORDER BY tst:owner/firstname";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // this produces a DISTINCT and adds tst:title to the select list
+        clause = "tst:subjects/* = 'foo' ORDER BY tst:title";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:friends/*/firstname = 'John' ORDER BY tst:title";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // no wildcard index so no DISTINCT needed
+        clause = "tst:title LIKE '%' ORDER BY tst:friends/0/lastname";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+        clause = "tst:title LIKE '%' ORDER BY tst:subjects/0";
+        res = session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+
+        // SELECT * statement cannot ORDER BY array or complex list element
+        clause = "tst:subjects/*1 = 'foo' ORDER BY tst:subjects/*1";
+        try {
+            session.query(SELECT_WHERE + clause, QueryFilter.EMPTY, false);
+            fail();
+        } catch (StorageException e) {
+            String expected = "For SELECT * the ORDER BY columns cannot use wildcard indexes";
+            assertEquals(expected, e.getMessage());
+        }
+        assertEquals(oneDoc, res.list);
+
+        clause = "tst:title = 'hello world' ORDER BY tst:subjects/*1";
+        it = session.queryAndFetch("SELECT tst:title" + FROM_WHERE + clause,
+                "NXQL", QueryFilter.EMPTY);
+        assertEquals(3, it.size());
+        it.close();
+
+        // same with DISTINCT, cannot work
+        try {
+            session.queryAndFetch("SELECT DISTINCT tst:title" + FROM_WHERE
+                    + clause, "NXQL", QueryFilter.EMPTY);
+            fail();
+        } catch (StorageException e) {
+            String expected = "For SELECT DISTINCT the ORDER BY columns must be in the SELECT list, missing: [tst:subjects/*1]";
+            assertEquals(expected, e.getCause().getMessage());
+        }
+
+        // ok if ORDER BY column added to SELECT columns
+        it = session.queryAndFetch("SELECT DISTINCT tst:title, tst:subjects/*1"
+                + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(3, it.size());
+        it.close();
+
+        clause = "tst:title = 'hello world' ORDER BY tst:subjects/*1";
+        it = session.queryAndFetch("SELECT tst:subjects/*1" + FROM_WHERE
+                + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(3, it.size());
+        list = new LinkedList<String>();
+        for (Map<String, Serializable> map : it) {
+            list.add((String) map.get("tst:subjects/*1"));
+        }
+        assertEquals(Arrays.asList("bar", "foo", "moo"), list);
+        it.close();
+
+        clause = "tst:title = 'hello world' ORDER BY tst:subjects/*1";
+        it = session.queryAndFetch("SELECT DISTINCT tst:subjects/*1"
+                + FROM_WHERE + clause, "NXQL", QueryFilter.EMPTY);
+        assertEquals(3, it.size());
+        it.close();
+    }
+
+    public void testQueryComplexOrderByProxies() throws Exception {
+        if (this instanceof TestSQLBackendNet
+                || this instanceof ITSQLBackendNet) {
+            return;
+        }
+
+        Session session = repository.getConnection();
+        List<Serializable> oneDoc = makeComplexDoc(session);
+
+        String clause;
+        PartialList<Serializable> res;
+
+        clause = "tst:friends/*/firstname = 'John' ORDER BY tst:title";
+        res = session.query("SELECT * FROM TestDoc WHERE " + clause,
+                QueryFilter.EMPTY, false);
+        assertEquals(oneDoc, res.list);
+    }
+
+    public void testQueryComplexOr() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+
+        // doc1 tst:title = 'hello world'
+        Node doc1 = session.addChildNode(root, "doc1", null, "TestDoc", false);
+        doc1.setSimpleProperty("tst:title", "hello world");
+
+        // doc2 tst:owner/firstname = 'Bruce'
+        Node doc2 = session.addChildNode(root, "doc2", null, "TestDoc", false);
+        Node owner = session.addChildNode(doc2, "tst:owner", null, "person",
+                true);
+        owner.setSimpleProperty("firstname", "Bruce");
+
+        // doc3 tst:friends/0/firstname = 'John'
+        Node doc3 = session.addChildNode(root, "doc3", null, "TestDoc", false);
+        Node friend = session.addChildNode(doc3, "tst:friends",
+                Long.valueOf(0), "person", true);
+        friend.setSimpleProperty("firstname", "John");
+
+        // doc4 tst:subjects/0 = 'foo'
+        Node doc4 = session.addChildNode(root, "doc4", null, "TestDoc", false);
+        doc4.setCollectionProperty("tst:subjects", new String[] { "foo" });
+
+        session.save();
+
+        String s1 = "SELECT * FROM TestDoc WHERE ecm:isProxy = 0 AND (";
+        String s2 = ")";
+        String o = " OR ";
+        String c1 = "tst:title = 'hello world'";
+        String c2 = "tst:owner/firstname = 'Bruce'";
+        String c3 = "tst:friends/0/firstname = 'John'";
+        String c4 = "tst:subjects/0 = 'foo'";
+        PartialList<Serializable> res;
+
+        res = session.query(s1 + c1 + s2, QueryFilter.EMPTY, false);
+        assertEquals(Collections.singletonList(doc1.getId()), res.list);
+
+        res = session.query(s1 + c2 + s2, QueryFilter.EMPTY, false);
+        assertEquals(Collections.singletonList(doc2.getId()), res.list);
+
+        res = session.query(s1 + c3 + s2, QueryFilter.EMPTY, false);
+        assertEquals(Collections.singletonList(doc3.getId()), res.list);
+
+        res = session.query(s1 + c4 + s2, QueryFilter.EMPTY, false);
+        assertEquals(Collections.singletonList(doc4.getId()), res.list);
+
+        res = session.query(s1 + c1 + o + c2 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c1 + o + c3 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c1 + o + c4 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c2 + o + c3 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c2 + o + c4 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c3 + o + c4 + s2, QueryFilter.EMPTY, false);
+        assertEquals(2, res.list.size());
+
+        res = session.query(s1 + c1 + o + c2 + o + c3 + s2, QueryFilter.EMPTY,
+                false);
+        assertEquals(3, res.list.size());
+
+        res = session.query(s1 + c1 + o + c2 + o + c4 + s2, QueryFilter.EMPTY,
+                false);
+        assertEquals(3, res.list.size());
+
+        res = session.query(s1 + c1 + o + c3 + o + c4 + s2, QueryFilter.EMPTY,
+                false);
+        assertEquals(3, res.list.size());
+
+        res = session.query(s1 + c2 + o + c3 + o + c4 + s2, QueryFilter.EMPTY,
+                false);
+        assertEquals(3, res.list.size());
+
+        res = session.query(s1 + c1 + o + c2 + o + c3 + o + c4 + s2,
+                QueryFilter.EMPTY, false);
+        assertEquals(4, res.list.size());
+    }
+
+    public void testPath() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+
+        // /foo
+        Node foo = session.addChildNode(root, "foo", null, "TestDoc", false);
+        // /foo/bar
+        Node bar = session.addChildNode(foo, "bar", null, "TestDoc", false);
+        // /foo/bar/gee
+        Node gee = session.addChildNode(bar, "gee", null, "TestDoc", false);
+        // /foo/moo
+        Node moo = session.addChildNode(foo, "moo", null, "TestDoc", false);
+
+        session.save();
+        session.close();
+        session = repository.getConnection();
+
+        List<Node> nodes = session.getNodesByIds(Arrays.asList(gee.getId(),
+                moo.getId()));
+        assertEquals("/foo/bar/gee", nodes.get(0).getPath());
+        assertEquals("/foo/moo", nodes.get(1).getPath());
+    }
+
+    public void testPathCached() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node foo = session.addChildNode(root, "foo", null, "TestDoc", false);
+        Node bar = session.addChildNode(foo, "bar", null, "TestDoc", false);
+        session.save();
+        session.close();
+        session = repository.getConnection();
+
+        Node node = session.getNodeById(bar.getId());
+        assertEquals("/foo/bar", node.getPath());
+
+        // clear context, the mapper cache should still be used
+        ((SessionImpl) session).context.pristine.clear();
+        JDBCConnection jdbc = (JDBCConnection) ((CachingMapper) ((SessionImpl) session).getMapper()).mapper;
+        jdbc.countExecutes = true;
+        jdbc.executeCount = 0;
+
+        node = session.getNodeById(bar.getId());
+        assertEquals("/foo/bar", node.getPath());
+        assertEquals(0, jdbc.executeCount);
+    }
+
+    public void testPathDeep() throws Exception {
+        Session session = repository.getConnection();
+        Node root = session.getRootNode();
+        Node r1 = session.addChildNode(root, "r1", null, "TestDoc", false);
+        Node r2 = session.addChildNode(root, "r2", null, "TestDoc", false);
+        for (int i = 0; i < 10; i++) {
+            r1 = session.addChildNode(r1, "node" + i, null, "TestDoc", false);
+            r2 = session.addChildNode(r2, "node" + i, null, "TestDoc", false);
+        }
+        Node last1 = r1;
+        Node last2 = r2;
+
+        session.save();
+        session.close();
+        session = repository.getConnection();
+
+        // fetch last
+        List<Node> nodes = session.getNodesByIds(Arrays.asList(last1.getId(),
+                last2.getId()));
+        assertEquals("/r1/node0/node1/node2/node3/node4"
+                + "/node5/node6/node7/node8/node9", nodes.get(0).getPath());
+        assertEquals("/r2/node0/node1/node2/node3/node4"
+                + "/node5/node6/node7/node8/node9", nodes.get(1).getPath());
     }
 
 }

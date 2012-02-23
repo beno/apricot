@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +35,6 @@ import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.QName;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
-import org.eclipse.ecr.core.schema.types.TypeHelper;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
@@ -48,8 +46,6 @@ import org.eclipse.ecr.runtime.api.Framework;
 public class SchemaManagerImpl implements SchemaManager {
 
     private static final Log log = LogFactory.getLog(SchemaManagerImpl.class);
-
-    private final Map<String, TypeHelper> helpers = new Hashtable<String, TypeHelper>();
 
     private final Map<String, Type> typeReg = new HashMap<String, Type>();
 
@@ -74,7 +70,8 @@ public class SchemaManagerImpl implements SchemaManager {
 
     private File schemaDir;
 
-    private PrefetchInfo prefetchInfo; // global prefetch info
+    // global prefetch info
+    private PrefetchInfo prefetchInfo;
 
     public SchemaManagerImpl() throws Exception {
         pendingDocTypes = new HashMap<String, List<DocumentTypeDescriptor>>();
@@ -87,8 +84,8 @@ public class SchemaManagerImpl implements SchemaManager {
         }
         registerBuiltinTypes();
         TypeProvider provider = Framework.getService(TypeProvider.class);
-        if (provider != this && provider != null) { // should be a remote
-                                                    // provider
+        if (provider != this && provider != null) {
+            // should be a remote provider
             importTypes(provider);
         }
     }
@@ -141,41 +138,6 @@ public class SchemaManagerImpl implements SchemaManager {
             return null;
         }
     }
-
-    // public void putType(Type type) {
-    // TypeName name = type.getName();
-    // if (name.isSchema()) {
-    // schemas.put(name.getLocalName(), (Schema)type);
-    // } else if (name.isDocumentType()) {
-    // doctypes.put(name.getLocalName(), (DocumentType)type);
-    // } else {
-    // String ns = name.getNamespace();
-    // Map<String, Type> types = (Map<String, Type>)namespaces.get(ns);
-    // if (types == null) {
-    // types = new HashMap<String, Type>();
-    // namespaces.put(ns, types);
-    // }
-    // types.put(name.getLocalName(), type);
-    // }
-    // }
-    //
-    // public void removeType(TypeName name) {
-    // if (name.isSchema()) {
-    // schemas.remove(name.getLocalName());
-    // } else if (name.isDocumentType()) {
-    // doctypes.remove(name.getLocalName());
-    // } else {
-    // String ns = name.getNamespace();
-    // Map<String, Type> types = (Map<String, Type>)namespaces.get(ns);
-    // if (types != null) {
-    // types.remove(name.getLocalName());
-    // if (types.isEmpty()) {
-    // namespaces.remove(ns);
-    // }
-    // }
-    // }
-    // }
-    //
 
     @Override
     public void registerType(Type type) {
@@ -416,8 +378,8 @@ public class SchemaManagerImpl implements SchemaManager {
     @Override
     public DocumentType unregisterDocumentType(String name) {
         log.info("Unregister document type: " + name);
-        // TODO handle the case when the doctype to unreg is in the reg. pending
-        // queue
+        // TODO handle the case when the doctype to unreg is in the reg.
+        // pending queue
         synchronized (docTypeReg) {
             DocumentType docType = docTypeReg.remove(name);
             if (docType != null) {
@@ -537,9 +499,8 @@ public class SchemaManagerImpl implements SchemaManager {
     }
 
     /**
-     * Same remarks as in {@link #getDocumentTypeNamesExtending}.
-     *
-     * Tested in nuxeo-core
+     * Same remarks as in {@link #getDocumentTypeNamesExtending}. Tested in
+     * nuxeo-core
      */
     @Override
     public Set<String> getDocumentTypeNamesForFacet(String facet) {
@@ -551,7 +512,8 @@ public class SchemaManagerImpl implements SchemaManager {
 
     private void initFacetsCache() {
         if (facetsCache != null) {
-            return; // another thread just did it
+            // another thread just did it
+            return;
         }
         synchronized (this) {
             facetsCache = new HashMap<String, Set<String>>();
@@ -584,7 +546,6 @@ public class SchemaManagerImpl implements SchemaManager {
         }
         synchronized (inheritanceCache) {
             // recheck in case another thread just did it
-
             res = inheritanceCache.get(docTypeName);
             if (res != null) {
                 return res;
@@ -598,7 +559,8 @@ public class SchemaManagerImpl implements SchemaManager {
             for (DocumentType dt : getDocumentTypes()) {
                 Type parent = dt.getSuperType();
                 if (parent == null) {
-                    continue; // Must be the root document
+                    // Must be the root document
+                    continue;
                 }
                 if (docTypeName.equals(parent.getName())) {
                     res.addAll(getDocumentTypeNamesExtending(dt.getName()));
@@ -623,33 +585,6 @@ public class SchemaManagerImpl implements SchemaManager {
             }
         }
         return null;
-    }
-
-    @Override
-    public void registerHelper(String schema, String type, TypeHelper helper) {
-        if (schema == null) { // a primitive type helper
-            helpers.put(type, helper);
-        } else {
-            helpers.put(schema + ':' + type, helper);
-        }
-    }
-
-    @Override
-    public void unregisterHelper(String schema, String type) {
-        if (schema == null) { // a primitive type helper
-            helpers.remove(type);
-        } else {
-            helpers.remove(schema + ':' + type);
-        }
-    }
-
-    @Override
-    public TypeHelper getHelper(String schema, String type) {
-        if (schema == null) { // a primitive type helper
-            return helpers.get(type);
-        } else {
-            return helpers.get(schema + ':' + type);
-        }
     }
 
 }

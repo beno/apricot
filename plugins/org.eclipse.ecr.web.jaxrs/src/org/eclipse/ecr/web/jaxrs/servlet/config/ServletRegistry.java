@@ -28,7 +28,7 @@ import org.osgi.service.http.HttpService;
  * {@link ServletRegistryComponent} component. Because we don't have yet a
  * solution to synchronize the initialization time of the Activator and a Nuxeo
  * component we are using a singleton instance to be able
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class ServletRegistry {

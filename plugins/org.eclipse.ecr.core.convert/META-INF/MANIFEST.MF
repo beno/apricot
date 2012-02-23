@@ -16,7 +16,6 @@ Bundle-ManifestVersion: 2
 Import-Package: org.apache.commons.logging,
  org.eclipse.ecr.common.utils,
  org.eclipse.ecr.common.xmap.annotation,
- org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.blobholder,
  org.eclipse.ecr.core.api.impl.blob,

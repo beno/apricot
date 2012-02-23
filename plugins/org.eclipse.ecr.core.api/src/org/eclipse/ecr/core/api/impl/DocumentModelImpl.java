@@ -12,6 +12,9 @@
  */
 package org.eclipse.ecr.core.api.impl;
 
+import static org.apache.commons.lang.ObjectUtils.NULL;
+import static org.eclipse.ecr.core.schema.types.ComplexTypeImpl.canonicalXPath;
+
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.text.DateFormat;
@@ -33,7 +36,6 @@ import org.eclipse.ecr.common.collections.ArrayMap;
 import org.eclipse.ecr.common.collections.PrimitiveArrays;
 import org.eclipse.ecr.common.collections.ScopeType;
 import org.eclipse.ecr.common.collections.ScopedMap;
-import org.eclipse.ecr.common.utils.Null;
 import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
@@ -54,11 +56,13 @@ import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
-import org.eclipse.ecr.core.api.repository.Repository;
+import org.eclipse.ecr.core.api.model.PropertyVisitor;
+import org.eclipse.ecr.core.api.model.impl.DocumentPartImpl;
 import org.eclipse.ecr.core.api.repository.RepositoryManager;
 import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.schema.DocumentType;
 import org.eclipse.ecr.core.schema.FacetNames;
+import org.eclipse.ecr.core.schema.Prefetch;
 import org.eclipse.ecr.core.schema.SchemaManager;
 import org.eclipse.ecr.core.schema.SchemaNames;
 import org.eclipse.ecr.core.schema.TypeConstants;
@@ -82,19 +86,9 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
 
     public static final String STRICT_LAZY_LOADING_POLICY_KEY = "org.eclipse.ecr.core.strictlazyloading";
 
-    public static final long F_STORED = 1L;
-
-    public static final long F_DETACHED = 2L;
-
-    // reserved: 4, 8
-
     public static final long F_VERSION = 16L;
 
     public static final long F_PROXY = 32L;
-
-    public static final long F_LOCKED = 64L;
-
-    public static final long F_DIRTY = 128L;
 
     public static final long F_IMMUTABLE = 256L;
 
@@ -174,15 +168,11 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     // the adapters registered for this document - only valid on client
     protected transient ArrayMap<Class<?>, Object> adapters;
 
-    // flags : TODO
-    // bit 0 - IS_STORED (1 if stored in repo, 0 otherwise)
-    // bit 1 - IS_DETACHED (1 after deserialization, 0 otherwise)
-    // bit 2 - 3: reserved for future use
-    // bit 4: IS_VERSION (true if set)
-    // bit 5: IS_PROXY (true if set)
-    // bit 6: IS_LOCKED (true if set)
-    // bit 7: IS_DIRTY (true if set)
-    protected long flags = 0L;
+    /**
+     * Flags: bitwise combination of {@link #F_VERSION}, {@link #F_PROXY},
+     * {@link #F_IMMUTABLE}.
+     */
+    private long flags = 0L;
 
     protected String repositoryName;
 
@@ -190,7 +180,8 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
 
     private ScopedMap contextData;
 
-    protected Map<String, Serializable> prefetch;
+    // public for unit tests
+    public Prefetch prefetch;
 
     protected static Boolean strictSessionManagement;
 
@@ -246,7 +237,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         if (getDocumentType() != null) {
             facets.addAll(getDocumentType().getFacets());
         }
-        recomputeSchemas();
+        schemas = computeSchemas(getDocumentType(), instanceFacets);
         schemasOrig = new HashSet<String>(schemas);
     }
 
@@ -275,7 +266,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
             this.facets.addAll(getDocumentType().getFacets());
         }
         if (schemas == null) {
-            recomputeSchemas();
+            this.schemas = computeSchemas(getDocumentType(), instanceFacets);
         } else {
             this.schemas = new HashSet<String>(Arrays.asList(schemas));
         }
@@ -285,12 +276,13 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     }
 
     /**
-     * Recompute all schemas from type + instance facets.
+     * Recomputes effective schemas from a type + instance facets.
      */
-    protected void recomputeSchemas() {
-        schemas = new HashSet<String>();
-        if (getDocumentType() != null) {
-            schemas.addAll(Arrays.asList(getDocumentType().getSchemaNames()));
+    public static Set<String> computeSchemas(DocumentType type,
+            Collection<String> instanceFacets) {
+        Set<String> schemas = new HashSet<String>();
+        if (type != null) {
+            schemas.addAll(Arrays.asList(type.getSchemaNames()));
         }
         TypeProvider typeProvider = Framework.getLocalService(SchemaManager.class);
         for (String facet : instanceFacets) {
@@ -299,58 +291,11 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
                 schemas.addAll(Arrays.asList(facetType.getSchemaNames()));
             }
         }
+        return schemas;
     }
 
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public DocumentModelImpl(String sid, String type) {
-        this(type);
-        this.sid = sid;
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
     public DocumentModelImpl(DocumentModel parent, String name, String type) {
         this(parent.getPathAsString(), name, type);
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public DocumentModelImpl(DocumentModel parent, String name, String type,
-            DataModelMap data) {
-        this(parent.getPathAsString(), name, type);
-        if (data != null) {
-            dataModels = data;
-        }
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public DocumentModelImpl(String parentPath, String name, String type,
-            DataModelMap data) {
-        this(parentPath, name, type);
-        if (data != null) {
-            dataModels = data;
-        }
-    }
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    public DocumentModelImpl(String sid, String type, String id, Path path,
-            DocumentRef docRef, DocumentRef parentRef, String[] schemas,
-            Set<String> facets) {
-        this(sid, type, id, path, null, docRef, parentRef, schemas, facets,
-                null, null);
     }
 
     @Override
@@ -464,39 +409,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         }
     }
 
-    /** @deprecated use {@link #getCoreSession} instead. */
-    @Deprecated
-    public final CoreSession getClient() throws ClientException {
-        if (sid == null) {
-            throw new UnsupportedOperationException(
-                    "Cannot load data models for client defined models");
-        }
-        if (reentrantCoreSession.get().containsKey(sid)) {
-            return reentrantCoreSession.get().get(sid);
-        }
-        CoreSession session = CoreInstance.getInstance().getSession(sid);
-        if (session == null && sid != null && repositoryName != null) {
-            // session was closed => open a new one
-            try {
-                RepositoryManager mgr = Framework.getService(RepositoryManager.class);
-                Repository repo = mgr.getRepository(repositoryName);
-                session = repo.open();
-                // set new session id
-                sid = session.getSessionId();
-            } catch (Exception e) {
-                throw new ClientException(e);
-            }
-        }
-        return session;
-    }
-
-    /**
-     * Detaches the documentImpl from its existing session, so that it can
-     * survive beyond the session's closing.
-     *
-     * @param loadAll if {@code true}, load all data from the session before
-     *            detaching
-     */
+    @Override
     public void detach(boolean loadAll) throws ClientException {
         if (sid == null) {
             return;
@@ -507,12 +420,21 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
                     loadDataModel(schema);
                 }
             }
-        }
-        // fetch ACP too if possible
-        if (ref != null) {
-            getACP();
+            // fetch ACP too if possible
+            if (ref != null) {
+                getACP();
+            }
         }
         sid = null;
+    }
+
+    @Override
+    public void attach(String sid) throws ClientException {
+        if (this.sid != null) {
+            throw new ClientException(
+                    "Cannot attach a document that is already attached");
+        }
+        this.sid = sid;
     }
 
     /**
@@ -641,7 +563,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
 
         // find the schemas that were dropped
         Set<String> droppedSchemas = new HashSet<String>(schemas);
-        recomputeSchemas();
+        schemas = computeSchemas(getDocumentType(), instanceFacets);
         droppedSchemas.removeAll(schemas);
 
         // clear these datamodels
@@ -691,29 +613,19 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         return dm == null ? null : dm.getMap();
     }
 
-    /**
-     * Gets property.
-     * <p>
-     * Get property is also consulting the prefetched properties.
-     *
-     * @see DocumentModel#getProperty(String, String)
-     */
     @Override
     public Object getProperty(String schemaName, String name)
             throws ClientException {
+        // look in prefetch
+        if (prefetch != null) {
+            Serializable value = prefetch.get(schemaName, name);
+            if (value != NULL) {
+                return value;
+            }
+        }
+        // look in datamodels
         DataModel dm = dataModels.get(schemaName);
-        if (dm == null) { // no data model loaded
-            // try prefetched props
-            if (prefetch != null) {
-                Object value = prefetch.get(schemaName + '.' + name);
-                if (value != null) {
-                    return value == Null.VALUE ? null : value;
-                }
-            }
-            if (log.isTraceEnabled()) {
-                log.trace("Property not in prefetch: " + schemaName + '.'
-                        + name);
-            }
+        if (dm == null) {
             dm = getDataModel(schemaName);
         }
         return dm == null ? null : dm.getData(name);
@@ -730,10 +642,10 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
             return null;
         }
         // return deprecated format, like "someuser:Nov 29, 2010"
-        return lock.getOwner()
-                + ':'
-                + DateFormat.getDateInstance(DateFormat.MEDIUM).format(
+        String lockCreationDate = (lock.getCreated() == null) ? null
+                : DateFormat.getDateInstance(DateFormat.MEDIUM).format(
                         new Date(lock.getCreated().getTimeInMillis()));
+        return lock.getOwner() + ':' + lockCreationDate;
     }
 
     @Override
@@ -917,9 +829,6 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
 
     @Override
     public String getType() {
-        // TODO there are some DOcumentModel impl like DocumentMessageImpl which
-        // use null types and extend this impl which is wrong - fix this -> type
-        // must never be null
         return type != null ? type.getName() : null;
     }
 
@@ -929,6 +838,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         DataModel dm = getDataModel(schemaName);
         if (dm != null) {
             dm.setMap(data);
+            clearPrefetch(schemaName);
         }
     }
 
@@ -936,9 +846,11 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     public void setProperty(String schemaName, String name, Object value)
             throws ClientException {
         DataModel dm = getDataModel(schemaName);
-        if (dm != null) {
-            dm.setData(name, value);
+        if (dm == null) {
+            return;
         }
+        dm.setData(name, value);
+        clearPrefetch(schemaName);
     }
 
     @Override
@@ -972,6 +884,14 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
             }
         }
         return false;
+    }
+
+    @Override
+    public void accept(PropertyVisitor visitor, Object arg)
+            throws ClientException {
+        for (DocumentPart dp : getParts()) {
+            ((DocumentPartImpl) dp).visitChildren(visitor, arg);
+        }
     }
 
     @Override
@@ -1141,6 +1061,17 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     }
 
     @Override
+    public boolean isDirty() {
+        for (DataModel dm : dataModels.values()) {
+            DocumentPart part = ((DataModelImpl) dm).getDocumentPart();
+            if (part.isDirty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public ScopedMap getContextData() {
         return contextData;
     }
@@ -1171,16 +1102,6 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         if (otherMap != null) {
             contextData.putAll(otherMap);
         }
-    }
-
-    /** @deprecated unused */
-    @Deprecated
-    public void copyContentInto(DocumentModelImpl other) {
-        other.schemas = schemas;
-        other.facets = facets;
-        other.instanceFacets = instanceFacets;
-        other.instanceFacetsOrig = instanceFacetsOrig;
-        other.dataModels = dataModels;
     }
 
     @Override
@@ -1294,11 +1215,17 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     public String getCacheKey() throws ClientException {
         // UUID - sessionId
         String key = id + '-' + sid + '-' + getPathAsString();
-        // :FIXME: Assume a dublin core schema => enough for us right now.
-        Calendar timeStamp = (Calendar) getProperty("dublincore", "modified");
-
-        if (timeStamp != null) {
-            key += '-' + String.valueOf(timeStamp.getTimeInMillis());
+        // assume the doc holds the dublincore schema (enough for us right now)
+        if (hasSchema("dublincore")) {
+            Calendar timeStamp = (Calendar) getProperty("dublincore",
+                    "modified");
+            if (timeStamp != null) {
+                // remove milliseconds as they are not stored in some
+                // databases, which could make the comparison fail just after a
+                // document creation (see NXP-8783)
+                timeStamp.set(Calendar.MILLISECOND, 0);
+                key += '-' + String.valueOf(timeStamp.getTimeInMillis());
+            }
         }
         return key;
     }
@@ -1317,14 +1244,25 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         return dataModels.containsKey(name);
     }
 
-    // TODO: id is schema.field and not prefix:field
     @Override
-    public void prefetchProperty(String id, Object value) {
-        if (prefetch == null) {
-            prefetch = new HashMap<String, Serializable>();
-        }
-        Serializable sValue = (Serializable) value;
-        prefetch.put(id, value == null ? Null.VALUE : sValue);
+    public boolean isPrefetched(String xpath) {
+        return prefetch != null && prefetch.isPrefetched(xpath);
+    }
+
+    @Override
+    public boolean isPrefetched(String schemaName, String name) {
+        return prefetch != null && prefetch.isPrefetched(schemaName, name);
+    }
+
+    /**
+     * Sets prefetch information.
+     * <p>
+     * INTERNAL: This method is not in the public interface.
+     *
+     * @since 5.5
+     */
+    public void setPrefetch(Prefetch prefetch) {
+        this.prefetch = prefetch;
     }
 
     @Override
@@ -1335,27 +1273,6 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
     @Override
     public void prefetchLifeCyclePolicy(String lifeCyclePolicy) {
         this.lifeCyclePolicy = lifeCyclePolicy;
-    }
-
-    public void setFlags(long flags) {
-        this.flags |= flags;
-    }
-
-    public void clearFlags(long flags) {
-        this.flags &= ~flags;
-    }
-
-    public void clearFlags() {
-        flags = 0L;
-    }
-
-    @Override
-    public long getFlags() {
-        return flags;
-    }
-
-    public boolean hasFlags(long flags) {
-        return (this.flags & flags) == flags;
     }
 
     @Override
@@ -1389,11 +1306,6 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         }
         return getClass().getSimpleName() + '(' + id + ", path=" + path
                 + ", title=" + title + ')';
-    }
-
-    @Override
-    public Map<String, Serializable> getPrefetch() {
-        return prefetch;
     }
 
     @Override
@@ -1445,68 +1357,102 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
 
     @Override
     public Property getProperty(String xpath) throws ClientException {
-        Path path = new Path(xpath);
-        if (path.segmentCount() == 0) {
+        if (xpath == null) {
+            throw new PropertyNotFoundException("null", "Invalid null xpath");
+        }
+        xpath = canonicalXPath(xpath);
+        if (xpath.isEmpty()) {
             throw new PropertyNotFoundException(xpath, "Schema not specified");
         }
-        String segment = path.segment(0);
-        int p = segment.indexOf(':');
-        if (p == -1) { // support also other schema paths? like schema.property
-            // allow also unprefixed schemas -> make a search for the first
-            // matching schema having a property with same name as path segment
-            // 0
-            DocumentPart[] parts = getParts();
-            for (DocumentPart part : parts) {
-                if (part.getSchema().hasField(segment)) {
-                    return part.resolvePath(path.toString());
+        String schemaName = getXPathSchemaName(xpath, schemas, null);
+        if (schemaName == null) {
+            throw new PropertyNotFoundException(xpath, "No such schema");
+
+        }
+        DocumentPart part = getPart(schemaName);
+        if (part == null) {
+            throw new PropertyNotFoundException(xpath);
+        }
+        // cut prefix
+        String partPath = xpath.substring(xpath.indexOf(':') + 1);
+        return part.resolvePath(partPath);
+    }
+
+    public static String getXPathSchemaName(String xpath,
+            Set<String> docSchemas, String[] returnName) {
+        SchemaManager schemaManager = Framework.getLocalService(SchemaManager.class);
+        // find first segment
+        int i = xpath.indexOf('/');
+        String prop = i == -1 ? xpath : xpath.substring(0, i);
+        int p = prop.indexOf(':');
+        if (p != -1) {
+            // prefixed
+            String prefix = prop.substring(0, p);
+            Schema schema = schemaManager.getSchemaFromPrefix(prefix);
+            if (schema == null) {
+                // try directly with prefix as a schema name
+                schema = schemaManager.getSchema(prefix);
+                if (schema == null) {
+                    return null;
                 }
             }
-            // could not find any matching schema
-            throw new PropertyNotFoundException(xpath, "Schema not specified");
+            if (returnName != null) {
+                returnName[0] = prop.substring(p + 1);
+            }
+            return schema.getName();
+        } else {
+            // unprefixed
+            // search for the first matching schema having a property
+            // with the same name as the first path segment
+            for (String schemaName : docSchemas) {
+                Schema schema = schemaManager.getSchema(schemaName);
+                if (schema != null && schema.hasField(prop)) {
+                    if (returnName != null) {
+                        returnName[0] = prop;
+                    }
+                    return schema.getName();
+                }
+            }
+            return null;
         }
-        String prefix = segment.substring(0, p);
-        SchemaManager mgr = Framework.getLocalService(SchemaManager.class);
-        Schema schema = mgr.getSchemaFromPrefix(prefix);
-        if (schema == null) {
-            schema = mgr.getSchema(prefix);
-            if (schema == null) {
-                throw new PropertyNotFoundException(xpath,
-                        "Could not find registered schema with prefix: "
-                                + prefix);
+    }
+
+    @Override
+    public Serializable getPropertyValue(String xpath)
+            throws PropertyException, ClientException {
+        if (prefetch != null) {
+            Serializable value = prefetch.get(xpath);
+            if (value != NULL) {
+                return value;
             }
         }
-        // workaround for a schema prefix bug -> XPATH lookups in
-        // DocumentPart must use prefixed
-        // names for schema with prefixes and non prefixed names for the
-        // rest o schemas.
-        // Until then we used the name as the prefix but we must remove it
-        // since it is not a valid prefix:
-        // NXP-1913
-        String[] segments = path.segments();
-        segments[0] = segments[0].substring(p + 1);
-        path = Path.createFromSegments(segments);
-
-        DocumentPart part = getPart(schema.getName());
-        if (part == null) {
-            throw new PropertyNotFoundException(
-                    xpath,
-                    String.format(
-                            "Document '%s' with title '%s' and type '%s' does not have any schema with prefix '%s'",
-                            getRef(), getTitle(), getType(), prefix));
-        }
-        return part.resolvePath(path.toString());
+        return getProperty(xpath).getValue();
     }
 
     @Override
-    public Serializable getPropertyValue(String path) throws PropertyException,
-            ClientException {
-        return getProperty(path).getValue();
-    }
-
-    @Override
-    public void setPropertyValue(String path, Serializable value)
+    public void setPropertyValue(String xpath, Serializable value)
             throws PropertyException, ClientException {
-        getProperty(path).setValue(value);
+        getProperty(xpath).setValue(value);
+        clearPrefetchXPath(xpath);
+    }
+
+    private void clearPrefetch(String schemaName) {
+        if (prefetch != null) {
+            prefetch.clearPrefetch(schemaName);
+            if (prefetch.isEmpty()) {
+                prefetch = null;
+            }
+        }
+    }
+
+    protected void clearPrefetchXPath(String xpath) {
+        if (prefetch != null) {
+            String schemaName = prefetch.getXPathSchema(xpath,
+                    getDocumentType());
+            if (schemaName != null) {
+                clearPrefetch(schemaName);
+            }
+        }
     }
 
     @Override
@@ -1558,9 +1504,7 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         if (dataModels != null) {
             dataModels.clear();
         }
-        if (prefetch != null) {
-            prefetch.clear();
-        }
+        prefetch = null;
         isACPLoaded = false;
         acp = null;
         currentLifeCycleState = null;
@@ -1581,7 +1525,8 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         }
         if ((refreshFlags & REFRESH_ACP_IF_LOADED) != 0 && isACPLoaded) {
             refreshFlags |= REFRESH_ACP;
-            // we must not clean the REFRESH_ACP_IF_LOADED flag since it is used
+            // we must not clean the REFRESH_ACP_IF_LOADED flag since it is
+            // used
             // below on the client
         }
 
@@ -1627,4 +1572,18 @@ public class DocumentModelImpl implements DocumentModel, Cloneable {
         }
     }
 
+    public String getChangeToken() {
+        if (!hasSchema("dublincore")) {
+            return null;
+        }
+        try {
+            Calendar modified = (Calendar) getProperty("dublincore", "modified");
+            if (modified != null) {
+                return new Long(modified.getTimeInMillis()).toString();
+            }
+        } catch (ClientException e) {
+            log.error("Error while retrieving dc:modified", e);
+        }
+        return null;
+    }
 }

@@ -30,7 +30,7 @@ import org.osgi.framework.Bundle;
 
 /**
  * A composite JAX-RS application that can receive fragments from outside.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
@@ -156,7 +156,7 @@ public class ApplicationHost extends Application {
      * When a bundle is refreshing this method may throw
      * exceptions but it is not usual to refresh bundles at runtime
      * and making requests in same time.
-     * 
+     *
      * @param clazz
      * @return
      */

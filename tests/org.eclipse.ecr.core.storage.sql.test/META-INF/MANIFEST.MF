@@ -10,7 +10,8 @@ Require-Bundle: org.eclipse.ecr.core.storage.sql.testlib,
  org.eclipse.ecr.core.storage.sql.ra,
  org.eclipse.ecr.core.convert
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Import-Package: org.eclipse.ecr.core.api.externalblob,
+Import-Package: org.eclipse.ecr.core.api.event,
+ org.eclipse.ecr.core.api.externalblob,
  org.eclipse.ecr.core.api.facet,
  org.eclipse.ecr.core.api.model.impl.primitives,
  org.eclipse.ecr.runtime.jtajca

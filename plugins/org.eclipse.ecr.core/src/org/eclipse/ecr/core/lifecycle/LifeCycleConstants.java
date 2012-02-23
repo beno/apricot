@@ -8,33 +8,14 @@
  *
  * Contributors:
  *     Nuxeo - initial API and implementation
- * $Id: LifeCycleConstants.java 19491 2007-05-27 13:51:18Z sfermigier $
  */
-
 package org.eclipse.ecr.core.lifecycle;
 
 /**
- * Life cycle constants.
- *
- * @author <a href="mailto:ja@nuxeo.com">Julien Anguenot</a>
+ * @deprecated use {@link org.eclipse.ecr.core.api.LifeCycleConstants} instead
  */
-public final class LifeCycleConstants {
-
-    public static final String LIFECYCLE_SCHEMA_URI = "http://www.nuxeo.org/ecm/schemas/lifecycle";
-
-    public static final String LIFECYCLE_SCHEMA_PREFIX = "lc";
-
-    public static final String LIFECYCLE_SCHEMA_NAME = "lifecycle";
-
-    // JCR2 names.
-    public static final String LIFECYCLE_POLICY_PROP = "lifecyclePolicy";
-
-    public static final String LIFECYCLE_STATE_PROP = "currentLifecycleState";
-
-    public static final String INITIAL_LIFECYCLE_STATE_OPTION_NAME = "initialLifecycleState";
-
-    // Constant utility class
-    private LifeCycleConstants() {
-    }
+@Deprecated
+public interface LifeCycleConstants extends
+        org.eclipse.ecr.core.api.LifeCycleConstants {
 
 }

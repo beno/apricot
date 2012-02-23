@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.naming.Reference;
+import javax.resource.ResourceException;
 import javax.resource.cci.ConnectionSpec;
 import javax.resource.cci.RecordFactory;
 import javax.resource.cci.ResourceAdapterMetaData;
@@ -26,6 +27,7 @@ import javax.resource.cci.ResourceAdapterMetaData;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
 import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.event.EventService;
@@ -70,6 +72,8 @@ public class RepositoryImpl implements Repository {
     protected final SchemaManager schemaManager;
 
     protected final EventService eventService;
+
+    protected final Class<? extends FulltextParser> fulltextParserClass;
 
     protected final BinaryManager binaryManager;
 
@@ -121,6 +125,24 @@ public class RepositoryImpl implements Repository {
         } catch (Exception e) {
             throw new StorageException(e);
         }
+
+        String className = repositoryDescriptor.fulltextParser;
+        if (StringUtils.isBlank(className)) {
+            className = FulltextParser.class.getName();
+        }
+        Class<?> klass;
+        try {
+            klass = Thread.currentThread().getContextClassLoader().loadClass(
+                    className);
+        } catch (ClassNotFoundException e) {
+            throw new StorageException("Unknown fulltext parser class: "
+                    + className, e);
+        }
+        if (!FulltextParser.class.isAssignableFrom(klass)) {
+            throw new StorageException("Invalid fulltext parser class: "
+                    + className);
+        }
+        fulltextParserClass = (Class<? extends FulltextParser>) klass;
 
         connectionManager = new MultiThreadedHttpConnectionManager();
         HttpConnectionManagerParams params = connectionManager.getParams();
@@ -254,9 +276,13 @@ public class RepositoryImpl implements Repository {
     @Override
     public String getServerURL() {
         String host = Framework.getProperty(RUNTIME_SERVER_HOST, "localhost");
-        return String.format("http://%s:%d/%s", host,
-                repositoryDescriptor.listen.port,
-                repositoryDescriptor.listen.path);
+        if (repositoryDescriptor.listen != null) {
+            return String.format("http://%s:%d/%s", host,
+                    repositoryDescriptor.listen.port,
+                    repositoryDescriptor.listen.path);
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -346,16 +372,16 @@ public class RepositoryImpl implements Repository {
         SessionPathResolver pathResolver = new SessionPathResolver();
         Mapper mapper = backend.newMapper(model, pathResolver, credentials,
                 false);
-        SessionImpl session = newSession(mapper, credentials);
+        SessionImpl session = newSession(model, mapper, credentials);
         pathResolver.setSession(session);
         sessions.add(session);
         return session;
     }
 
-    protected SessionImpl newSession(Mapper mapper, Credentials credentials)
-            throws StorageException {
-        mapper = new CachingMapper(mapper, cachePropagator, eventPropagator,
-                repositoryEventQueue);
+    protected SessionImpl newSession(Model model, Mapper mapper,
+            Credentials credentials) throws StorageException {
+        mapper = new CachingMapper(model, mapper, cachePropagator,
+                eventPropagator, repositoryEventQueue);
         return new SessionImpl(this, model, mapper, credentials);
     }
 
@@ -463,6 +489,25 @@ public class RepositoryImpl implements Repository {
     @Override
     public void processClusterInvalidationsNext() {
         // TODO pass through or something
+    }
+
+    @Override
+    public BinaryGarbageCollector getBinaryGarbageCollector() {
+        return binaryManager.getGarbageCollector();
+    }
+
+    @Override
+    public void markReferencedBinaries(BinaryGarbageCollector gc) {
+        try {
+            SessionImpl conn = getConnection();
+            try {
+                conn.markReferencedBinaries(gc);
+            } finally {
+                conn.close();
+            }
+        } catch (ResourceException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /*

@@ -9,6 +9,7 @@
  * Contributors:
  *     Bogdan Stefanescu
  *     Florent Guillaume
+ *     Julien Carsique
  */
 
 package org.eclipse.ecr.runtime.osgi;
@@ -60,10 +61,10 @@ import org.osgi.framework.FrameworkListener;
  * @author Florent Guillaume
  */
 public class OSGiRuntimeService extends AbstractRuntimeService implements
-FrameworkListener {
+        FrameworkListener {
 
     public static final ComponentName FRAMEWORK_STARTED_COMP = new ComponentName(
-    "org.eclipse.ecr.runtime.started");
+            "org.eclipse.ecr.runtime.started");
 
     /** Can be used to change the runtime home directory */
     public static final String PROP_HOME_DIR = "org.eclipse.ecr.runtime.home";
@@ -93,7 +94,8 @@ FrameworkListener {
 
     /**
      * OSGi doesn't provide a method to lookup bundles by symbolic name. This
-     * table is used to map symbolic names to bundles. This map is not handling bundle versions.
+     * table is used to map symbolic names to bundles. This map is not handling
+     * bundle versions.
      */
     final Map<String, Bundle> bundles;
 
@@ -159,7 +161,7 @@ FrameworkListener {
     }
 
     public synchronized RuntimeContext createContext(Bundle bundle)
-    throws Exception {
+            throws Exception {
         RuntimeContext ctx = contexts.get(bundle.getSymbolicName());
         if (ctx == null) {
             // workaround to handle fragment bundles
@@ -200,7 +202,7 @@ FrameworkListener {
     }
 
     protected void loadComponents(Bundle bundle, RuntimeContext ctx)
-    throws Exception {
+            throws Exception {
         String list = getComponentsList(bundle);
         String name = bundle.getSymbolicName();
         log.debug("Bundle: " + name + " components: " + list);
@@ -225,7 +227,7 @@ FrameworkListener {
                 }
             } else {
                 String message = "Unknown component '" + path
-                + "' referenced by bundle '" + name + "'";
+                        + "' referenced by bundle '" + name + "'";
                 log.error(message + ". Check the MANIFEST.MF");
                 Framework.handleDevError(null);
                 warnings.add(message);
@@ -237,9 +239,8 @@ FrameworkListener {
         return (String) bundle.getHeaders().get("Nuxeo-Component");
     }
 
-    @SuppressWarnings("unchecked")
     protected boolean loadConfigurationFromProvider() throws Exception {
-        //TODO use a OSGi service for this.
+        // TODO use a OSGi service for this.
         Iterable<URL> provider = Environment.getDefault().getConfigurationProvider();
         if (provider == null) {
             return false;
@@ -279,6 +280,7 @@ FrameworkListener {
                     + env.getHostApplicationName());
         } else {
             log.warn("Configuration: no host application");
+            return;
         }
 
         File blacklistFile = new File(env.getConfig(), "blacklist");
@@ -300,15 +302,11 @@ FrameworkListener {
 
         String configDir = bundleContext.getProperty(PROP_CONFIG_DIR);
         if (configDir != null && configDir.contains(":/")) { // an url of a
-            // config file
+                                                             // config file
             log.debug("Configuration: " + configDir);
             URL url = new URL(configDir);
             log.debug("Configuration:   loading properties url: " + configDir);
             loadProperties(url);
-            return;
-        }
-
-        if (env == null) {
             return;
         }
 
@@ -326,6 +324,7 @@ FrameworkListener {
                     return o1.compareToIgnoreCase(o2);
                 }
             });
+            printDeploymentOrderInfo(names);
             for (String name : names) {
                 if (name.endsWith("-config.xml")
                         || name.endsWith("-bundle.xml")) {
@@ -359,6 +358,17 @@ FrameworkListener {
         }
 
         loadDefaultConfig();
+    }
+
+    protected static void printDeploymentOrderInfo(String[] fileNames) {
+        if (log.isDebugEnabled()) {
+            StringBuilder buf = new StringBuilder();
+            for (String fileName : fileNames) {
+                buf.append("\n\t" + fileName);
+            }
+            log.debug("Deployment order of configuration files: "
+                    + buf.toString());
+        }
     }
 
     @Override
@@ -451,9 +461,31 @@ FrameworkListener {
         return expandVars(value);
     }
 
-    protected void notifyComponentsOnStarted() throws Exception {
-        for (RegistrationInfo ri : manager.getRegistrations()) {
-            ri.notifyApplicationStarted();
+    protected void notifyComponentsOnStarted() {
+        List<RegistrationInfo> ris = new ArrayList<RegistrationInfo>(
+                manager.getRegistrations());
+        Collections.sort(ris, new RIApplicationStartedComparator());
+        for (RegistrationInfo ri : ris) {
+            try {
+                ri.notifyApplicationStarted();
+            } catch (Exception e) {
+                log.error("Failed to notify component '" + ri.getName()
+                        + "' on application started", e);
+            }
+        }
+    }
+
+    protected static class RIApplicationStartedComparator implements
+            Comparator<RegistrationInfo> {
+        @Override
+        public int compare(RegistrationInfo r1, RegistrationInfo r2) {
+            int cmp = r2.getApplicationStartedOrder()
+                    - r1.getApplicationStartedOrder();
+            if (cmp == 0) {
+                // fallback on name order, to be deterministic
+                cmp = r2.getName().getName().compareTo(r1.getName().getName());
+            }
+            return cmp;
         }
     }
 
@@ -474,11 +506,7 @@ FrameworkListener {
         // requirement
         // on this marker component
         deployFrameworkStartedComponent();
-        try {
-            notifyComponentsOnStarted();
-        } catch (Exception e) {
-            log.error("Failed to notify components on application started", e);
-        }
+        notifyComponentsOnStarted();
         // print the startup message
         printStatusMessage();
     }
@@ -493,8 +521,22 @@ FrameworkListener {
     }
 
     private void printStatusMessage() {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Nuxeo EP Started\n"); // greppable
+        if (getStatusMessage(msg)) {
+            log.info(msg);
+        } else {
+            log.error(msg);
+        }
+    }
+
+    /**
+     * @since 5.5
+     * @param msg summary message about all components loading status
+     * @return true if there was no detected error, else return false
+     */
+    public boolean getStatusMessage(StringBuilder msg) {
         String hr = "======================================================================";
-        StringBuilder msg = new StringBuilder("Nuxeo EP Started\n"); // greppable
         msg.append(hr).append("\n= Nuxeo EP Started\n");
         if (!warnings.isEmpty()) {
             msg.append(hr).append("\n= Component Loading Errors:\n");
@@ -502,13 +544,12 @@ FrameworkListener {
                 msg.append("  * ").append(warning).append('\n');
             }
         }
-
         Map<ComponentName, Set<ComponentName>> pendingRegistrations = manager.getPendingRegistrations();
         Collection<ComponentName> activatingRegistrations = manager.getActivatingRegistrations();
         msg.append(hr).append("\n= Component Loading Status: Pending: ").append(
                 pendingRegistrations.size()).append(" / Unstarted: ").append(
-                        activatingRegistrations.size()).append(" / Total: ").append(
-                                manager.getRegistrations().size()).append('\n');
+                activatingRegistrations.size()).append(" / Total: ").append(
+                manager.getRegistrations().size()).append('\n');
         for (Entry<ComponentName, Set<ComponentName>> e : pendingRegistrations.entrySet()) {
             msg.append("  * ").append(e.getKey()).append(" requires ").append(
                     e.getValue()).append('\n');
@@ -517,13 +558,7 @@ FrameworkListener {
             msg.append("  - ").append(componentName).append('\n');
         }
         msg.append(hr);
-
-        if (warnings.isEmpty() && pendingRegistrations.isEmpty()
-                && activatingRegistrations.isEmpty()) {
-            log.info(msg);
-        } else {
-            log.error(msg);
-        }
+        return (warnings.isEmpty() && pendingRegistrations.isEmpty() && activatingRegistrations.isEmpty());
     }
 
     protected void deployFrameworkStartedComponent() {
@@ -569,7 +604,7 @@ FrameworkListener {
             field.setAccessible(true);
             Object handler = field.get(root);
             Field entryField = handler.getClass().getSuperclass().getDeclaredField(
-            "bundleEntry");
+                    "bundleEntry");
             entryField.setAccessible(true);
             Object entry = entryField.get(handler);
             Field fileField = entry.getClass().getDeclaredField("file");

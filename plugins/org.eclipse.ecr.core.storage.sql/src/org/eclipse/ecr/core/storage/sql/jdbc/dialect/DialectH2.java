@@ -102,6 +102,8 @@ public class DialectH2 extends Dialect {
             return jdbcInfo("TINYINT", Types.TINYINT);
         case INTEGER:
             return jdbcInfo("INTEGER", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("INTEGER AUTO_INCREMENT", Types.INTEGER);
         case FTINDEXED:
             throw new AssertionError(type);
         case FTSTORED:
@@ -206,6 +208,7 @@ public class DialectH2 extends Dialect {
 
     @Override
     public String getDialectFulltextQuery(String query) {
+        query = query.replace("%", "*");
         FulltextQuery ft = analyzeFulltextQuery(query);
         if (ft == null) {
             return "DONTMATCHANYTHINGFOREMPTYQUERY";
@@ -225,9 +228,8 @@ public class DialectH2 extends Dialect {
         String phftname = database.getTable(model.FULLTEXT_TABLE_NAME).getPhysicalName();
         String fullIndexName = "PUBLIC_" + phftname + "_" + indexName;
         String nthSuffix = nthMatch == 1 ? "" : String.valueOf(nthMatch);
-        String tableAlias = "_nxfttbl" + nthSuffix;
-        String scoreAlias = "_nxscore" + nthSuffix;
-        // String scoreAlias = "_nxscore" + nthSuffix;
+        String tableAlias = "_NXFTTBL" + nthSuffix;
+        String quotedTableAlias = openQuote() + tableAlias + closeQuote();
         FulltextMatchInfo info = new FulltextMatchInfo();
         info.joins = Collections.singletonList( //
         new Join(
@@ -235,12 +237,12 @@ public class DialectH2 extends Dialect {
                 String.format("NXFT_SEARCH('%s', ?)", fullIndexName),
                 tableAlias, // alias
                 fulltextQuery, // param
-                String.format("%s.KEY", tableAlias), // on1
+                String.format("%s.KEY", quotedTableAlias), // on1
                 mainColumn.getFullQuotedName() // on2
         ));
-        info.whereExpr = String.format("%s.KEY IS NOT NULL", tableAlias);
-        info.scoreExpr = String.format("1 AS %s", scoreAlias);
-        info.scoreAlias = scoreAlias;
+        info.whereExpr = String.format("%s.KEY IS NOT NULL", quotedTableAlias);
+        info.scoreExpr = "1";
+        info.scoreAlias = "_NXSCORE" + nthSuffix;
         info.scoreCol = new Column(mainColumn.getTable(), null,
                 ColumnType.DOUBLE, null);
         return info;
@@ -291,12 +293,12 @@ public class DialectH2 extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/h2.sql.txt";
+        return "nuxeovcs/h2.sql.txt";
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/h2.test.sql.txt";
+        return "nuxeovcs/h2.test.sql.txt";
     }
 
     @Override
@@ -313,9 +315,9 @@ public class DialectH2 extends Dialect {
         properties.put("fulltextEnabled", Boolean.valueOf(!fulltextDisabled));
         properties.put("readPermissions", StringUtils.join(permsList, ", "));
         properties.put("h2Functions",
-                "org.eclipse.ecr.core.storage.sql.extensions.H2Functions");
+                "org.eclipse.ecr.core.storage.sql.db.H2Functions");
         properties.put("h2Fulltext",
-                "org.eclipse.ecr.core.storage.sql.extensions.H2Fulltext");
+                "org.eclipse.ecr.core.storage.sql.db.H2Fulltext");
         properties.put("usersSeparator", getUsersSeparator());
         return properties;
     }
@@ -350,6 +352,16 @@ public class DialectH2 extends Dialect {
             return DEFAULT_USERS_SEPARATOR;
         }
         return usersSeparator;
+    }
+
+    @Override
+    public String getBlobLengthFunction() {
+        return "LENGTH";
+    }
+
+    @Override
+    public String getAncestorsIdsSql() {
+        return "CALL NX_ANCESTORS(?)";
     }
 
 }

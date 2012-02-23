@@ -168,7 +168,8 @@ public class LoginComponent extends DefaultComponent implements LoginService {
             principals.add(sysId);
             Subject subject = new Subject(false, principals,
                     new HashSet<String>(), new HashSet<String>());
-            return systemLogin.login(subject, new CredentialsCallbackHandler(sysId.getName(), sysId));
+            return systemLogin.login(subject, new CredentialsCallbackHandler(
+                    sysId.getName(), sysId));
         }
         return null;
     }

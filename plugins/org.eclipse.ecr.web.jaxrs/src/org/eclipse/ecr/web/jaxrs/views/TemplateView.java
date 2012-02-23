@@ -25,7 +25,7 @@ import org.osgi.framework.Bundle;
 
 /**
  * Template for compatibility with Nuxeo WebEngine
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */

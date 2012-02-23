@@ -14,7 +14,6 @@
 
 package org.eclipse.ecr.core.api;
 
-import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.model.Document;
 import org.eclipse.ecr.core.model.DocumentIterator;
 

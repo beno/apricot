@@ -15,6 +15,7 @@ Nuxeo-Component: OSGI-INF/SchemaService.xml
 Import-Package: com.sun.xml.xsom,
  com.sun.xml.xsom.impl,
  com.sun.xml.xsom.parser,
+ org.apache.commons.lang,
  org.apache.commons.logging,
  org.eclipse.ecr.common.utils,
  org.eclipse.ecr.common.xmap.annotation,

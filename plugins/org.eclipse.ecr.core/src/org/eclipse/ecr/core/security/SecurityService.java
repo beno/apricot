@@ -35,7 +35,6 @@ import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.core.api.security.SecuritySummaryEntry;
 import org.eclipse.ecr.core.api.security.impl.SecuritySummaryEntryImpl;
 import org.eclipse.ecr.core.model.Document;
-import org.eclipse.ecr.core.model.Session;
 import org.eclipse.ecr.core.query.sql.model.SQLQuery;
 import org.eclipse.ecr.runtime.model.ComponentContext;
 import org.eclipse.ecr.runtime.model.ComponentInstance;
@@ -117,12 +116,6 @@ public class SecurityService extends DefaultComponent {
 
     public PermissionProvider getPermissionProvider() {
         return permissionProvider;
-    }
-
-    // Never used. Remove ?
-    public static void invalidateCache(Session session, String username) {
-        session.getRepository().getNuxeoSecurityManager().invalidateCache(
-                session);
     }
 
     public boolean arePoliciesRestrictingPermission(String permission) {

@@ -127,18 +127,6 @@ public interface CoreSession {
     DocumentType getDocumentType(String type);
 
     /**
-     * Utility method to generate VersionModel labels.
-     *
-     * @param docRef
-     * @return the String representation of an auto-incremented counter that not
-     *         used in any label of docRef
-     * @throws ClientException
-     * @deprecated use {@link #checkIn(DocumentRef, String)} directly
-     */
-    @Deprecated
-    String generateVersionLabelFor(DocumentRef docRef) throws ClientException;
-
-    /**
      * Connects to the repository given its URI. This opens a new session on the
      * specified repository.
      * <p>
@@ -252,14 +240,6 @@ public interface CoreSession {
      */
     @NoRollbackOnException
     DocumentModel getDocument(DocumentRef docRef) throws ClientException;
-
-    /**
-     * @deprecated unused
-     */
-    @NoRollbackOnException
-    @Deprecated
-    DocumentModel getDocument(DocumentRef docRef, String[] schemas)
-            throws ClientException;
 
     /**
      * Gets a list of documents given their references.
@@ -868,13 +848,6 @@ public interface CoreSession {
      */
 
     /**
-     * @deprecated not used by client code
-     */
-    @Deprecated
-    DataModel getDataModel(DocumentRef docRef, String schema)
-            throws ClientException;
-
-    /**
      * Retrieves a data model given a document reference and a schema.
      * <p>
      * For INTERNAL use by the core.
@@ -883,20 +856,6 @@ public interface CoreSession {
      */
     DataModel getDataModel(DocumentRef docRef, Schema schema)
             throws ClientException;
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    Object getDataModelField(DocumentRef docRef, String schema, String field)
-            throws ClientException;
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    Object[] getDataModelFields(DocumentRef docRef, String schema,
-            String[] fields) throws ClientException;
 
     /**
      * Gets the data input stream given its key.
@@ -1182,22 +1141,6 @@ public interface CoreSession {
     DocumentModel createProxy(DocumentRef docRef, DocumentRef folderRef)
             throws ClientException;
 
-    /**
-     * Creates a proxy for the given version of the given document.
-     *
-     * @param docRef the reference to the document
-     * @param version the version
-     * @return the proxy
-     * @throws ClientException if any error occurs
-     * @deprecated use {@link #createProxy(DocumentRef, DocumentRef)} or
-     *             {@link #publishDocument(DocumentModel, DocumentModel, boolean)}
-     *             instead
-     */
-    @Deprecated
-    DocumentModel createProxy(DocumentRef parentRef, DocumentRef docRef,
-            VersionModel version, boolean overwriteExistingProxy)
-            throws ClientException;
-
     /** -------------------------- Query API --------------------------- * */
 
     /**
@@ -1262,6 +1205,26 @@ public interface CoreSession {
             long offset, boolean countTotal) throws ClientException;
 
     /**
+     * Executes the given query and returns the result that matches the filter.
+     *
+     * @param query the query to execute
+     * @param queryType the query type, like "NXQL"
+     * @param filter the filter to apply to result
+     * @param limit the maximum number of documents to retrieve, or 0 for all of
+     *            them
+     * @param offset the offset (starting at 0) into the list of documents
+     * @param countTotal if {@code true}, return a {@link DocumentModelList}
+     *            that includes a total size of the underlying list (size if
+     *            there was no limit or offset)
+     * @return the query result
+     * @throws ClientException
+     *
+     * @since 5.5
+     */
+    DocumentModelList query(String query, String queryType, Filter filter,
+            long limit, long offset, boolean countTotal) throws ClientException;
+
+    /**
      *
      * @throws ClientException
      */
@@ -1279,42 +1242,6 @@ public interface CoreSession {
      */
     DocumentModelIterator queryIt(String query, Filter filter, int max)
             throws ClientException;
-
-    /**
-     * Executes a specific FULLTEXT enabled query for the given keywords.
-     *
-     * @deprecated use SearchService instead. See {@link http
-     *             ://doc.nuxeo.org/reference/html/search-service.html}
-     */
-    @Deprecated
-    DocumentModelList querySimpleFts(String keywords) throws ClientException;
-
-    /**
-     * Executes a specific FULLTEXT enabled query for the given keywords,
-     * returning only results that match the specified filter.
-     *
-     * @deprecated use SearchService instead. See {@link http
-     *             ://doc.nuxeo.org/reference/html/search-service.html}
-     */
-    @Deprecated
-    DocumentModelList querySimpleFts(String keywords, Filter filter)
-            throws ClientException;
-
-    /**
-     * @deprecated use SearchService instead. See {@link http
-     *             ://doc.nuxeo.org/reference/html/search-service.html}
-     */
-    @Deprecated
-    DocumentModelIterator querySimpleFtsIt(String query, Filter filter,
-            int pageSize) throws ClientException;
-
-    /**
-     * @deprecated use SearchService instead. See {@link http
-     *             ://doc.nuxeo.org/reference/html/search-service.html}
-     */
-    @Deprecated
-    DocumentModelIterator querySimpleFtsIt(String query, String startingPath,
-            Filter filter, int pageSize) throws ClientException;
 
     /** -------------------------- Security API --------------------------- * */
 
@@ -1372,6 +1299,14 @@ public interface CoreSession {
      */
     Collection<String> getAllowedStateTransitions(DocumentRef docRef)
             throws ClientException;
+
+    /**
+     * Reinitializes the life cycle state of the document to its default state.
+     *
+     * @param docRef the document
+     * @since 5.4.2
+     */
+    void reinitLifeCycleState(DocumentRef docRef) throws ClientException;
 
     /**
      * Retrieves the given field value from the given schema for all the given

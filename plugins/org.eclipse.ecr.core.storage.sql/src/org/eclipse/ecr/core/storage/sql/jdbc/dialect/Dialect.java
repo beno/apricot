@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.eclipse.ecr.common.utils.StringUtils;
@@ -274,7 +275,7 @@ public abstract class Dialect {
     }
 
     protected int getMaxIndexNameSize() {
-        return 999;
+        return getMaxNameSize();
     }
 
     /*
@@ -407,6 +408,8 @@ public abstract class Dialect {
             OR, AND, WORD, NOTWORD
         };
 
+        public static final String SPACE = " ";
+
         public Op op;
 
         /** The list of terms, if op is OR or AND */
@@ -414,6 +417,13 @@ public abstract class Dialect {
 
         /** The word, if op is WORD or NOTWORD */
         public String word;
+
+        /**
+         * Checks if the word is a phrase.
+         */
+        public boolean isPhrase() {
+            return word != null && word.contains(SPACE);
+        }
     }
 
     /**
@@ -433,11 +443,11 @@ public abstract class Dialect {
 
         public static final String MINUS = "-";
 
-        public static final String SPACE = " ";
-
         public static final char CSPACE = ' ';
 
         public static final String DOUBLE_QUOTES = "\"";
+
+        public static final String OR = "OR";
 
         public FulltextQuery ft = new FulltextQuery();
 
@@ -500,7 +510,7 @@ public abstract class Dialect {
                         continue;
                     }
                     word = phrase.toString();
-                } else if (word.equalsIgnoreCase("OR")) {
+                } else if (word.equalsIgnoreCase(OR)) {
                     if (wasOr) {
                         throw new QueryMakerException(
                                 "Invalid fulltext query (OR OR): " + query);
@@ -583,7 +593,9 @@ public abstract class Dialect {
         }
 
         public static void translate(FulltextQuery ft, StringBuilder buf,
-                String or, String and, String andNot, String phraseQuote) {
+                String or, String and, String andNot, String wordStart,
+                String wordEnd, Set<Character> wordCharsReserved,
+                String phraseStart, String phraseEnd, boolean quotePhraseWords) {
             if (ft.op == Op.AND || ft.op == Op.OR) {
                 buf.append('(');
                 for (int i = 0; i < ft.terms.size(); i++) {
@@ -601,19 +613,52 @@ public abstract class Dialect {
                         }
                         buf.append(' ');
                     }
-                    translate(term, buf, or, and, andNot, phraseQuote);
+                    translate(term, buf, or, and, andNot, wordStart, wordEnd,
+                            wordCharsReserved, phraseStart, phraseEnd, quotePhraseWords);
                 }
                 buf.append(')');
                 return;
             } else {
-                boolean isPhrase = ft.word.contains(SPACE);
-                if (isPhrase) {
-                    buf.append(phraseQuote);
+                String word = ft.word.toLowerCase();
+                if (ft.isPhrase()) {
+                    if (quotePhraseWords) {
+                        boolean first = true;
+                        for (String w : word.split(" ")) {
+                            if (!first) {
+                                buf.append(" ");
+                            }
+                            first = false;
+                            appendWord(w, buf, wordStart, wordEnd,
+                                    wordCharsReserved);
+                        }
+                    } else {
+                        buf.append(phraseStart);
+                        buf.append(word);
+                        buf.append(phraseEnd);
+                    }
+                } else {
+                    appendWord(word, buf, wordStart, wordEnd, wordCharsReserved);
                 }
-                buf.append(ft.word);
-                if (isPhrase) {
-                    buf.append(phraseQuote);
+            }
+        }
+
+        protected static void appendWord(String word, StringBuilder buf,
+                String start, String end, Set<Character> reserved) {
+            boolean quote = true;
+            if (!reserved.isEmpty()) {
+                for (char c : word.toCharArray()) {
+                    if (reserved.contains(Character.valueOf(c))) {
+                        quote = false;
+                        break;
+                    }
                 }
+            }
+            if (quote) {
+                buf.append(start);
+            }
+            buf.append(word);
+            if (quote) {
+                buf.append(end);
             }
         }
 
@@ -626,7 +671,7 @@ public abstract class Dialect {
                 }
                 return false;
             } else {
-                return ft.word.contains(SPACE);
+                return ft.isPhrase();
             }
         }
 
@@ -638,7 +683,23 @@ public abstract class Dialect {
     public static String translateFulltext(FulltextQuery ft, String or,
             String and, String andNot, String phraseQuote) {
         StringBuilder buf = new StringBuilder();
-        FulltextQueryAnalyzer.translate(ft, buf, or, and, andNot, phraseQuote);
+        FulltextQueryAnalyzer.translate(ft, buf, or, and, andNot, "", "",
+                Collections.<Character> emptySet(), phraseQuote, phraseQuote,
+                false);
+        return buf.toString();
+    }
+
+    /**
+     * Translate fulltext into a common pattern used by many servers.
+     */
+    public static String translateFulltext(FulltextQuery ft, String or,
+            String and, String andNot, String wordStart, String wordEnd,
+            Set<Character> wordCharsReserved, String phraseStart,
+            String phraseEnd, boolean quotePhraseWords) {
+        StringBuilder buf = new StringBuilder();
+        FulltextQueryAnalyzer.translate(ft, buf, or, and, andNot, wordStart,
+                wordEnd, wordCharsReserved, phraseStart, phraseEnd,
+                quotePhraseWords);
         return buf.toString();
     }
 
@@ -832,6 +893,16 @@ public abstract class Dialect {
     }
 
     /**
+     * The dialect need an extra SQL statement to populate a user read acl cache
+     * before running the query.
+     *
+     * @since 5.5
+     */
+    public boolean needsPrepareUserReadAcls() {
+        return false;
+    }
+
+    /**
      * When using a CLOB field in an expression, is some casting required and
      * with what pattern?
      * <p>
@@ -880,6 +951,16 @@ public abstract class Dialect {
      * @return true if ARRAY values are supported
      */
     public boolean supportsArrays() {
+        return false;
+    }
+
+    /**
+     * Does a stored function returning an result set need to access it as a
+     * single array instead of iterating over a normal result set's rows.
+     * <p>
+     * Oracle needs this.
+     */
+    public boolean supportsArraysReturnInsteadOfRows() {
         return false;
     }
 
@@ -1036,6 +1117,18 @@ public abstract class Dialect {
     }
 
     /**
+     * Gets the SQL expression to prepare the user read acls cache.
+     *
+     * This can be used to populate a table cache.
+     *
+     * @since 5.5
+     * @return and SQL expression with one parameter (principals)
+     */
+    public String getPrepareUserReadAclsSql() {
+        return null;
+    }
+
+    /**
      * Called before a table is created, when it's been determined that it
      * doesn't exist yet.
      *
@@ -1094,6 +1187,82 @@ public abstract class Dialect {
      */
     public String getValidationQuery() {
         return "SELECT 1";
+    }
+
+    /**
+     * Gets the SQL function that returns the length of a blob, in bytes.
+     */
+    public String getBlobLengthFunction() {
+        // the SQL-standard function (PostgreSQL, MySQL)
+        return "OCTET_LENGTH";
+    }
+
+    /**
+     * Let the dialect perform additional statements just after the connection
+     * is opened.
+     */
+    public void performPostOpenStatements(Connection connection)
+            throws SQLException {
+    }
+
+    /**
+     * Gets additional SQL statements to execute after the CREATE TABLE when
+     * creating an identity column.
+     * <p>
+     * Oracle needs both a sequence and a trigger.
+     */
+    public List<String> getPostCreateIdentityColumnSql(Column column) {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Checks if an identity column is already defined as a primary key and does
+     * not need a separate index added.
+     * <p>
+     * MySQL defines the identity column directly as primary key.
+     */
+    public boolean isIdentityAlreadyPrimary() {
+        return false;
+    }
+
+    /**
+     * True if the dialect returns the generated key for the identity from the
+     * insert statement.
+     * <p>
+     * Oracle needs a separate call to CURRVAL.
+     */
+    public boolean hasIdentityGeneratedKey() {
+        return true;
+    }
+
+    /**
+     * Gets the SQL query to execute to retrieve the last generated identity
+     * key.
+     * <p>
+     * Oracle needs a separate call to CURRVAL.
+     */
+    public String getIdentityGeneratedKeySql(Column column) {
+        return null;
+    }
+
+    /**
+     * Gets the SQL query to get the ancestors of a set of ids.
+     *
+     * @return null if not available
+     */
+    public String getAncestorsIdsSql() {
+        return null;
+    }
+
+    /**
+     * Gets the SQL descending sort direction with option to sort nulls last.
+     *
+     * Use to unify database behavior.
+     *
+     * @return DESC or DESC NULLS LAST depending on dialects.
+     */
+    public String getDescending() {
+        return " DESC";
     }
 
 }

@@ -17,7 +17,6 @@ package org.eclipse.ecr.core.security;
 import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.api.security.Access;
 import org.eclipse.ecr.core.model.Document;
-import org.eclipse.ecr.core.model.Session;
 
 /**
  * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -61,14 +60,5 @@ public interface SecurityManager {
      */
     Access getAccess(Document doc, String username,
             String permission) throws SecurityException;
-
-    /**
-     * Invalidates cache, if there is any.
-     * <p>
-     * Do nothing if no cache is used.
-     *
-     * @param session the current session
-     */
-    void invalidateCache(Session session);
 
 }

@@ -16,8 +16,11 @@ package org.eclipse.ecr.core.event.impl;
 import java.rmi.dgc.VMID;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,7 +44,7 @@ import org.eclipse.ecr.runtime.api.Framework;
 /**
  * Implementation of the event service.
  */
-public class EventServiceImpl implements EventService, EventServiceAdmin{
+public class EventServiceImpl implements EventService, EventServiceAdmin {
 
     public static final VMID VMID = new VMID();
 
@@ -55,8 +58,6 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
     };
 
     private static class CompositeEventBundle {
-
-        static final long serialVersionUID = 1L;
 
         boolean transacted;
 
@@ -76,7 +77,10 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
 
     protected final EventListenerList listenerDescriptors;
 
-    protected final AsyncEventExecutor asyncExec;
+    protected volatile AsyncEventExecutor asyncExec;
+
+    protected final List<AsyncWaitHook> asyncWaitHooks =
+            new CopyOnWriteArrayList<AsyncWaitHook>();
 
     protected boolean blockAsyncProcessing = false;
 
@@ -95,9 +99,27 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
     }
 
     public void shutdown(long timeout) {
-        // the possible timeout here is doubled. we don't really care.
-        waitForAsyncCompletion(timeout);
-        asyncExec.shutdown(timeout);
+        Set<AsyncWaitHook> notTerminated =
+                new HashSet<AsyncWaitHook>();
+        for (AsyncWaitHook hook:asyncWaitHooks) {
+            if (hook.shutdown() == false) {
+                notTerminated.add(hook);
+            }
+        }
+        if (!notTerminated.isEmpty()) {
+            throw new Error("Asynch services are still running : " + notTerminated);
+        }
+        if (asyncExec.shutdown(timeout) == false) {
+            throw new Error("Async executor is still running, timeout expired");
+        }
+    }
+
+    public void registerForAsyncWait(AsyncWaitHook callback) {
+        asyncWaitHooks.add(callback);
+    }
+
+    public void unregisterForAsyncWait(AsyncWaitHook callback) {
+        asyncWaitHooks.remove(callback);
     }
 
     /**
@@ -110,22 +132,26 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
 
     @Override
     public void waitForAsyncCompletion() {
-        waitForAsyncCompletion(0);
+        waitForAsyncCompletion(Long.MAX_VALUE);
     }
 
     @Override
     public void waitForAsyncCompletion(long timeout) {
-        long t0 = System.currentTimeMillis();
-        while (asyncExec.getUnfinishedCount() > 0) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-            }
-            if (timeout > 0 && System.currentTimeMillis() > t0 + timeout) {
-                break;
+        Set<AsyncWaitHook> notCompleted =
+                new HashSet<AsyncWaitHook>();
+        for (AsyncWaitHook hook:asyncWaitHooks) {
+            if (!hook.waitForAsyncCompletion()) {
+                notCompleted.add(hook);
             }
         }
-    }
+        if (!notCompleted.isEmpty()) {
+            throw new Error("Async tasks are still running : " + notCompleted);
+        }
+        if (!asyncExec.shutdown(timeout)) {
+            throw new Error("Async event listeners thread pool is not terminated");
+        }
+        asyncExec = AsyncEventExecutor.create();
+     }
 
     @Override
     public void addEventListener(EventListenerDescriptor listener) {
@@ -146,8 +172,8 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
             log.debug("Unregistered event listener: " + listener.getName());
         } catch (Exception e) {
             log.error(
-                    "Failed to unregister event listener: " + listener.getName(),
-                    e);
+                    "Failed to unregister event listener: "
+                            + listener.getName(), e);
         }
     }
 
@@ -176,9 +202,8 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
                 EventBundleImpl b = new EventBundleImpl();
                 b.push(shallowEvent);
                 fireEventBundle(b);
-            }
-            else {
-                CompositeEventBundle b =  compositeBundle.get();
+            } else {
+                CompositeEventBundle b = compositeBundle.get();
                 b.push(shallowEvent);
                 // check for commit events to flush the event bundle
                 if (!b.transacted && event.isCommitEvent()) {
@@ -194,7 +219,7 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
                     long t0 = System.currentTimeMillis();
                     desc.asEventListener().handleEvent(event);
                     if (stats != null) {
-                        stats.logSyncExec(desc, System.currentTimeMillis()-t0);
+                        stats.logSyncExec(desc, System.currentTimeMillis() - t0);
                     }
                 } catch (Throwable t) {
                     log.error("Error during sync listener execution", t);
@@ -240,15 +265,14 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
         // run sync listeners
         if (blockSyncPostCommitProcessing) {
             log.debug("Dropping PostCommit handler execution");
-        }
-        else if (comesFromJMS) {
+        } else if (comesFromJMS) {
             // when called from JMS we must skip sync listeners
             // - postComit listeners should be on the core
             // - there is no transaction started by JMS listener
             log.debug("Deactivating sync post-commit listener since we are called from JMS");
         } else {
             List<EventListenerDescriptor> syncPCDescs = listenerDescriptors.getEnabledSyncPostCommitListenersDescriptors();
-            if (syncPCDescs!=null && !syncPCDescs.isEmpty()) {
+            if (syncPCDescs != null && !syncPCDescs.isEmpty()) {
                 PostCommitSynchronousRunner syncRunner = new PostCommitSynchronousRunner(
                         syncPCDescs, event);
                 syncRunner.run();
@@ -264,7 +288,9 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
         if (AsyncProcessorConfig.forceJMSUsage() && !comesFromJMS) {
             log.debug("Skipping async exec, this will be triggered via JMS");
         } else {
-            asyncExec.run(listenerDescriptors.getEnabledAsyncPostCommitListenersDescriptors(), event);
+            asyncExec.run(
+                    listenerDescriptors.getEnabledAsyncPostCommitListenersDescriptors(),
+                    event);
         }
     }
 
@@ -280,7 +306,7 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
 
     @Override
     public List<EventListener> getEventListeners() {
-         return listenerDescriptors.getInLineListeners();
+        return listenerDescriptors.getInLineListeners();
     }
 
     @Override
@@ -387,7 +413,8 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
     }
 
     @Override
-    public void setBlockSyncPostCommitHandlers(boolean blockSyncPostComitHandlers) {
+    public void setBlockSyncPostCommitHandlers(
+            boolean blockSyncPostComitHandlers) {
         blockSyncPostCommitProcessing = blockSyncPostComitHandlers;
     }
 
@@ -414,34 +441,32 @@ public class EventServiceImpl implements EventService, EventServiceAdmin{
     protected void handleTxStarted() {
         compositeBundle.get().transacted = true;
         for (Object listener : txListeners.getListeners()) {
-            ((EventTransactionListener)listener).transactionStarted();
+            ((EventTransactionListener) listener).transactionStarted();
         }
     }
 
     protected void handleTxRollbacked() {
         compositeBundle.remove();
         for (Object listener : txListeners.getListeners()) {
-            ((EventTransactionListener)listener).transactionRollbacked();
+            ((EventTransactionListener) listener).transactionRollbacked();
         }
     }
 
-    protected void handleTxCommited()  {
+    protected void handleTxCommited() {
         CompositeEventBundle b = compositeBundle.get();
-        try {
-            // notify post commit event listeners
-            for (EventBundle bundle : b.byRepository.values()) {
-                try {
-                    fireEventBundle(bundle);
-                } catch (ClientException e) {
-                    log.error("Error while processing " + bundle, e);
-                }
+        compositeBundle.remove();
+
+        // notify post commit event listeners
+        for (EventBundle bundle : b.byRepository.values()) {
+            try {
+                fireEventBundle(bundle);
+            } catch (ClientException e) {
+                log.error("Error while processing " + bundle, e);
             }
-            // notify post commit tx listeners
-            for (Object listener : txListeners.getListeners()) {
-                ((EventTransactionListener) listener).transactionCommitted();
-            }
-        } finally {
-            compositeBundle.remove();
+        }
+        // notify post commit tx listeners
+        for (Object listener : txListeners.getListeners()) {
+            ((EventTransactionListener) listener).transactionCommitted();
         }
     }
 

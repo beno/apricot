@@ -8,23 +8,31 @@
  *
  * Contributors:
  *     Florent Guillaume
+ *     Benoit Delbosc
  */
 
 package org.eclipse.ecr.core.storage.sql.jdbc.dialect;
 
 import java.io.Serializable;
 import java.net.SocketException;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.ecr.common.utils.StringUtils;
+import org.eclipse.ecr.core.NXCore;
+import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.BinaryManager;
 import org.eclipse.ecr.core.storage.sql.ColumnType;
@@ -50,6 +58,12 @@ public class DialectSQLServer extends Dialect {
 
     protected final String fulltextCatalog;
 
+    private static final String DEFAULT_USERS_SEPARATOR = "|";
+
+    protected final String usersSeparator;
+
+    protected boolean pathOptimizationsEnabled;
+
     public DialectSQLServer(DatabaseMetaData metadata,
             BinaryManager binaryManager,
             RepositoryDescriptor repositoryDescriptor) throws StorageException {
@@ -60,7 +74,11 @@ public class DialectSQLServer extends Dialect {
         fulltextCatalog = repositoryDescriptor == null ? null
                 : repositoryDescriptor.fulltextCatalog == null ? DEFAULT_FULLTEXT_CATALOG
                         : repositoryDescriptor.fulltextCatalog;
-
+        usersSeparator = repositoryDescriptor == null ? null
+                : repositoryDescriptor.usersSeparatorKey == null ? DEFAULT_USERS_SEPARATOR
+                        : repositoryDescriptor.usersSeparatorKey;
+        pathOptimizationsEnabled = repositoryDescriptor == null ? false
+                : repositoryDescriptor.pathOptimizationsEnabled;
     }
 
     @Override
@@ -130,6 +148,8 @@ public class DialectSQLServer extends Dialect {
             return jdbcInfo("TINYINT", Types.TINYINT);
         case INTEGER:
             return jdbcInfo("INT", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("INT IDENTITY", Types.INTEGER);
         case FTINDEXED:
             throw new AssertionError(type);
         case FTSTORED:
@@ -213,6 +233,11 @@ public class DialectSQLServer extends Dialect {
     }
 
     @Override
+    protected int getMaxNameSize() {
+        return 128;
+    }
+
+    @Override
     public boolean getMaterializeFulltextSyntheticColumn() {
         return false;
     }
@@ -251,12 +276,13 @@ public class DialectSQLServer extends Dialect {
 
     @Override
     public String getDialectFulltextQuery(String query) {
-        query = query.replace("*", "%");
+        query = query.replace("%", "*");
         FulltextQuery ft = analyzeFulltextQuery(query);
         if (ft == null) {
             return "DONTMATCHANYTHINGFOREMPTYQUERY";
         }
-        return translateFulltext(ft, "OR", "AND", "AND NOT", "\"");
+        return translateFulltext(ft, "OR", "AND", "AND NOT", "\"", "\"",
+                Collections.<Character> emptySet(), "\"", "\"", false);
     }
 
     // SELECT ..., FTTBL.RANK / 1000.0
@@ -275,7 +301,6 @@ public class DialectSQLServer extends Dialect {
         Column ftMain = ft.getColumn(model.MAIN_KEY);
         String nthSuffix = nthMatch == 1 ? "" : String.valueOf(nthMatch);
         String tableAlias = "_nxfttbl" + nthSuffix;
-        String scoreAlias = "_nxscore" + nthSuffix;
         FulltextMatchInfo info = new FulltextMatchInfo();
         // there are two left joins here
         info.joins = new ArrayList<Join>();
@@ -294,9 +319,8 @@ public class DialectSQLServer extends Dialect {
                 String.format("%s.[KEY]", tableAlias) // on2
         ));
         info.whereExpr = String.format("%s.[KEY] IS NOT NULL", tableAlias);
-        info.scoreExpr = String.format("%s.RANK / 1000.0 AS %s", tableAlias,
-                scoreAlias);
-        info.scoreAlias = scoreAlias;
+        info.scoreExpr = String.format("(%s.RANK / 1000.0)", tableAlias);
+        info.scoreAlias = "_nxscore" + nthSuffix;
         info.scoreCol = new Column(mainColumn.getTable(), null,
                 ColumnType.DOUBLE, null);
         return info;
@@ -311,6 +335,12 @@ public class DialectSQLServer extends Dialect {
 
     @Override
     public boolean supportsCircularCascadeDeleteConstraints() {
+        // See http://support.microsoft.com/kb/321843
+        // Msg 1785 Introducing FOREIGN KEY constraint
+        // 'hierarchy_parentid_hierarchy_fk' on table 'hierarchy' may cause
+        // cycles or multiple cascade paths. Specify ON DELETE NO ACTION or ON
+        // UPDATE NO ACTION, or modify other FOREIGN KEY constraints.
+        // Instead we use a trigger "INSTEAD OF DELETE" to do the recursion.
         return false;
     }
 
@@ -345,17 +375,22 @@ public class DialectSQLServer extends Dialect {
 
     @Override
     public String getInTreeSql(String idColumnName) {
+        if (pathOptimizationsEnabled) {
+            return String.format(
+                    "EXISTS(SELECT 1 FROM ancestors WHERE hierarchy_id = %s AND ancestor = ?)",
+                    idColumnName);
+        }
         return String.format("dbo.NX_IN_TREE(%s, ?) = 1", idColumnName);
     }
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/sqlserver.sql.txt";
+        return "nuxeovcs/sqlserver.sql.txt";
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/sqlserver.test.sql.txt";
+        return "nuxeovcs/sqlserver.test.sql.txt";
     }
 
     @Override
@@ -365,7 +400,42 @@ public class DialectSQLServer extends Dialect {
         properties.put("idType", "VARCHAR(36)");
         properties.put("fulltextEnabled", Boolean.valueOf(!fulltextDisabled));
         properties.put("fulltextCatalog", fulltextCatalog);
+        properties.put("aclOptimizationsEnabled",
+                Boolean.valueOf(aclOptimizationsEnabled));
+        properties.put("pathOptimizationsEnabled",
+                Boolean.valueOf(pathOptimizationsEnabled));
+        String[] permissions = NXCore.getSecurityService().getPermissionsToCheck(
+                SecurityConstants.BROWSE);
+        List<String> permsList = new LinkedList<String>();
+        for (String perm : permissions) {
+            permsList.add(String.format("  SELECT '%s' ", perm));
+        }
+        properties.put("readPermissions", StringUtils.join(permsList,
+                " UNION ALL "));
+        properties.put("usersSeparator", getUsersSeparator());
         return properties;
+    }
+
+    @Override
+    public boolean supportsReadAcl() {
+        return aclOptimizationsEnabled;
+    }
+
+    @Override
+    public String getReadAclsCheckSql(String idColumnName) {
+        return String.format(
+                "%s IN (SELECT acl_id FROM dbo.nx_get_read_acls_for(?))",
+                idColumnName);
+    }
+
+    @Override
+    public String getUpdateReadAclsSql() {
+        return "EXEC dbo.nx_update_read_acls";
+    }
+
+    @Override
+    public String getRebuildReadAclsSql() {
+        return "EXEC dbo.nx_rebuild_read_acls";
     }
 
     @Override
@@ -395,10 +465,53 @@ public class DialectSQLServer extends Dialect {
         // java.sql.SQLException: Invalid state, the Connection object is
         // closed.
         String message = t.getMessage();
-        if (message.contains("the Connection object is closed")) {
+        if (message != null
+                && message.contains("the Connection object is closed")) {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public String getBlobLengthFunction() {
+        return "DATALENGTH";
+    }
+
+    @Override
+    public String getPrepareUserReadAclsSql() {
+        return "EXEC nx_prepare_user_read_acls ?";
+    }
+
+    @Override
+    public boolean needsPrepareUserReadAcls() {
+        return true;
+    }
+
+    public String getUsersSeparator() {
+        if (usersSeparator == null) {
+            return DEFAULT_USERS_SEPARATOR;
+        }
+        return usersSeparator;
+    }
+
+    /**
+     * Set transaction isolation level to snapshot
+     *
+     */
+    @Override
+    public void performPostOpenStatements(Connection connection)
+            throws SQLException {
+        Statement stmt = connection.createStatement();
+        try {
+            stmt.execute("SET TRANSACTION ISOLATION LEVEL SNAPSHOT;");
+        } finally {
+            stmt.close();
+        }
+    }
+
+    @Override
+    public String getAncestorsIdsSql() {
+        return "SELECT id FROM dbo.NX_ANCESTORS(?)";
     }
 
 }

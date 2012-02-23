@@ -28,8 +28,6 @@ import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
 import org.eclipse.ecr.core.api.TransactionalCoreSessionWrapper;
 import org.eclipse.ecr.core.api.impl.UserPrincipal;
-import org.eclipse.ecr.core.api.local.ClientLoginModule;
-import org.eclipse.ecr.core.api.local.LoginStack;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.core.model.Repository;
 import org.eclipse.ecr.core.model.Session;
@@ -130,20 +128,25 @@ public class LocalSession extends AbstractSession {
     }
 
     protected Repository lookupRepository(String name) throws Exception {
+        Repository repo;
         try {
             // needed by glassfish
-            return (Repository) new InitialContext().lookup("NXRepository/"
+            repo = (Repository) new InitialContext().lookup("NXRepository/"
                     + name);
         } catch (NamingException e) {
             try {
                 // needed by jboss
-                return (Repository) new InitialContext().lookup("java:NXRepository/"
+                repo = (Repository) new InitialContext().lookup("java:NXRepository/"
                         + name);
             } catch (NamingException ee) {
-                return NXCore.getRepositoryService().getRepositoryManager().getRepository(
+                repo = NXCore.getRepositoryService().getRepositoryManager().getRepository(
                         name);
             }
         }
+        if (repo == null) {
+            throw new IllegalArgumentException("Repository not found: " + name);
+        }
+        return repo;
     }
 
     /**

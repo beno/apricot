@@ -17,7 +17,7 @@ package org.eclipse.ecr.core.api;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
 import org.eclipse.ecr.core.api.repository.Repository;
 import org.eclipse.ecr.core.api.repository.RepositoryManager;
-import org.eclipse.ecr.core.schema.DocumentType;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
@@ -38,17 +37,18 @@ import org.eclipse.ecr.runtime.api.Framework;
  * remotely.
  * <p>
  * A server instance uses a CoreSessionFactory to create CoreSession instances.
- * CoreSessionFactory objects are implementation-dependent and may be registered
- * using extension points. See {@link CoreSessionFactory} for more details.
+ * CoreSessionFactory objects are implementation-dependent and may be
+ * registered using extension points. See {@link CoreSessionFactory} for more
+ * details.
  * <p>
  * Thus you can use a different implementation for the local ServerConnector
  * than the one for the remote ServerConnector.
  * <p>
- * When clients need to perform a connection to a repository, they simply open a
- * new session using the {@link CoreInstance#open(String, Map)} method.
+ * When clients need to perform a connection to a repository, they simply open
+ * a new session using the {@link CoreInstance#open(String, Map)} method.
  * <p>
- * When the client has done its work it <b>must</b> close its session by calling
- * {@link CoreInstance#close(CoreSession)}.
+ * When the client has done its work it <b>must</b> close its session by
+ * calling {@link CoreInstance#close(CoreSession)}.
  * <p>
  * This ensures correctly freeing all the resources held by the client session.
  * <p>
@@ -78,9 +78,18 @@ public class CoreInstance implements Serializable {
 
     private CoreSessionFactory factory;
 
-    private final Map<String, CoreSession> sessions = new ConcurrentHashMap<String, CoreSession>();
+    public static class RegistrationInfo extends Throwable {
+        private static final long serialVersionUID = 1L;
+        public final CoreSession session;
+        public final String threadName;
+        RegistrationInfo(CoreSession session) {
+            super("Session registration context (" + session.getSessionId() + "," + Thread.currentThread().getName() + ")");
+            this.session = session;
+            this.threadName = Thread.currentThread().getName();
+        }
+    }
 
-    private final Map<String, DocumentType> docTypes = new Hashtable<String, DocumentType>();
+    private final Map<String, RegistrationInfo> sessions = new ConcurrentHashMap<String, RegistrationInfo>();
 
     // hiding the default constructor from clients
     protected CoreInstance() {
@@ -93,14 +102,6 @@ public class CoreInstance implements Serializable {
      */
     public static CoreInstance getInstance() {
         return instance;
-    }
-
-    public DocumentType getCachedDocumentType(String type) {
-        return docTypes.get(type);
-    }
-
-    public void cacheDocumentType(DocumentType docType) {
-        docTypes.put(docType.getName(), docType);
     }
 
     public CoreSession open(String repositoryName,
@@ -145,16 +146,26 @@ public class CoreInstance implements Serializable {
         // connect to the server
         client.connect(repositoryName, context);
         // register the client locally
-        sessions.put(client.getSessionId(), client);
+        registerSession(client.getSessionId(), client);
         return client;
     }
 
     public void registerSession(String sid, CoreSession session) {
-        sessions.put(sid, session);
+        if (log.isDebugEnabled()) {
+            log.debug("Register session with id '" + sid + "'.");
+        }
+        sessions.put(sid, new RegistrationInfo(session));
     }
 
     public CoreSession unregisterSession(String sid) {
-        return sessions.remove(sid);
+        if (log.isDebugEnabled()) {
+            log.debug("Unregister session with id '" + sid + "'.");
+        }
+        RegistrationInfo info = sessions.remove(sid);
+        if (info == null) {
+            return null;
+        }
+        return info.session;
     }
 
     public void close(CoreSession client) {
@@ -162,7 +173,7 @@ public class CoreInstance implements Serializable {
         if (sid == null) {
             return; // session not yet connected
         }
-        client = sessions.remove(sid);
+        client = unregisterSession(sid);
         if (client != null) {
             client.destroy();
         } else {
@@ -174,13 +185,29 @@ public class CoreInstance implements Serializable {
         return sessions.containsKey(sid);
     }
 
-    /** @deprecated unused */
-    @Deprecated
-    public CoreSession[] getSessions() {
-        Collection<CoreSession> valuesOfMap = sessions.values();
-        return valuesOfMap.toArray(new CoreSession[0]);
+    /**
+     * Returns the number of registered sessions.
+     *
+     * @since 5.4.2
+     */
+    public int getNumberOfSessions() {
+        return sessions.size();
     }
 
+    public CoreSession[] getSessions() {
+        Collection<RegistrationInfo> infos = sessions.values();
+        CoreSession[] ret = new CoreSession[infos.size()];
+       Iterator<RegistrationInfo> it = infos.iterator();
+       int i = 0;
+       while (it.hasNext()) {
+           ret[i++] = it.next().session;
+       }
+       return ret;
+    }
+
+    public Collection<RegistrationInfo> getRegistrationInfos() {
+        return sessions.values();
+    }
     /**
      * Gets the client bound to the given session.
      *
@@ -189,9 +216,13 @@ public class CoreInstance implements Serializable {
      */
     public CoreSession getSession(String sid) {
         HashMap<String, CoreSession> reentrantSession = DocumentModelImpl.reentrantCoreSession.get();
-        if (reentrantSession!=null && reentrantSession.containsKey(sid)) {
+        if (reentrantSession != null && reentrantSession.containsKey(sid)) {
             return reentrantSession.get(sid);
         }
+        return sessions.get(sid).session;
+    }
+
+    public RegistrationInfo getSessionRegistrationInfo(String sid) {
         return sessions.get(sid);
     }
 

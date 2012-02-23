@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,9 +51,13 @@ public abstract class AbstractRuntimeService implements RuntimeService {
      */
     public static final String REDIRECT_JUL = "org.eclipse.ecr.runtime.redirectJUL";
 
+    public static final String REDIRECT_JUL_THRESHOLD = "org.eclipse.ecr.runtime.redirectJUL.threshold";
+
     private static final Log log = LogFactory.getLog(RuntimeService.class);
 
     protected boolean isStarted = false;
+
+    protected boolean isShuttingDown = false;
 
     protected File workingDir;
 
@@ -105,7 +110,9 @@ public abstract class AbstractRuntimeService implements RuntimeService {
     public synchronized void start() throws Exception {
         if (!isStarted) {
             if (Boolean.parseBoolean(getProperty(REDIRECT_JUL, "true"))) {
-                JavaUtilLoggingHelper.redirectToApacheCommons();
+                Level threshold = Level.parse(getProperty(
+                        REDIRECT_JUL_THRESHOLD, "INFO").toUpperCase());
+                JavaUtilLoggingHelper.redirectToApacheCommons(threshold);
             }
             log.info("Starting Nuxeo Runtime service " + getName()
                     + "; version: " + getVersion());
@@ -124,25 +131,35 @@ public abstract class AbstractRuntimeService implements RuntimeService {
     @Override
     public synchronized void stop() throws Exception {
         if (isStarted) {
-            log.info("Stopping Nuxeo Runtime service " + getName()
-                    + "; version: " + getVersion());
-            Framework.sendEvent(new RuntimeServiceEvent(
-                    RuntimeServiceEvent.RUNTIME_ABOUT_TO_STOP, this));
-            stopExtensions();
-            doStop();
-            isStarted = false;
-            Framework.sendEvent(new RuntimeServiceEvent(
-                    RuntimeServiceEvent.RUNTIME_STOPPED, this));
-            manager.shutdown();
-            // NXRuntime.setRuntime(null);
-            manager = null;
-            JavaUtilLoggingHelper.reset();
+            isShuttingDown = true;
+            try {
+                log.info("Stopping Nuxeo Runtime service " + getName()
+                        + "; version: " + getVersion());
+                Framework.sendEvent(new RuntimeServiceEvent(
+                        RuntimeServiceEvent.RUNTIME_ABOUT_TO_STOP, this));
+                stopExtensions();
+                doStop();
+                isStarted = false;
+                Framework.sendEvent(new RuntimeServiceEvent(
+                        RuntimeServiceEvent.RUNTIME_STOPPED, this));
+                manager.shutdown();
+                // NXRuntime.setRuntime(null);
+                manager = null;
+                JavaUtilLoggingHelper.reset();
+            } finally {
+                isShuttingDown = false;
+            }
         }
     }
 
     @Override
     public boolean isStarted() {
         return isStarted;
+    }
+
+    @Override
+    public boolean isShuttingDown() {
+        return isShuttingDown;
     }
 
     protected void doStart() throws Exception {

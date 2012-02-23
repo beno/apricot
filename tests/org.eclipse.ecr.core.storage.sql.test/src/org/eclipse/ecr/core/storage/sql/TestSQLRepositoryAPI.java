@@ -48,8 +48,6 @@ import org.eclipse.ecr.core.api.PathRef;
 import org.eclipse.ecr.core.api.VersionModel;
 import org.eclipse.ecr.core.api.facet.VersioningDocument;
 import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
-import org.eclipse.ecr.core.api.impl.DocumentModelTreeImpl;
-import org.eclipse.ecr.core.api.impl.DocumentModelTreeNodeComparator;
 import org.eclipse.ecr.core.api.impl.FacetFilter;
 import org.eclipse.ecr.core.api.impl.VersionModelImpl;
 import org.eclipse.ecr.core.api.impl.blob.ByteArrayBlob;
@@ -58,11 +56,19 @@ import org.eclipse.ecr.core.api.impl.blob.StringBlob;
 import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
+import org.eclipse.ecr.core.api.security.ACE;
+import org.eclipse.ecr.core.api.security.ACL;
+import org.eclipse.ecr.core.api.security.ACP;
+import org.eclipse.ecr.core.api.security.impl.ACLImpl;
+import org.eclipse.ecr.core.api.security.impl.ACPImpl;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventService;
 import org.eclipse.ecr.core.event.impl.EventServiceImpl;
 import org.eclipse.ecr.core.schema.FacetNames;
+import org.eclipse.ecr.core.schema.SchemaManager;
+import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.storage.EventConstants;
+import org.eclipse.ecr.core.storage.sql.listeners.DummyBeforeModificationListener;
 import org.eclipse.ecr.core.storage.sql.listeners.DummyTestListener;
 import org.eclipse.ecr.core.storage.sql.testlib.DatabaseHelper;
 import org.eclipse.ecr.core.storage.sql.testlib.DatabaseOracle;
@@ -77,8 +83,6 @@ import org.eclipse.ecr.runtime.api.Framework;
  */
 public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
 
-    public static final String TEST_BUNDLE = "org.eclipse.ecr.core.storage.sql.test";
-
     public TestSQLRepositoryAPI(String name) {
         super(name);
     }
@@ -86,7 +90,8 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        deployContrib(TEST_BUNDLE, "OSGI-INF/test-repo-core-types-contrib.xml");
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
+                "OSGI-INF/test-repo-core-types-contrib.xml");
         openSession();
     }
 
@@ -180,19 +185,19 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertEquals(0, children.size());
     }
 
-    // TODO needs an any2text converter
-    public void TODOtestComplexType() throws Exception {
+    public void testComplexType() throws Exception {
         // boiler plate to handle the asynchronous full-text indexing of blob
         // content in a deterministic way
         EventServiceImpl eventService = (EventServiceImpl) Framework.getLocalService(EventService.class);
-        deployBundle("org.eclipse.ecr.convert");
-        // deployBundle("org.eclipse.ecr.convert.plugins");
+        deployBundle("org.nuxeo.ecm.core.convert");
+        deployBundle("org.nuxeo.ecm.core.convert.plugins");
 
         DocumentModel doc = new DocumentModelImpl("/", "complex-doc",
                 "ComplexDoc");
         doc = session.createDocument(doc);
         DocumentRef docRef = doc.getRef();
         session.save();
+        eventService.waitForAsyncCompletion();
 
         // test setting and reading a map with an empty list
         closeSession();
@@ -200,7 +205,7 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         doc = session.getDocument(docRef);
         Map<String, Object> attachedFile = new HashMap<String, Object>();
         List<Map<String, Object>> vignettes = new ArrayList<Map<String, Object>>();
-        attachedFile.put("name", "some name");
+        attachedFile.put("name", "somename");
         attachedFile.put("vignettes", vignettes);
         doc.setPropertyValue("cmpf:attachedFile", (Serializable) attachedFile);
         session.saveDocument(doc);
@@ -219,7 +224,7 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
 
         // test fulltext indexing of complex property at level one
         DocumentModelList results = session.query(
-                "SELECT * FROM Document WHERE ecm:fulltext = 'some name'", 1);
+                "SELECT * FROM Document WHERE ecm:fulltext = 'somename'", 1);
         assertNotNull(results);
         assertEquals(1, results.size());
         assertEquals("complex-doc", results.get(0).getTitle());
@@ -1573,6 +1578,56 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertFalse(session.exists(returnedChildDocs.get(4).getRef()));
     }
 
+    public void testRemoveDocumentTreeWithSecurity() throws Exception {
+        ACP acp;
+        ACL acl;
+        DocumentModelList dml;
+
+        DocumentModel root = session.getRootDocument();
+        DocumentModel f1 = session.createDocumentModel("/", "f1", "Folder");
+        f1 = session.createDocument(f1);
+        DocumentModel doc1 = session.createDocumentModel("/f1", "doc1", "File");
+        doc1 = session.createDocument(doc1);
+        DocumentModel doc2 = session.createDocumentModel("/f1", "doc2", "File");
+        doc2 = session.createDocument(doc2);
+        // set ACP on root
+        acp = new ACPImpl();
+        acl = new ACLImpl();
+        acl.add(new ACE("Administrator", "Everything", true));
+        acl.add(new ACE("bob", "Everything", true));
+        acp.addACL(acl);
+        root.setACP(acp, true);
+        // set ACP on doc1 to block bob
+        acp = new ACPImpl();
+        acl = new ACLImpl();
+        acl.add(new ACE("bob", "Everything", false));
+        acp.addACL(acl);
+        doc1.setACP(acp, true);
+        session.save();
+
+        // check admin sees doc1 and doc2
+        dml = session.query("SELECT * FROM Document WHERE ecm:path STARTSWITH '/f1'");
+        assertEquals(2, dml.size());
+
+        // as bob
+        closeSession();
+        session = openSessionAs("bob");
+
+        // check bob doesn't see doc1
+        dml = session.query("SELECT * FROM Document WHERE ecm:path STARTSWITH '/f1'");
+        assertEquals(1, dml.size());
+
+        // do copy
+        session.copy(f1.getRef(), root.getRef(), "f2");
+
+        // save is mandatory to propagate read acls after a copy
+        session.save();
+
+        // check bob doesn't see doc1's copy
+        dml = session.query("SELECT * FROM Document WHERE ecm:path STARTSWITH '/f2'");
+        assertEquals(1, dml.size());
+    }
+
     public void testSave() throws ClientException {
         DocumentModel root = session.getRootDocument();
 
@@ -1680,7 +1735,8 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
 
         session.saveDocument(childFile);
 
-        DataModel dm = session.getDataModel(childFile.getRef(), "dublincore");
+        Schema dublincore = childFile.getDocumentType().getSchema("dublincore");
+        DataModel dm = session.getDataModel(childFile.getRef(), dublincore);
 
         assertNotNull(dm);
         assertNotNull(dm.getMap());
@@ -1689,72 +1745,14 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertEquals("f1", dm.getData("title"));
         assertEquals("desc 1", dm.getData("description"));
 
-        dm = session.getDataModel(childFile.getRef(), "file");
+        Schema file = childFile.getDocumentType().getSchema("file");
+        dm = session.getDataModel(childFile.getRef(), file);
 
         assertNotNull(dm);
         assertNotNull(dm.getMap());
         assertNotNull(dm.getSchema());
         assertEquals("file", dm.getSchema());
         assertEquals("second name", dm.getData("filename"));
-    }
-
-    public void testGetDataModelField() throws ClientException {
-        DocumentModel root = session.getRootDocument();
-
-        String name2 = "file#" + generateUnique();
-        DocumentModel childFile = new DocumentModelImpl(root.getPathAsString(),
-                name2, "File");
-        childFile = createChildDocument(childFile);
-
-        session.save();
-
-        childFile.setProperty("file", "filename", "second name");
-        childFile.setProperty("dublincore", "title", "f1");
-        childFile.setProperty("dublincore", "description", "desc 1");
-
-        session.saveDocument(childFile);
-
-        assertEquals("f1", session.getDataModelField(childFile.getRef(),
-                "dublincore", "title"));
-        assertEquals("desc 1", session.getDataModelField(childFile.getRef(),
-                "dublincore", "description"));
-        assertEquals("second name", session.getDataModelField(
-                childFile.getRef(), "file", "filename"));
-    }
-
-    public void testGetDataModelFields() throws ClientException {
-        DocumentModel root = session.getRootDocument();
-
-        String name2 = "file#" + generateUnique();
-        DocumentModel childFile = new DocumentModelImpl(root.getPathAsString(),
-                name2, "File");
-        childFile = createChildDocument(childFile);
-
-        session.save();
-
-        childFile.setProperty("file", "filename", "second name");
-        childFile.setProperty("dublincore", "title", "f1");
-        childFile.setProperty("dublincore", "description", "desc 1");
-
-        session.saveDocument(childFile);
-
-        String[] fields = { "title", "description" };
-
-        Object[] values = session.getDataModelFields(childFile.getRef(),
-                "dublincore", fields);
-
-        assertNotNull(values);
-        assertEquals(2, values.length);
-        assertEquals("f1", values[0]);
-        assertEquals("desc 1", values[1]);
-
-        String[] fields2 = { "filename" };
-
-        values = session.getDataModelFields(childFile.getRef(), "file", fields2);
-
-        assertNotNull(values);
-        assertEquals(1, values.length);
-        assertEquals("second name", values[0]);
     }
 
     public void testDocumentReferenceEqualityDifferentInstances()
@@ -2026,6 +2024,26 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertEquals("123", doc.getPropertyValue("age:age"));
     }
 
+    public void testFacetWithSamePropertyName() throws Exception {
+        DocumentModel doc = new DocumentModelImpl("/", "foo", "File");
+        doc.setPropertyValue("dc:title", "bar");
+        doc = session.createDocument(doc);
+        session.save();
+
+        doc.addFacet("Aged");
+        doc.setPropertyValue("age:title", "gee");
+        doc = session.saveDocument(doc);
+        session.save();
+
+        assertEquals("bar", doc.getPropertyValue("dc:title"));
+        assertEquals("gee", doc.getPropertyValue("age:title"));
+
+        // refetch
+        doc = session.getDocument(doc.getRef());
+        assertEquals("bar", doc.getPropertyValue("dc:title"));
+        assertEquals("gee", doc.getPropertyValue("age:title"));
+    }
+
     public void testFacetCopy() throws Exception {
         DocumentModel doc = new DocumentModelImpl("/", "foo", "File");
         doc.addFacet("Aged");
@@ -2087,6 +2105,10 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertEquals(2, allowedStateTransitions.size());
         assertTrue(allowedStateTransitions.contains("delete"));
         assertTrue(allowedStateTransitions.contains("backToProject"));
+
+        session.reinitLifeCycleState(childFile.getRef());
+        assertEquals("project",
+                session.getCurrentLifeCycleState(childFile.getRef()));
     }
 
     public void testDataModelLifeCycleAPI() throws ClientException {
@@ -2160,6 +2182,11 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertNotSame(copy1.getName(), copy3.getName());
 
         // copy again again to same space
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // windows has too coarse time granularity
+            // for SQLSession.findFreeName
+            Thread.sleep(1000);
+        }
         DocumentModel copy4 = session.copy(file.getRef(), folder2.getRef(),
                 null);
 
@@ -2340,7 +2367,9 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertTrue(session.exists(new PathRef("folder2/file2")));
         assertTrue(session.exists(new PathRef("folder2/" + newName)));
 
-        session.cancel();
+        // move with null dest (rename)
+        DocumentModel newFile3 = session.move(file.getRef(), null, "file3");
+        assertEquals("file3", newFile3.getName());
     }
 
     // TODO: fix this test
@@ -2652,68 +2681,9 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         assertEquals("myfile", content);
     }
 
-    @SuppressWarnings("unchecked")
-    public void testDocumentModelTreeSort() throws Exception {
-        // create a folder tree
-        DocumentModel root = session.getRootDocument();
-        DocumentModel a_folder = new DocumentModelImpl(root.getPathAsString(),
-                "a_folder", "Folder");
-        a_folder.setProperty("dublincore", "title", "Z title for a_folder");
-        DocumentModel b_folder = new DocumentModelImpl(root.getPathAsString(),
-                "b_folder", "Folder");
-        b_folder.setProperty("dublincore", "title", "B title for b_folder");
-        DocumentModel c_folder = new DocumentModelImpl(root.getPathAsString(),
-                "c_folder", "Folder");
-        c_folder.setProperty("dublincore", "title", "C title for c_folder");
-
-        DocumentModel a1_folder = new DocumentModelImpl(
-                a_folder.getPathAsString(), "a1_folder", "Folder");
-        a1_folder.setProperty("dublincore", "title", "ZZ title for a1_folder");
-        DocumentModel a2_folder = new DocumentModelImpl(
-                a_folder.getPathAsString(), "a2_folder", "Folder");
-        a2_folder.setProperty("dublincore", "title", "AA title for a2_folder");
-
-        DocumentModel b1_folder = new DocumentModelImpl(
-                b_folder.getPathAsString(), "b1_folder", "Folder");
-        b1_folder.setProperty("dublincore", "title", "A title for b1_folder");
-        DocumentModel b2_folder = new DocumentModelImpl(
-                b_folder.getPathAsString(), "b2_folder", "Folder");
-        b2_folder.setProperty("dublincore", "title", "B title for b2_folder");
-
-        a_folder = createChildDocument(a_folder);
-        b_folder = createChildDocument(b_folder);
-        c_folder = createChildDocument(c_folder);
-        a1_folder = createChildDocument(a1_folder);
-        a2_folder = createChildDocument(a2_folder);
-        b1_folder = createChildDocument(b1_folder);
-        b2_folder = createChildDocument(b2_folder);
-
-        DocumentModelTreeImpl tree = new DocumentModelTreeImpl();
-        tree.add(a_folder, 1);
-        tree.add(a1_folder, 2);
-        tree.add(a2_folder, 2);
-        tree.add(b_folder, 1);
-        tree.add(b1_folder, 2);
-        tree.add(b2_folder, 2);
-        tree.add(c_folder, 1);
-
-        // sort using title
-        DocumentModelTreeNodeComparator comp = new DocumentModelTreeNodeComparator(
-                tree.getPathTitles());
-        Collections.sort((ArrayList) tree, comp);
-
-        assertEquals(b_folder, tree.get(0).getDocument());
-        assertEquals(b1_folder, tree.get(1).getDocument());
-        assertEquals(b2_folder, tree.get(2).getDocument());
-
-        assertEquals(c_folder, tree.get(3).getDocument());
-
-        assertEquals(a_folder, tree.get(4).getDocument());
-        assertEquals(a2_folder, tree.get(5).getDocument());
-        assertEquals(a1_folder, tree.get(6).getDocument());
-
-        session.cancel();
-    }
+    // ------------------------------------
+    // ----- copied from TestLocalAPI -----
+    // ------------------------------------
 
     public void testPropertyModel() throws Exception {
         DocumentModel root = session.getRootDocument();
@@ -2808,13 +2778,13 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
 
         doc.setProperty("dublincore", "title", "my title");
         assertEquals("my title", doc.getPropertyValue("dc:title"));
+
         doc.setProperty("file", "filename", "the file name");
         assertEquals("the file name", doc.getPropertyValue("filename"));
         assertEquals("the file name", doc.getPropertyValue("file:filename"));
-
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     public void testComplexList() throws Exception {
         DocumentModel root = session.getRootDocument();
         DocumentModel doc = new DocumentModelImpl(root.getPathAsString(),
@@ -3081,6 +3051,15 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         session.save();
         assertEquals(2, session.getChildrenRefs(folder.getRef(), null).size());
         assertEquals(3, session.getChildrenRefs(root.getRef(), null).size());
+
+        // publish a version directly
+        DocumentModel ver = session.getLastDocumentVersion(doc.getRef());
+        DocumentModel proxy3 = session.publishDocument(ver, folder, false);
+        session.save();
+        assertFalse(proxy3.isVersion());
+        assertTrue(proxy3.isProxy());
+        assertEquals(doc.getVersionSeriesId(), proxy3.getVersionSeriesId());
+        assertEquals(ver.getVersionLabel(), proxy3.getVersionLabel());
     }
 
     public void testProxyLive() throws Exception {
@@ -3332,7 +3311,8 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
      * {@code true}.
      */
     public void testDoNotFireBeforeUpdateEventsOnVersion() throws Exception {
-        deployContrib(TEST_BUNDLE, "OSGI-INF/test-listeners-contrib.xml");
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
+                "OSGI-INF/test-listeners-contrib.xml");
 
         DocumentModel root = session.getRootDocument();
         DocumentModel doc = new DocumentModelImpl(root.getPathAsString(),
@@ -3363,7 +3343,7 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         Event event;
         Boolean local;
         Set<String> set;
-        deployContrib(TEST_BUNDLE,
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
                 "OSGI-INF/test-listeners-invalidations-contrib.xml");
 
         DocumentModel root = session.getRootDocument();
@@ -3466,6 +3446,63 @@ public class TestSQLRepositoryAPI extends SQLRepositoryTestCase {
         session.save();
         list = session.query(query);
         assertEquals(0, list.size());
+    }
+
+    /**
+     * Checks that a before document modification event can change the
+     * DocumentModel name and provoke a rename. And that PREVIOUS_DOCUMENT_MODEL
+     * received by the event holds the correct info.
+     */
+    public void testBeforeModificationListenerRename() throws Exception {
+        deployContrib("org.nuxeo.ecm.core.storage.sql.test.tests",
+                "OSGI-INF/test-listener-beforemod-contrib.xml");
+
+        DocumentModel doc = session.createDocumentModel("/", "doc", "File");
+        doc.setProperty("dublincore", "title", "t1");
+        doc = session.createDocument(doc);
+        session.save();
+        assertEquals("t1-rename", doc.getName());
+
+        doc.setProperty("dublincore", "title", "t2");
+        DummyBeforeModificationListener.previousTitle = null;
+        doc = session.saveDocument(doc);
+        session.save();
+        assertEquals("t2-rename", doc.getName());
+        assertEquals("/t2-rename", doc.getPathAsString());
+        assertEquals("t1", DummyBeforeModificationListener.previousTitle);
+    }
+
+    public void testObsoleteType() throws Throwable {
+        DocumentRef rootRef = session.getRootDocument().getRef();
+        DocumentModel doc = session.createDocumentModel("/", "doc", "MyDocType");
+        doc = session.createDocument(doc);
+        DocumentRef docRef = new IdRef(doc.getId());
+        session.save();
+        assertEquals(1, session.getChildren(rootRef).size());
+        assertNotNull(session.getDocument(docRef));
+        assertNotNull(session.getChild(rootRef, "doc"));
+        closeSession();
+        openSession();
+
+        // remove MyDocType from known types
+        SchemaManager schemaManager = Framework.getService(SchemaManager.class);
+        schemaManager.unregisterDocumentType("MyDocType");
+
+        assertEquals(0, session.getChildren(rootRef).size());
+        try {
+            session.getDocument(docRef);
+            fail("shouldn't be able to get doc with obsolete type");
+        } catch (ClientException e) {
+            assertTrue(e.getMessage(),
+                    e.getMessage().contains("Failed to get document"));
+        }
+        try {
+            session.getChild(rootRef, "doc");
+            fail("shouldn't be able to get doc with obsolete type");
+        } catch (ClientException e) {
+            assertTrue(e.getMessage(),
+                    e.getMessage().contains("Failed to get child doc"));
+        }
     }
 
 }

@@ -8,8 +8,7 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
- *******************************************************************************/
-
+ */
 package org.eclipse.ecr.common.utils;
 
 import java.lang.reflect.Field;

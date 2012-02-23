@@ -36,9 +36,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.storage.sql.InvalidationsQueue;
 import org.eclipse.ecr.core.storage.sql.Mapper;
+import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
 import org.eclipse.ecr.core.storage.sql.Repository;
 import org.eclipse.ecr.core.storage.sql.RepositoryResolver;
-import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
 
 /**
  * Servlet receiving remote {@link MapperClient} requests and sending them to an

@@ -8,15 +8,14 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
- *******************************************************************************/
-
+ */
 package org.eclipse.ecr.common.utils;
 
 import java.io.Serializable;
 
 /**
  * Contains code from Eclipse org.eclipse.core.runtime.Path class
- *  
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class Path implements Serializable {

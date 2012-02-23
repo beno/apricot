@@ -22,7 +22,7 @@ import org.osgi.framework.Bundle;
 /**
  * A wrapper for a JAX-RS application fragment declared in manifest.
  * The fragment application will be added to the target host application.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
