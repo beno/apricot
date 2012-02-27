@@ -17,6 +17,8 @@
     <module>../plugins/org.eclipse.ecr.common</module>
     <module>../plugins/org.eclipse.ecr.application</module>
     <module>../plugins/org.eclipse.ecr.audit.api</module>
+    <module>../plugins/org.eclipse.ecr.platform.query.api</module>
+    <module>../plugins/org.eclipse.ecr.platform.search.api</module>
     <module>../plugins/org.eclipse.ecr.auth</module>
     <module>../plugins/org.eclipse.ecr.automation.core</module>
     <module>../plugins/org.eclipse.ecr.automation.server</module>
