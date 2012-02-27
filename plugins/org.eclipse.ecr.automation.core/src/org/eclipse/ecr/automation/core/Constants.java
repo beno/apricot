@@ -99,6 +99,8 @@ public class Constants {
 
     public static final String CAT_UI = "User Interface";
 
+    public static final String CAT_LOCAL_CONFIGURATION = "Local Configuration";
+
     public static final String SEAM_CONTEXT = "Seam";
 
     public static final String WORKFLOW_CONTEXT = "Workflow";

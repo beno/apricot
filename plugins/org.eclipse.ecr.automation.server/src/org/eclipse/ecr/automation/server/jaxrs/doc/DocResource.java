@@ -27,11 +27,11 @@ import javax.ws.rs.core.UriInfo;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationDocumentation;
-import org.eclipse.ecr.common.utils.StringUtils;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.views.TemplateView;
+import org.eclipse.ecr.runtime.api.Framework;
 
 
 /**

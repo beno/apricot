@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.zip.ZipOutputStream;
 
+import org.eclipse.ecr.common.utils.ZipUtils;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Context;
@@ -26,7 +27,6 @@ import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.automation.core.util.BlobList;
 import org.eclipse.ecr.automation.core.util.FileCleanupHandler;
-import org.eclipse.ecr.common.utils.ZipUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 

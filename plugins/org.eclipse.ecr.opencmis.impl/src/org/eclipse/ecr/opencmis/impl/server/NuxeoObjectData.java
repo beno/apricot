@@ -13,6 +13,7 @@ package org.eclipse.ecr.opencmis.impl.server;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +27,7 @@ import java.util.Set;
 import javax.servlet.ServletContext;
 
 import org.apache.chemistry.opencmis.client.api.OperationContext;
+import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.data.Ace;
 import org.apache.chemistry.opencmis.commons.data.Acl;
 import org.apache.chemistry.opencmis.commons.data.AllowableActions;
@@ -52,10 +54,13 @@ import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.spi.BindingsObjectFactory;
 import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.ClientException;
+import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
+import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.opencmis.impl.util.ListUtils;
+import org.eclipse.ecr.opencmis.impl.util.SimpleImageInfo;
 
 /**
  * Nuxeo implementation of a CMIS {@link ObjectData}, backed by a
@@ -64,6 +69,8 @@ import org.eclipse.ecr.opencmis.impl.util.ListUtils;
 public class NuxeoObjectData implements ObjectData {
 
     public static final String STREAM_ICON = "nx:icon";
+
+    public NuxeoCmisService service;
 
     public DocumentModel doc;
 
@@ -99,6 +106,7 @@ public class NuxeoObjectData implements ObjectData {
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
+        this.service = service;
         this.doc = doc;
         propertyIds = getPropertyIdsFromFilter(filter);
         this.includeAllowableActions = includeAllowableActions;
@@ -212,6 +220,7 @@ public class NuxeoObjectData implements ObjectData {
         BaseTypeId baseType = NuxeoTypeHelper.getBaseTypeId(doc);
         boolean isDocument = baseType == BaseTypeId.CMIS_DOCUMENT;
         boolean isFolder = baseType == BaseTypeId.CMIS_FOLDER;
+        boolean isRoot = "/".equals(doc.getPathAsString());
         boolean canWrite;
         try {
             canWrite = creation
@@ -226,12 +235,16 @@ public class NuxeoObjectData implements ObjectData {
         set.add(Action.CAN_GET_PROPERTIES);
         if (isFolder) {
             set.add(Action.CAN_GET_DESCENDANTS);
-            set.add(Action.CAN_GET_FOLDER_PARENT);
             set.add(Action.CAN_GET_FOLDER_TREE);
             set.add(Action.CAN_GET_CHILDREN);
+            if (!isRoot) {
+                set.add(Action.CAN_GET_FOLDER_PARENT);
+            }
         } else if (isDocument) {
             set.add(Action.CAN_GET_CONTENT_STREAM);
             set.add(Action.CAN_GET_ALL_VERSIONS);
+            set.add(Action.CAN_ADD_OBJECT_TO_FOLDER);
+            set.add(Action.CAN_REMOVE_OBJECT_FROM_FOLDER);
             try {
                 if (doc.isCheckedOut()) {
                     set.add(Action.CAN_CHECK_IN);
@@ -252,8 +265,6 @@ public class NuxeoObjectData implements ObjectData {
                 set.add(Action.CAN_CREATE_FOLDER);
                 set.add(Action.CAN_CREATE_RELATIONSHIP);
                 set.add(Action.CAN_DELETE_TREE);
-                set.add(Action.CAN_ADD_OBJECT_TO_FOLDER);
-                set.add(Action.CAN_REMOVE_OBJECT_FROM_FOLDER);
             } else if (isDocument) {
                 set.add(Action.CAN_SET_CONTENT_STREAM);
                 set.add(Action.CAN_DELETE_CONTENT_STREAM);
@@ -263,7 +274,9 @@ public class NuxeoObjectData implements ObjectData {
                 // Relationships are not fileable
                 set.add(Action.CAN_MOVE_OBJECT);
             }
-            set.add(Action.CAN_DELETE_OBJECT);
+            if (!isRoot) {
+                set.add(Action.CAN_DELETE_OBJECT);
+            }
         }
         if (Boolean.FALSE.booleanValue()) {
             // TODO
@@ -304,17 +317,16 @@ public class NuxeoObjectData implements ObjectData {
             if (is != null) {
                 RenditionDataImpl ren = new RenditionDataImpl();
                 ren.setStreamId(STREAM_ICON);
-                ren.setMimeType(getIconMimeType(iconPath));
                 ren.setKind("cmis:thumbnail");
                 int slash = iconPath.lastIndexOf('/');
                 String filename = slash == -1 ? iconPath
                         : iconPath.substring(slash + 1);
                 ren.setTitle(filename);
-                long len = getStreamLength(is);
-                ren.setBigLength(BigInteger.valueOf(len));
-                // TODO width, height
-                // ren.setBigWidth(width);
-                // ren.setBigHeight(height);
+                SimpleImageInfo info = new SimpleImageInfo(is);
+                ren.setBigLength(BigInteger.valueOf(info.getLength()));
+                ren.setBigWidth(BigInteger.valueOf(info.getWidth()));
+                ren.setBigHeight(BigInteger.valueOf(info.getHeight()));
+                ren.setMimeType(info.getMimeType());
                 list.add(ren);
             }
 
@@ -344,38 +356,50 @@ public class NuxeoObjectData implements ObjectData {
         return servletContext.getResourceAsStream(iconPath);
     }
 
-    public static long getStreamLength(InputStream is) throws IOException {
-        byte[] buf = new byte[4096];
-        long count = 0;
-        int n;
-        while ((n = is.read(buf)) != -1) {
-            count += n;
-        }
-        is.close();
-        return count;
-    }
-
-    protected static String getIconMimeType(String iconPath) {
-        iconPath = iconPath.toLowerCase();
-        if (iconPath.endsWith(".gif")) {
-            return "image/gif";
-        } else if (iconPath.endsWith(".png")) {
-            return "image/png";
-        } else if (iconPath.endsWith(".jpg") || iconPath.endsWith(".jpeg")) {
-            return "image/jpeg";
-        } else {
-            // TODO use NXMimeType service
-            return "application/octet-stream";
-        }
-    }
-
     @Override
     public List<ObjectData> getRelationships() {
+        return getRelationships(getId(), includeRelationships,
+                doc.getCoreSession(), service);
+    }
+
+    public static List<ObjectData> getRelationships(String id,
+            IncludeRelationships includeRelationships, CoreSession coreSession,
+            NuxeoCmisService service) {
         if (includeRelationships == null
                 || includeRelationships == IncludeRelationships.NONE) {
             return null;
         }
-        return new ArrayList<ObjectData>(0); // TODO
+        String statement = "SELECT " + PropertyIds.OBJECT_ID + ", "
+                + PropertyIds.BASE_TYPE_ID + ", " + PropertyIds.SOURCE_ID
+                + ", " + PropertyIds.TARGET_ID + " FROM "
+                + BaseTypeId.CMIS_RELATIONSHIP.value() + " WHERE ";
+        String qid = "'" + id.replace("'", "''") + "'";
+        if (includeRelationships != IncludeRelationships.TARGET) {
+            statement += PropertyIds.SOURCE_ID + " = " + qid;
+        }
+        if (includeRelationships == IncludeRelationships.BOTH) {
+            statement += " OR ";
+        }
+        if (includeRelationships != IncludeRelationships.SOURCE) {
+            statement += PropertyIds.TARGET_ID + " = " + qid;
+        }
+        List<ObjectData> list = new ArrayList<ObjectData>();
+        IterableQueryResult res = null;
+        try {
+            Map<String, PropertyDefinition<?>> typeInfo = new HashMap<String, PropertyDefinition<?>>();
+            res = coreSession.queryAndFetch(statement, CMISQLQueryMaker.TYPE,
+                    service, typeInfo);
+            for (Map<String, Serializable> map : res) {
+                list.add(service.makeObjectData(map, typeInfo));
+            }
+        } catch (ClientException e) {
+            throw new CmisRuntimeException(e.getMessage(), e);
+        } finally {
+            if (res != null) {
+                res.close();
+            }
+        }
+        return list;
     }
 
     @Override

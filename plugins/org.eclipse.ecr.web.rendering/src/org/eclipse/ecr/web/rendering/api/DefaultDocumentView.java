@@ -26,12 +26,13 @@ import org.eclipse.ecr.core.api.CoreInstance;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.impl.blob.StringBlob;
-import org.eclipse.ecr.core.api.model.DocumentPart;
+import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
 import org.eclipse.ecr.core.schema.FacetNames;
+import org.eclipse.ecr.web.rendering.fm.adapters.SchemaTemplate;
 
 /**
  * Base class to build views for Document oriented contexts (contexts that are
- * bound to a document)
+ * bound to a document).
  * <p>
  * Note that this class cannot be used with contexts for which the
  * {@link RenderingContext#getDocument()} method is returning null.
@@ -75,7 +76,6 @@ public class DefaultDocumentView implements DocumentView {
         addField(NAME);
         addField(PATH);
         addField(TYPE);
-        addField(PARTS);
         addField(SID);
         addField(REPOSITORY);
 
@@ -129,9 +129,8 @@ public class DefaultDocumentView implements DocumentView {
             return doc.getProperty(name);
         }
         // may be a schema name
-        DocumentPart part = doc.getPart(name);
-        if (part != null) {
-            return part;
+        if (doc.hasSchema(name)) {
+            return new SchemaTemplate.DocumentSchema(doc, name);
         }
         return UNKNOWN;
     }
@@ -300,7 +299,12 @@ public class DefaultDocumentView implements DocumentView {
         }
 
         public Object getValue(DocumentModel doc) throws Exception {
-            return doc.getPart("dublincore").get("creator").getValue();
+            try {
+                return doc.getPropertyValue("dc:creator");
+            } catch (PropertyNotFoundException e) {
+                // ignore
+            }
+            return null;
         }
     };
 
@@ -310,8 +314,15 @@ public class DefaultDocumentView implements DocumentView {
         }
 
         public Object getValue(DocumentModel doc) throws Exception {
-            Calendar cal = (Calendar) doc.getPart("dublincore").get("created").getValue();
-            return cal == null ? null : cal.getTime();
+            try {
+                Calendar cal = (Calendar) doc.getPropertyValue("dc:created");
+                if (cal != null) {
+                    return cal.getTime();
+                }
+            } catch (PropertyNotFoundException e) {
+                // ignore
+            }
+            return null;
         }
     };
 
@@ -321,8 +332,15 @@ public class DefaultDocumentView implements DocumentView {
         }
 
         public Object getValue(DocumentModel doc) throws Exception {
-            Calendar cal = (Calendar) doc.getPart("dublincore").get("modified").getValue();
-            return cal == null ? null : cal.getTime();
+            try {
+                Calendar cal = (Calendar) doc.getPropertyValue("dc:modified");
+                if (cal != null) {
+                    return cal.getTime();
+                }
+            } catch (PropertyNotFoundException e) {
+                // ignore
+            }
+            return null;
         }
     };
 
@@ -332,22 +350,15 @@ public class DefaultDocumentView implements DocumentView {
         }
 
         public Object getValue(DocumentModel doc) throws Exception {
-            DocumentPart part = doc.getPart("file");
-            Blob blob = null;
-            if (part != null) {
-                blob = (Blob) part.get("content").getValue();
+            try {
+                Blob blob = (Blob) doc.getPropertyValue("file:content");
+                if (blob != null) {
+                    return blob;
+                }
+            } catch (PropertyNotFoundException e) {
+                // ignore
             }
-            return blob != null ? blob : new StringBlob("", "text/plain");
-        }
-    };
-
-    protected static final Field PARTS = new Field() {
-        public String getName() {
-            return "parts";
-        }
-
-        public Object getValue(DocumentModel doc) throws Exception {
-            return doc.getParts();
+            return new StringBlob("", "text/plain");
         }
     };
 

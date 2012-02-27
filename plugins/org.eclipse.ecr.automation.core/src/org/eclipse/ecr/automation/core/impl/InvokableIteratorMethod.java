@@ -97,7 +97,7 @@ public class InvokableIteratorMethod extends InvokableMethod {
     @Override
     protected Object doInvoke(OperationContext ctx, Map<String, Object> args,
             Object input) throws Exception {
-        if (input instanceof Iterable == false) {
+        if (!(input instanceof Iterable)) {
             throw new IllegalStateException(
                     "An iterable method was called in a non iterable context");
         }

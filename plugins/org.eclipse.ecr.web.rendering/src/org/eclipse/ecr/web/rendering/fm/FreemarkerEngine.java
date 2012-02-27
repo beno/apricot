@@ -15,6 +15,7 @@
 package org.eclipse.ecr.web.rendering.fm;
 
 import java.io.Writer;
+import java.net.SocketException;
 import java.util.ResourceBundle;
 
 import org.apache.commons.logging.Log;
@@ -151,7 +152,7 @@ public class FreemarkerEngine implements RenderingEngine {
     }
 
     /**
-     * 
+     *
      * @param template
      * @param input
      * @param writer
@@ -181,6 +182,8 @@ public class FreemarkerEngine implements RenderingEngine {
                     wrapper);
             env.process();
             bw.copyTo(writer);
+        } catch (SocketException e) {
+            log.debug("Output closed while rendering " + template);
         } catch (Exception e) {
             throw new RenderingException(e);
         }

@@ -7,9 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Nuxeo - initial API and implementation
- *
- * $Id: LogEntryImpl.java 30195 2008-02-14 21:53:04Z tdelprat $
+ *     Julien Anguenot
+ *     Thierry Delprat
+ *     Florent Guillaume
  */
 
 package org.eclipse.ecr.audit.api;
@@ -19,11 +19,10 @@ import java.util.Date;
 import java.util.Map;
 
 import org.eclipse.ecr.core.api.DocumentRef;
+import org.eclipse.ecr.audit.api.comment.UIAuditComment;
 
 /**
  * Log entry.
- *
- * @author <a href="mailto:ja@nuxeo.com">Julien Anguenot</a>
  */
 public interface LogEntry extends Serializable {
 
@@ -132,8 +131,27 @@ public interface LogEntry extends Serializable {
 
     void setDocLifeCycle(String docLifeCycle);
 
+    /**
+     * Returns the repository id related to the log entry.
+     *
+     * @return the repository id
+     */
+    String getRepositoryId();
+
+    void setRepositoryId(String repositoryId);
+
     Map<String, ExtendedInfo> getExtendedInfos();
 
     void setExtendedInfos(Map<String, ExtendedInfo> infos);
 
+    /**
+     * Return the comment preprocessed to be ready for display.
+     * (extract info about linked documents)
+     * Only available when accessed via the entry is fetched via the {@link AuditPageProvider}
+     *
+     * @return
+     */
+    UIAuditComment getPreprocessedComment();
+
+    void setPreprocessedComment(UIAuditComment uiComment);
 }

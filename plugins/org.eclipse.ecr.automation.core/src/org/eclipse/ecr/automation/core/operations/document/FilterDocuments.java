@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Context;
@@ -25,7 +26,6 @@ import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.automation.core.events.DocumentAttributeFilterFactory;
 import org.eclipse.ecr.automation.core.scripting.Expression;
 import org.eclipse.ecr.automation.core.scripting.Scripting;
-import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentModelList;
 import org.eclipse.ecr.core.api.Filter;
@@ -35,7 +35,7 @@ import org.eclipse.ecr.core.api.impl.DocumentModelListImpl;
  *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@Operation(id = FilterDocuments.ID, category = Constants.CAT_DOCUMENT, label = "Filter List", description = "Filter the input list of documents given a condition. The condition can be expressed using 4 parameters: types, facets, lifecycle and condition. If more than one parameter is specified an AND will be used to group conditions. <br>The 'types' paramter can take a comma separated list of document type: File,Note.<br>The 'facet' parameter can take a single facet name.<br> The 'life cycle' parameter takes a name of a life cycle state the document should have.<br>The 'condition' parameter can take any EL expression.<p>Returns the list of documents that match the filter condition.")
+@Operation(id = FilterDocuments.ID, category = Constants.CAT_DOCUMENT, label = "Filter List", description = "Filter the input list of documents given a condition. The condition can be expressed using 4 parameters: types, facets, lifecycle and condition. If more than one parameter is specified an AND will be used to group conditions. <br>The 'types' parameter can take a comma separated list of document type: File,Note.<br>The 'facet' parameter can take a single facet name.<br> The 'life cycle' parameter takes a name of a life cycle state the document should have.<br>The 'condition' parameter can take any EL expression.<p>Returns the list of documents that match the filter condition.")
 public class FilterDocuments {
 
     private static final Log log = LogFactory.getLog(FilterDocuments.class);

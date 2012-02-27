@@ -18,10 +18,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.audit.api.AuditLogger;
 import org.eclipse.ecr.audit.api.AuditReader;
 import org.eclipse.ecr.audit.api.LogEntry;
-import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**

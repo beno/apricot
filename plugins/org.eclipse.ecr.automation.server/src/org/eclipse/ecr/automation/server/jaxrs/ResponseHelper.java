@@ -23,7 +23,7 @@ import org.eclipse.ecr.core.api.Blob;
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class ResponseHelper {
-    
+
     private ResponseHelper() {
     }
 

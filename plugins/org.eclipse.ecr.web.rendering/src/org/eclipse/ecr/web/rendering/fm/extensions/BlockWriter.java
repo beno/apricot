@@ -21,6 +21,7 @@ import java.util.List;
 
 import freemarker.template.TemplateException;
 
+
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *

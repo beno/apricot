@@ -11,10 +11,10 @@
  */
 package org.eclipse.ecr.automation.core.scripting;
 
-import org.eclipse.ecr.automation.OperationContext;
 import org.mvel2.templates.CompiledTemplate;
 import org.mvel2.templates.TemplateCompiler;
 import org.mvel2.templates.TemplateRuntime;
+import org.eclipse.ecr.automation.OperationContext;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

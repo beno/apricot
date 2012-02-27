@@ -25,8 +25,13 @@ import org.apache.chemistry.opencmis.server.shared.CallContextHandler;
  * Call Context Handler for Nuxeo authentication that extracts the relevant user
  * name.
  * <p>
+ * Configured as a "callContextHandler" servlet parameter in the AtomPub and
+ * JSON servlets.
+ * <p>
  * Authentication happened earlier in the chain through Nuxeo's authentication
- * filter, and a JAAS context has already been set up.
+ * filter, and a JAAS context has already been set up. For SOAP, authentication
+ * happened through {@link NuxeoCmisAuthHandler} instead of the standard Nuxeo
+ * filter.
  * <p>
  * There is no password available, as authentication is opaque and may use SSO.
  */
@@ -38,7 +43,7 @@ public class NuxeoAuthCallContextHandler implements CallContextHandler,
     @Override
     public Map<String, String> getCallContextMap(HttpServletRequest request) {
         Principal principal = request.getUserPrincipal();
-        HashMap<String, String> result = new HashMap<String, String>();
+        Map<String, String> result = new HashMap<String, String>();
         if (principal != null) {
             result.put(CallContext.USERNAME, principal.getName());
         }

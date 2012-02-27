@@ -38,7 +38,7 @@ public class SetDocumentLifeCycle {
 
     @OperationMethod(collector=DocumentModelCollector.class)
     public DocumentModel run(DocumentModel doc) throws Exception {
-        doc.followTransition(value);
+        session.followTransition(doc.getRef(), value);
         return session.getDocument(doc.getRef());
     }
 

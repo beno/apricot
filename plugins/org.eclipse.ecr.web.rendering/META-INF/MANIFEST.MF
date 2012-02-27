@@ -29,6 +29,7 @@ Import-Package: freemarker.cache,
  org.eclipse.ecr.core.schema.types,
  org.eclipse.ecr.core.schema.types.primitives,
  org.eclipse.ecr.runtime.api,
- org.eclipse.ecr.runtime.model
+ org.eclipse.ecr.runtime.model,
+ org.eclipse.ecr.web.rendering.fm.adapters
 Bundle-SymbolicName: org.eclipse.ecr.web.rendering;singleton:=true
 Originally-Created-By: 1.6.0_20 (Sun Microsystems Inc.)

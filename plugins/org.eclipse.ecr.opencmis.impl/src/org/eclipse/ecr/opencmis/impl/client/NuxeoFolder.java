@@ -40,8 +40,10 @@ import org.apache.chemistry.opencmis.commons.exceptions.CmisInvalidArgumentExcep
 import org.apache.chemistry.opencmis.commons.exceptions.CmisNotSupportedException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisRuntimeException;
 import org.eclipse.ecr.core.api.ClientException;
+import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentModelList;
+import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.opencmis.impl.server.NuxeoObjectData;
 
 /**
@@ -169,12 +171,9 @@ public class NuxeoFolder extends NuxeoFileableObject implements Folder {
     }
 
     @Override
-    public ItemIterable<CmisObject> getChildren(OperationContext context) {
-        final ObjectFactory objectFactory = session.getObjectFactory();
-        final OperationContext ctx = new OperationContextImpl(context);
-
+    public ItemIterable<CmisObject> getChildren(final OperationContext context) {
         AbstractPageFetcher<CmisObject> pageFetcher = new AbstractPageFetcher<CmisObject>(
-                ctx.getMaxItemsPerPage()) {
+                context.getMaxItemsPerPage()) {
             @Override
             protected Page<CmisObject> fetchPage(long skipCount) {
                 List<CmisObject> items = new ArrayList<CmisObject>();
@@ -201,8 +200,9 @@ public class NuxeoFolder extends NuxeoFileableObject implements Folder {
                         continue;
                     }
                     NuxeoObjectData data = new NuxeoObjectData(service, child,
-                            ctx);
-                    CmisObject ob = objectFactory.convertObject(data, ctx);
+                            context);
+                    CmisObject ob = session.objectFactory.convertObject(data,
+                            context);
                     items.add(ob);
                 }
                 return new Page<CmisObject>(items, totalItems,
@@ -235,6 +235,21 @@ public class NuxeoFolder extends NuxeoFileableObject implements Folder {
             return null;
         }
         return parents.get(0);
+    }
+
+    @Override
+    public String getParentId() {
+        try {
+            CoreSession coreSession = data.doc.getCoreSession();
+            DocumentModel parent = coreSession.getParentDocument(new IdRef(
+                    getId()));
+            if (parent == null || service.isFilteredOut(parent)) {
+                return null;
+            }
+            return parent.getId();
+        } catch (ClientException e) {
+            throw new CmisRuntimeException(e.toString(), e);
+        }
     }
 
     @Override

@@ -22,20 +22,20 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationChain;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.OperationChainContribution;
-import org.eclipse.ecr.automation.core.doc.JSONExporter;
-import org.eclipse.ecr.common.xmap.XMap;
+import org.eclipse.ecr.automation.server.jaxrs.io.JsonWriter;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
 import org.eclipse.ecr.core.api.PathRef;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
 import org.eclipse.ecr.web.jaxrs.views.TemplateView;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -54,7 +54,7 @@ public class DebugResource {
     }
 
     public String getOperationsListAsJson() throws Exception {
-        return JSONExporter.toJSON();
+        return JsonWriter.exportOperations();
     }
 
     @GET
@@ -67,13 +67,13 @@ public class DebugResource {
     @Produces("text/plain")
     @Path("doc")
     public Object doGetText() throws Exception {
-        return JSONExporter.toJSON();
+        return getOperationsListAsJson();
     }
 
     @GET
     @Produces("application/json")
     public Object doGetJSON() throws Exception {
-        return JSONExporter.toJSON();
+        return getOperationsListAsJson();
     }
 
     @POST

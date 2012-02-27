@@ -12,7 +12,6 @@
 package org.eclipse.ecr.automation.server.jaxrs.io;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -21,6 +20,7 @@ import java.util.List;
 
 import javax.mail.BodyPart;
 import javax.mail.internet.MimeMultipart;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.WebApplicationException;
@@ -32,10 +32,10 @@ import javax.ws.rs.ext.Provider;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.automation.core.util.BlobList;
 import org.eclipse.ecr.automation.server.jaxrs.ExceptionHandler;
 import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
-import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.web.jaxrs.context.RequestCleanupHandler;
@@ -74,7 +74,7 @@ public class MultiPartRequestReader implements
             // perhaps the stream is no more available when javax.mail need it?
             File tmp = File.createTempFile("nx-automation-mp-upload-", ".tmp");
             FileUtils.copyToFile(in, tmp);
-            in = new FileInputStream(tmp); // get the input from the saved
+            in = new SharedFileInputStream(tmp); // get the input from the saved
                                             // file
             try {
                 MimeMultipart mp = new MimeMultipart(new InputStreamDataSource(

@@ -34,7 +34,7 @@ import org.eclipse.ecr.core.api.CoreSession;
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target( { ElementType.FIELD })
+@Target(ElementType.FIELD)
 public @interface Context {
 
 }

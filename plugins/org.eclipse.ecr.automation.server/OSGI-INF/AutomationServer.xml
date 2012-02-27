@@ -8,11 +8,17 @@
 
   <service>
     <provide interface="org.eclipse.ecr.automation.server.AutomationServer" />
+    <provide interface="org.eclipse.ecr.automation.server.jaxrs.io.ObjectCodecService" />
   </service>
 
   <extension-point name="bindings">
     <documentation>Rest security bindings on operations</documentation>
     <object class="org.eclipse.ecr.automation.server.RestBinding" />
+  </extension-point>
+
+  <extension-point name="codecs">
+    <documentation>JSON codecs for adapting marshalling objects</documentation>
+    <object class="org.eclipse.ecr.automation.server.jaxrs.io.CodecDescriptor" />
   </extension-point>
 
 </component>

@@ -11,6 +11,9 @@
  */
 package org.eclipse.ecr.automation.core.operations.execution;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.Constants;
@@ -18,8 +21,9 @@ import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
-import org.eclipse.ecr.automation.core.collectors.DocumentModelCollector;
 import org.eclipse.ecr.core.api.DocumentModel;
+import org.eclipse.ecr.core.api.DocumentModelList;
+import org.eclipse.ecr.core.api.impl.DocumentModelListImpl;
 
 /**
  * Run an embedded operation chain that returns a DocumentModel using the
@@ -41,11 +45,25 @@ public class RunDocumentChain {
     @Param(name = "id")
     protected String chainId;
 
-    @OperationMethod(collector=DocumentModelCollector.class)
+    @Param(name="isolate", required = false, values = "false")
+    protected boolean isolate = false;
+
+
+    @OperationMethod
     public DocumentModel run(DocumentModel doc) throws Exception {
-        OperationContext subctx = new OperationContext(ctx.getCoreSession());
+        Map<String, Object> vars = isolate ? new HashMap<String, Object>(ctx.getVars()) : ctx.getVars();
+        OperationContext subctx = new OperationContext(ctx.getCoreSession(), vars);
         subctx.setInput(doc);
         return (DocumentModel) service.run(subctx, chainId);
+    }
+
+    @OperationMethod
+    public DocumentModelList run(DocumentModelList docs) throws Exception {
+        DocumentModelList result = new DocumentModelListImpl(docs.size());
+        for (DocumentModel doc : docs) {
+            result.add(run(doc));
+        }
+        return result;
     }
 
 }

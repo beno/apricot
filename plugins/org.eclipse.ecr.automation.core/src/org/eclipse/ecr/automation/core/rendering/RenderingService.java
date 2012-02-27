@@ -40,7 +40,6 @@ public class RenderingService {
         return getRenderer(type).render(uriOrContent, map);
     }
 
-
     public Renderer getRenderer(String type) {
         if ("mvel".equals(type)) {
             return mvel;

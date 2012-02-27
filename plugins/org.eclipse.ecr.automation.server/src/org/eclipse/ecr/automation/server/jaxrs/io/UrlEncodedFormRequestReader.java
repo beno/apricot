@@ -24,8 +24,8 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyReader;
 import javax.ws.rs.ext.Provider;
 
-import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
 import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
 import org.eclipse.ecr.web.jaxrs.context.RequestContext;
 
 /**

@@ -11,9 +11,9 @@
  */
 package org.eclipse.ecr.automation.core;
 
-import org.eclipse.ecr.automation.TypeAdapter;
 import org.eclipse.ecr.common.xmap.annotation.XNode;
 import org.eclipse.ecr.common.xmap.annotation.XObject;
+import org.eclipse.ecr.automation.TypeAdapter;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

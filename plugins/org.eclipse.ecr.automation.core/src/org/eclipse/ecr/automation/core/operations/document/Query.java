@@ -18,6 +18,7 @@ import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModelList;
+import org.eclipse.ecr.core.query.sql.NXQL;
 
 /**
  *
@@ -26,7 +27,7 @@ import org.eclipse.ecr.core.api.DocumentModelList;
 @Operation(id = Query.ID, category = Constants.CAT_FETCH, label = "Query", description = "Perform a query on the repository. The query result will become the input for the next operation.")
 public class Query {
 
-    public static final String ID = "Document.Query"; // TODO CMISQL
+    public static final String ID = "Document.Query";
 
     @Context
     protected CoreSession session;
@@ -34,14 +35,13 @@ public class Query {
     @Param(name = "query")
     protected String query;
 
-    @Param(name = "language", required = false, widget = Constants.W_OPTION, values = { "NXQL" })
-    // , "CMISQL"})
-    protected String lang = "NXQL";
+    @Param(name = "language", required = false, widget = Constants.W_OPTION, values = {
+            NXQL.NXQL, "CMISQL" })
+    protected String lang = NXQL.NXQL;
 
     @OperationMethod
     public DocumentModelList run() throws Exception {
-        // TODO only NXQL is supported for now
-        return session.query(query);
+        return session.query(query, lang, null, 0, 0, false);
     }
 
 }

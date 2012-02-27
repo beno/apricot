@@ -20,9 +20,11 @@ import org.eclipse.ecr.automation.core.util.BlobList;
 import org.eclipse.ecr.automation.server.AutomationServer;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.CoreSession;
+import org.eclipse.ecr.core.api.DocumentModel;
+import org.eclipse.ecr.core.api.DocumentModelList;
 import org.eclipse.ecr.core.api.DocumentRef;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -52,6 +54,9 @@ public abstract class ExecutableResource {
                 return ResponseHelper.notFound();
             }
             Object result = execute(xreq);
+            if (result == null) {
+                return null;
+            }
             if ("true".equals(request.getHeader("X-NXVoidOperation"))) {
                 return ResponseHelper.emptyContent(); // void response
             }
@@ -61,8 +66,12 @@ public abstract class ExecutableResource {
                 return ResponseHelper.blobs((BlobList) result);
             } else if (result instanceof DocumentRef) {
                 return getCoreSession().getDocument((DocumentRef) result);
-            } else {
+            } else if ((result instanceof DocumentModel)
+                    || (result instanceof DocumentModelList)
+                    || (result instanceof JsonAdapter)) {
                 return result;
+            } else { // try to adapt to JSON
+                return new DefaultJsonAdapter(result);
             }
         } catch (Throwable e) {
             throw ExceptionHandler.newException("Failed to execute operation: "

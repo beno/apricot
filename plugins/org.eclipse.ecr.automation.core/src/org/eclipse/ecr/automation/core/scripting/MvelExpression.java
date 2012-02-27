@@ -13,8 +13,8 @@ package org.eclipse.ecr.automation.core.scripting;
 
 import java.io.Serializable;
 
-import org.eclipse.ecr.automation.OperationContext;
 import org.mvel2.MVEL;
+import org.eclipse.ecr.automation.OperationContext;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

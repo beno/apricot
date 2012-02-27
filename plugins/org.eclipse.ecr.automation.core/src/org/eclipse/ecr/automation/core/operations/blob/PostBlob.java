@@ -16,12 +16,12 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
 import org.eclipse.ecr.automation.core.collectors.BlobCollector;
-import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 
 /**

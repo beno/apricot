@@ -18,8 +18,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.ecr.automation.OperationException;
 import org.eclipse.ecr.common.utils.StringUtils;
+import org.eclipse.ecr.automation.OperationException;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
@@ -145,10 +145,18 @@ public class DocumentHelper {
                 if (ltype.isScalarList()) {
                     p.setValue(readStringList(value, (SimpleType)ltype.getFieldType()));
                     return;
+                } else if (ltype.getFieldType().isComplexType()) {
+                    Object val = ComplexTypeJSONDecoder.decodeList(ltype, value);
+                    p.setValue(val);
+                    return;
                 }
+            } else if (type.isComplexType()){
+                Object val = ComplexTypeJSONDecoder.decode((ComplexType) type, value);
+                p.setValue(val);
+                return;
             }
             throw new OperationException(
-                    "Only scalar or scalar list types can be set using update operation");
+                    "Property type is not supported by this operation");
         } else {
             p.setValue(((SimpleType) type).getPrimitiveType().decode(value));
         }

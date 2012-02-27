@@ -11,6 +11,9 @@
  */
 package org.eclipse.ecr.automation.core.operations.execution;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.core.Constants;
@@ -22,10 +25,10 @@ import org.eclipse.ecr.automation.core.annotations.Param;
 /**
  * Run an embedded operation chain using the current input. The output is
  * undefined (Void)
- *
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@Operation(id = RunOperation.ID, category = Constants.CAT_SUBCHAIN_EXECUTION, label = "Run Operation", description = "Run an operation chain in the current context")
+@Operation(id = RunOperation.ID, category = Constants.CAT_SUBCHAIN_EXECUTION, label = "Run Chain", description = "Run an operation chain in the current context")
 public class RunOperation {
 
     public static final String ID = "Context.RunOperation";
@@ -39,9 +42,15 @@ public class RunOperation {
     @Param(name = "id")
     protected String chainId;
 
+    @Param(name = "isolate", required = false, values = "false")
+    protected boolean isolate = false;
+
     @OperationMethod
     public void run() throws Exception {
-        OperationContext subctx = new OperationContext(ctx.getCoreSession());
+        Map<String, Object> vars = isolate ? new HashMap<String, Object>(
+                ctx.getVars()) : ctx.getVars();
+        OperationContext subctx = new OperationContext(ctx.getCoreSession(),
+                vars);
         subctx.setInput(ctx.getInput());
         service.run(subctx, chainId);
     }

@@ -20,13 +20,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.mvel2.MVEL;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.OperationException;
-import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
 import org.eclipse.ecr.runtime.api.Framework;
-import org.mvel2.MVEL;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

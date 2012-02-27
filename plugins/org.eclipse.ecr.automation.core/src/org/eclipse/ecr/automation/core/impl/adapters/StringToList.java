@@ -11,11 +11,11 @@
  */
 package org.eclipse.ecr.automation.core.impl.adapters;
 
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.automation.OperationContext;
 import org.eclipse.ecr.automation.TypeAdaptException;
 import org.eclipse.ecr.automation.TypeAdapter;
 import org.eclipse.ecr.automation.core.util.StringList;
-import org.eclipse.ecr.common.utils.StringUtils;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

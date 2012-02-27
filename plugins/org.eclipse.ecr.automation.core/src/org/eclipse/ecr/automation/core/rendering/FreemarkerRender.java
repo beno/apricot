@@ -18,10 +18,10 @@ import java.io.Writer;
 import java.net.URL;
 import java.util.Map;
 
-import org.eclipse.ecr.runtime.api.Framework;
-import org.eclipse.ecr.runtime.services.resource.ResourceService;
 import org.eclipse.ecr.web.rendering.api.ResourceLocator;
 import org.eclipse.ecr.web.rendering.fm.FreemarkerEngine;
+import org.eclipse.ecr.runtime.api.Framework;
+import org.eclipse.ecr.runtime.services.resource.ResourceService;
 
 import freemarker.core.Environment;
 import freemarker.template.Template;

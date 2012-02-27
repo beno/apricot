@@ -164,4 +164,18 @@
          version="0.0.0"
          unpack="false"/>
 
+   <plugin
+         id="org.eclipse.ecr.platform.query.api"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.ecr.platform.search.api"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
 </feature>

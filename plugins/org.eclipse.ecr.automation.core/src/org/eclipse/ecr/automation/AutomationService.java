@@ -12,6 +12,7 @@
 package org.eclipse.ecr.automation;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.ecr.automation.core.annotations.Operation;
 
@@ -38,6 +39,16 @@ public interface AutomationService {
      * replaced with this one.
      */
     void putOperation(Class<?> type, boolean replace) throws OperationException;
+    
+
+    /**
+     * Registers an operation given its class. The operation class MUST be
+     * annotated using {@link Operation} annotation. If the <code>replace</code>
+     * argument is true then any existing operation having the same ID will
+     * replaced with this one.
+     * Third argument represents the name of the component registring the operation 
+     */
+    void putOperation(Class<?> type, boolean replace, String contributingComponent) throws OperationException;
 
     /**
      * Removes an operation given its class. If the operation was not registered
@@ -85,6 +96,12 @@ public interface AutomationService {
      * will be faster
      */
     Object run(OperationContext ctx, String chainId) throws OperationException,
+            InvalidChainException, Exception;
+
+    /**
+     * Shortcut to execute a single operation described by the given ID and map of parameters
+     */
+    Object run(OperationContext ctx, String id, Map<String,Object> params) throws OperationException,
             InvalidChainException, Exception;
 
     /**

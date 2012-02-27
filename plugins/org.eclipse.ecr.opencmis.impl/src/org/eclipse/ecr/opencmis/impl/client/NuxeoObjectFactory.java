@@ -19,8 +19,8 @@ import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.chemistry.opencmis.client.api.ChangeEvent;
 import org.apache.chemistry.opencmis.client.api.ChangeEvents;
@@ -33,6 +33,7 @@ import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.client.api.Rendition;
 import org.apache.chemistry.opencmis.client.api.Session;
 import org.apache.chemistry.opencmis.client.runtime.PropertyImpl;
+import org.apache.chemistry.opencmis.client.runtime.RenditionImpl;
 import org.apache.chemistry.opencmis.client.runtime.objecttype.DocumentTypeImpl;
 import org.apache.chemistry.opencmis.client.runtime.objecttype.FolderTypeImpl;
 import org.apache.chemistry.opencmis.client.runtime.objecttype.PolicyTypeImpl;
@@ -47,6 +48,7 @@ import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.PropertyData;
 import org.apache.chemistry.opencmis.commons.data.PropertyId;
 import org.apache.chemistry.opencmis.commons.data.RenditionData;
+import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.definitions.DocumentTypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.FolderTypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.PolicyTypeDefinition;
@@ -88,6 +90,11 @@ public class NuxeoObjectFactory implements ObjectFactory {
     public void initialize(Session session, Map<String, String> parameters) {
         // TODO
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public RepositoryInfo convertRepositoryInfo(RepositoryInfo repositoryInfo) {
+        return repositoryInfo;
     }
 
     @Override
@@ -250,7 +257,10 @@ public class NuxeoObjectFactory implements ObjectFactory {
 
     @Override
     public List<PropertyData<?>> convertQueryProperties(Properties properties) {
-        throw new UnsupportedOperationException();
+        if (properties == null || properties.getProperties() == null) {
+            return null;
+        }
+        return new ArrayList<PropertyData<?>>(properties.getPropertyList());
     }
 
     @Override
@@ -260,7 +270,19 @@ public class NuxeoObjectFactory implements ObjectFactory {
 
     @Override
     public Rendition convertRendition(String objectId, RenditionData rendition) {
-        throw new UnsupportedOperationException();
+        if (rendition == null) {
+            return null;
+        }
+        BigInteger rl = rendition.getBigLength();
+        BigInteger rh = rendition.getBigHeight();
+        BigInteger rw = rendition.getBigWidth();
+        long length = rl == null ? -1 : rl.longValue();
+        int height = rh == null ? -1 : rh.intValue();
+        int width = rw == null ? -1 : rw.intValue();
+        return new RenditionImpl(session, objectId, rendition.getStreamId(),
+                rendition.getRenditionDocumentId(), rendition.getKind(),
+                length, rendition.getMimeType(), rendition.getTitle(), height,
+                width);
     }
 
     @Override

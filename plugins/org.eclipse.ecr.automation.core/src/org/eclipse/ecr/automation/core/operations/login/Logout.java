@@ -16,6 +16,7 @@ import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
+import org.eclipse.ecr.core.api.DocumentModel;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -32,5 +33,15 @@ public class Logout {
     public void run() throws Exception {
         ctx.getLoginStack().pop();
     }
+
+    @OperationMethod
+    public DocumentModel run(DocumentModel doc) throws Exception {
+        run();
+        // refetch the input document if any using the new session
+        // otherwise using document methods that are delegating the call to the
+        // session that created the document will call the old session.
+        return ctx.getCoreSession().getDocument(doc.getRef());
+    }
+
 
 }

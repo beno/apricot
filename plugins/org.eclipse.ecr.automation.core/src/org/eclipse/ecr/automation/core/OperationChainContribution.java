@@ -23,17 +23,20 @@ import static org.eclipse.ecr.automation.core.Constants.T_STRING;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.eclipse.ecr.common.utils.StringUtils;
+import org.eclipse.ecr.common.xmap.annotation.XContent;
+import org.eclipse.ecr.common.xmap.annotation.XNode;
+import org.eclipse.ecr.common.xmap.annotation.XNodeList;
+import org.eclipse.ecr.common.xmap.annotation.XNodeMap;
+import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.automation.OperationChain;
 import org.eclipse.ecr.automation.OperationParameters;
 import org.eclipse.ecr.automation.core.impl.adapters.StringToDocRef;
 import org.eclipse.ecr.automation.core.scripting.Scripting;
 import org.eclipse.ecr.automation.core.util.Properties;
-import org.eclipse.ecr.common.utils.StringUtils;
-import org.eclipse.ecr.common.xmap.annotation.XContent;
-import org.eclipse.ecr.common.xmap.annotation.XNode;
-import org.eclipse.ecr.common.xmap.annotation.XNodeList;
-import org.eclipse.ecr.common.xmap.annotation.XObject;
 import org.eclipse.ecr.core.api.impl.DocumentRefListImpl;
 import org.eclipse.ecr.core.schema.utils.DateParser;
 import org.osgi.framework.Bundle;
@@ -91,7 +94,11 @@ public class OperationChainContribution {
                         break;
                     case 'p':
                         if (T_PROPERTIES.equals(type)) {
-                            val = new Properties(param.value);
+                            if (param.map != null && !param.map.isEmpty()) {
+                                val = new Properties(param.map);
+                            } else {
+                                val = new Properties(param.value);
+                            }
                         }
                         break;
                     case 'i':
@@ -171,6 +178,11 @@ public class OperationChainContribution {
 
         @XContent
         protected String value;
+
+        //Optional map for properties type values
+        @XNodeMap(value="property", key="@key", type=HashMap.class, componentType=String.class, nullByDefault=true)
+        protected Map<String, String> map;
+
     }
 
 }

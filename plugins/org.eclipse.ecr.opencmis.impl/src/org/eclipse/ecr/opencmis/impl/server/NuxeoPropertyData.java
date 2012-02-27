@@ -10,7 +10,11 @@
  */
 package org.eclipse.ecr.opencmis.impl.server;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -42,8 +46,10 @@ import org.apache.chemistry.opencmis.commons.exceptions.CmisInvalidArgumentExcep
 import org.apache.chemistry.opencmis.commons.exceptions.CmisRuntimeException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisStreamNotSupportedException;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
@@ -51,11 +57,13 @@ import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
-import org.eclipse.ecr.core.api.impl.blob.InputStreamBlob;
+import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
 import org.eclipse.ecr.core.query.sql.NXQL;
 import org.eclipse.ecr.core.schema.types.Type;
+import org.eclipse.ecr.core.storage.sql.coremodel.SQLBlob;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * Nuxeo implementation of an object's property, backed by a property of a
@@ -166,12 +174,28 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
         } else if (PropertyIds.VERSION_SERIES_CHECKED_OUT_ID.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyDataVersionSeriesCheckedOutId(
                     (PropertyDefinition<String>) pd, doc);
+        } else if (NuxeoTypeHelper.NX_ISVERSION.equals(name)) {
+            return (PropertyData<U>) new NuxeoPropertyBooleanDataFixed(
+                    (PropertyDefinition<Boolean>) pd,
+                    Boolean.valueOf(doc.isVersion()));
+        } else if (NuxeoTypeHelper.NX_ISCHECKEDIN.equals(name)) {
+            boolean co;
+            try {
+                co = doc.isCheckedOut();
+            } catch (ClientException e) {
+                throw new CmisRuntimeException(e.toString(), e);
+            }
+            return (PropertyData<U>) new NuxeoPropertyBooleanDataFixed(
+                    (PropertyDefinition<Boolean>) pd, Boolean.valueOf(!co));
         } else if (PropertyIds.CHECKIN_COMMENT.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyDataCheckInComment(
                     (PropertyDefinition<String>) pd, doc);
         } else if (PropertyIds.CONTENT_STREAM_LENGTH.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyDataContentStreamLength(
                     (PropertyDefinition<BigInteger>) pd, doc);
+        } else if (NuxeoTypeHelper.NX_DIGEST.equals(name)) {
+            return (PropertyData<U>) new NuxeoPropertyDataContentStreamDigest(
+                    (PropertyDefinition<String>) pd, doc);
         } else if (PropertyIds.CONTENT_STREAM_MIME_TYPE.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyDataContentStreamMimeType(
                     (PropertyDefinition<String>) pd, doc);
@@ -182,6 +206,9 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
             return (PropertyData<U>) new NuxeoPropertyIdDataFixed(
                     (PropertyDefinition<String>) pd, null);
         } else if (PropertyIds.PARENT_ID.equals(name)) {
+            return (PropertyData<U>) new NuxeoPropertyDataParentId(
+                    (PropertyDefinition<String>) pd, doc);
+        } else if (NuxeoTypeHelper.NX_PARENT_ID.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyDataParentId(
                     (PropertyDefinition<String>) pd, doc);
         } else if (PropertyIds.PATH.equals(name)) {
@@ -202,6 +229,20 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
         } else if (PropertyIds.POLICY_TEXT.equals(name)) {
             return (PropertyData<U>) new NuxeoPropertyStringDataFixed(
                     (PropertyDefinition<String>) pd, null);
+        } else if (NuxeoTypeHelper.NX_FACETS.equals(name)) {
+            List<String> facets = new ArrayList<String>(doc.getFacets());
+            Collections.sort(facets);
+            return (PropertyData<U>) new NuxeoPropertyIdMultiDataFixed(
+                    (PropertyDefinition<String>) pd, facets);
+        } else if (NuxeoTypeHelper.NX_LIFECYCLE_STATE.equals(name)) {
+            String state;
+            try {
+                state = doc.getCurrentLifeCycleState();
+            } catch (ClientException e) {
+                throw new CmisRuntimeException(e.toString(), e);
+            }
+            return (PropertyData<U>) new NuxeoPropertyStringDataFixed(
+                    (PropertyDefinition<String>) pd, state);
         } else {
             boolean readOnly = pd.getUpdatability() != Updatability.READWRITE;
             // TODO WHEN_CHECKED_OUT, ON_CREATE
@@ -262,25 +303,60 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
         if (blobHolder == null) {
             throw new CmisContentAlreadyExistsException();
         }
-        if (!overwrite) {
-            Blob blob;
-            try {
-                blob = blobHolder.getBlob();
-            } catch (ClientException e) {
-                throw new CmisRuntimeException(e.toString(), e);
-            }
-            if (blob != null) {
-                throw new CmisContentAlreadyExistsException();
-            }
+        Blob oldBlob;
+        try {
+            oldBlob = blobHolder.getBlob();
+        } catch (ClientException e) {
+            throw new CmisRuntimeException(e.toString(), e);
         }
-        Blob blob = contentStream == null ? null : new InputStreamBlob(
-                contentStream.getStream(), contentStream.getMimeType(), null,
-                contentStream.getFileName(), null);
+        if (!overwrite && oldBlob != null) {
+            throw new CmisContentAlreadyExistsException();
+        }
+        Blob blob;
+        if (contentStream == null) {
+            blob = null;
+        } else {
+            // default filename if none provided
+            String filename = contentStream.getFileName();
+            if (filename == null && oldBlob != null) {
+                filename = oldBlob.getFilename();
+            }
+            if (filename == null) {
+                try {
+                    filename = doc.getTitle();
+                } catch (ClientException e) {
+                    filename = doc.getName();
+                }
+            }
+            blob = getPersistentBlob(contentStream, filename);
+        }
         try {
             blobHolder.setBlob(blob);
         } catch (ClientException e) {
             throw new CmisRuntimeException(e.toString(), e);
         }
+    }
+
+    /** Returns a Blob whose stream can be used several times. */
+    public static Blob getPersistentBlob(ContentStream contentStream,
+            String filename) throws IOException {
+        if (filename == null) {
+            filename = contentStream.getFileName();
+        }
+        InputStream in = contentStream.getStream();
+        OutputStream out = null;
+        File file;
+        try {
+            file = File.createTempFile("NuxeoCMIS-", null);
+            out = new FileOutputStream(file);
+            IOUtils.copy(in, out);
+            Framework.trackFile(file, in);
+        } finally {
+            FileUtils.close(in);
+            FileUtils.close(out);
+        }
+        return new FileBlob(file, contentStream.getMimeType(), null, filename,
+                null);
     }
 
     /**
@@ -613,6 +689,28 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
     }
 
     /**
+     * Property for nuxeo:contentStreamDigest.
+     */
+    public static class NuxeoPropertyDataContentStreamDigest extends
+            NuxeoPropertyDataBase<String> implements PropertyString {
+
+        protected NuxeoPropertyDataContentStreamDigest(
+                PropertyDefinition<String> propertyDefinition, DocumentModel doc) {
+            super(propertyDefinition, doc);
+        }
+
+        @Override
+        public String getFirstValue() {
+            Blob blob = getBlob(doc);
+            if (blob instanceof SQLBlob) {
+                SQLBlob sqlBlob = ((SQLBlob) blob);
+                return sqlBlob.getBinary().getDigest();
+            }
+            return null;
+        }
+    }
+
+    /**
      * Property for cmis:contentMimeTypeLength.
      */
     public static class NuxeoPropertyDataContentStreamMimeType extends
@@ -684,7 +782,7 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
     }
 
     /**
-     * Property for cmis:parentId.
+     * Property for cmis:parentId and nuxeo:parentId.
      */
     public static class NuxeoPropertyDataParentId extends
             NuxeoPropertyDataBase<String> implements PropertyId {
@@ -700,7 +798,9 @@ public abstract class NuxeoPropertyData<T> extends NuxeoPropertyDataBase<T> {
                 return null;
             } else {
                 DocumentRef parentRef = doc.getParentRef();
-                if (parentRef instanceof IdRef) {
+                if (parentRef == null) {
+                    return null; // unfiled document
+                } else if (parentRef instanceof IdRef) {
                     return ((IdRef) parentRef).value;
                 } else {
                     try {

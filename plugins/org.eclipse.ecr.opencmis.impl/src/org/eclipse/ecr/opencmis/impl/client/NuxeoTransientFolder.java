@@ -152,6 +152,11 @@ public class NuxeoTransientFolder extends NuxeoTransientFileableObject
     }
 
     @Override
+    public String getParentId() {
+        return ((NuxeoFolder) object).getParentId();
+    }
+
+    @Override
     public String getPath() {
         return ((NuxeoFolder) object).getPath();
     }
