@@ -97,8 +97,6 @@ import org.apache.chemistry.opencmis.commons.spi.Holder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.audit.api.AuditReader;
-import org.eclipse.ecr.audit.api.LogEntry;
 import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
@@ -125,6 +123,8 @@ import org.eclipse.ecr.opencmis.impl.util.ListUtils;
 import org.eclipse.ecr.opencmis.impl.util.ListUtils.BatchedList;
 import org.eclipse.ecr.opencmis.impl.util.SimpleImageInfo;
 import org.eclipse.ecr.opencmis.impl.util.TypeManagerImpl;
+import org.eclipse.ecr.platform.audit.api.AuditReader;
+import org.eclipse.ecr.platform.audit.api.LogEntry;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
