@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -36,6 +36,7 @@ import org.eclipse.ecr.core.api.VersioningOption;
 import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
+import org.eclipse.ecr.core.api.model.PropertyVisitor;
 import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventBundle;
@@ -43,8 +44,8 @@ import org.eclipse.ecr.core.schema.DocumentType;
 
 /**
  * Light weight {@link DocumentModel} implementation Only holds
- * {@link DocumentRef}, RepositoryName, name and path. Used to reduce memory
- * footprint of {@link Event} stacked in {@link EventBundle}.
+ * {@link DocumentRef}, RepositoryName, name, path and context data. Used to
+ * reduce memory footprint of {@link Event} stacked in {@link EventBundle}.
  *
  * @author Thierry Delprat
  */
@@ -66,6 +67,8 @@ public class ShallowDocumentModel implements DocumentModel {
 
     private final boolean isVersion;
 
+    private final ScopedMap contextData;
+
     public ShallowDocumentModel(DocumentModel doc) {
         id = doc.getId();
         repoName = doc.getRepositoryName();
@@ -74,6 +77,7 @@ public class ShallowDocumentModel implements DocumentModel {
         type = doc.getType();
         isFolder = doc.isFolder();
         isVersion = doc.isVersion();
+        contextData = doc.getContextData();
     }
 
     @Override
@@ -153,6 +157,12 @@ public class ShallowDocumentModel implements DocumentModel {
     }
 
     @Override
+    public void accept(PropertyVisitor visitor, Object arg)
+            throws ClientException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public <T> T getAdapter(Class<T> itf) {
         throw new UnsupportedOperationException();
     }
@@ -175,17 +185,28 @@ public class ShallowDocumentModel implements DocumentModel {
 
     @Override
     public ScopedMap getContextData() {
-        throw new UnsupportedOperationException();
+        return contextData;
     }
 
     @Override
     public Serializable getContextData(ScopeType scope, String key) {
-        throw new UnsupportedOperationException();
+        if (contextData == null) {
+            return null;
+        }
+        return contextData.getScopedValue(scope, key);
     }
 
     @Override
     public CoreSession getCoreSession() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void detach(boolean loadAll) {
+    }
+
+    @Override
+    public void attach(String sid) {
     }
 
     @Override
@@ -234,11 +255,6 @@ public class ShallowDocumentModel implements DocumentModel {
     }
 
     @Override
-    public long getFlags() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String getLifeCyclePolicy() throws ClientException {
         throw new UnsupportedOperationException();
     }
@@ -255,11 +271,6 @@ public class ShallowDocumentModel implements DocumentModel {
 
     @Override
     public DocumentPart[] getParts() throws ClientException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Map<String, Serializable> getPrefetch() {
         throw new UnsupportedOperationException();
     }
 
@@ -364,8 +375,23 @@ public class ShallowDocumentModel implements DocumentModel {
     }
 
     @Override
+    public boolean isDirty() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean isVersionable() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isPrefetched(String xpath) {
+        return false;
+    }
+
+    @Override
+    public boolean isPrefetched(String schemaName, String name) {
+        return false;
     }
 
     @Override
@@ -375,11 +401,6 @@ public class ShallowDocumentModel implements DocumentModel {
 
     @Override
     public void prefetchLifeCyclePolicy(String lifeCyclePolicy) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void prefetchProperty(String id, Object value) {
         throw new UnsupportedOperationException();
     }
 
@@ -468,7 +489,10 @@ public class ShallowDocumentModel implements DocumentModel {
 
     @Override
     public Serializable getContextData(String key) {
-        throw new UnsupportedOperationException();
+        if (contextData == null) {
+            return null;
+        }
+        return contextData.getScopedValue(key);
     }
 
     @Override
@@ -512,4 +536,8 @@ public class ShallowDocumentModel implements DocumentModel {
         return true;
     }
 
+    @Override
+    public String getChangeToken() {
+        return null;
+    }
 }

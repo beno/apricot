@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -16,15 +16,18 @@ import java.util.Set;
 
 import javax.ws.rs.core.Application;
 
-import org.eclipse.ecr.automation.server.jaxrs.io.BlobsWriter;
-import org.eclipse.ecr.automation.server.jaxrs.io.JsonAutomationInfoWriter;
-import org.eclipse.ecr.automation.server.jaxrs.io.JsonDocumentListWriter;
-import org.eclipse.ecr.automation.server.jaxrs.io.JsonDocumentWriter;
-import org.eclipse.ecr.automation.server.jaxrs.io.JsonExceptionWriter;
-import org.eclipse.ecr.automation.server.jaxrs.io.JsonLoginInfoWriter;
 import org.eclipse.ecr.automation.server.jaxrs.io.JsonRequestReader;
 import org.eclipse.ecr.automation.server.jaxrs.io.MultiPartRequestReader;
 import org.eclipse.ecr.automation.server.jaxrs.io.UrlEncodedFormRequestReader;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.BlobsWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonAdapterWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonAutomationInfoWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonDocumentListWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonDocumentWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonExceptionWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonLoginInfoWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonOperationWriter;
+import org.eclipse.ecr.automation.server.jaxrs.io.writers.JsonTreeWriter;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -41,8 +44,7 @@ public class AutomationModule extends Application {
         return result;
     }
 
-    @Override
-    public Set<Object> getSingletons() {
+    protected static Set<Object> setupSingletons() {
         Set<Object> result = new HashSet<Object>();
         result.add(new JsonRequestReader());
         result.add(new JsonExceptionWriter());
@@ -51,8 +53,16 @@ public class AutomationModule extends Application {
         result.add(new JsonDocumentListWriter());
         result.add(new BlobsWriter());
         result.add(new JsonLoginInfoWriter());
+        result.add(new JsonOperationWriter());
         result.add(new UrlEncodedFormRequestReader());
+        result.add(new JsonTreeWriter());
+        result.add(new JsonAdapterWriter());
         return result;
+    }
+
+    @Override
+    public Set<Object> getSingletons() {
+        return setupSingletons();
     }
 
 }

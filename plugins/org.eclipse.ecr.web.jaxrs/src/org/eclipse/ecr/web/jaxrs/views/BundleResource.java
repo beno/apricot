@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -111,7 +111,7 @@ public class BundleResource {
 
     /**
      * This method is only for contributed sub-resources. It will be ignored for root resources.
-     * 
+     *
      * Extension resources may override this method to dynamically accept or reject
      * to be installed as a sub-resource of the target resource
      * @param target

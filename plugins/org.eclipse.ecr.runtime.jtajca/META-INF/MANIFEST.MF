@@ -25,6 +25,8 @@ Import-Package: javax.annotation,
  org.apache.xbean.naming.context,
  org.apache.xbean.naming.reference,
  org.eclipse.ecr.runtime.api,
+ org.eclipse.ecr.runtime.model,
  org.eclipse.ecr.runtime.transaction,
  org.osgi.framework
 Bundle-SymbolicName: org.eclipse.ecr.runtime.jtajca;singleton:=true
+Nuxeo-Component: OSGI-INF/JtaActivator.xml

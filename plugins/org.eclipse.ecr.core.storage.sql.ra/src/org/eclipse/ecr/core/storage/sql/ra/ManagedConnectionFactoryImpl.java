@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -36,6 +36,7 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.common.xmap.XMap;
 import org.eclipse.ecr.core.NXCore;
 import org.eclipse.ecr.core.storage.StorageException;
+import org.eclipse.ecr.core.storage.sql.BinaryGarbageCollector;
 import org.eclipse.ecr.core.storage.sql.ConnectionSpecImpl;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
@@ -241,6 +242,22 @@ public class ManagedConnectionFactoryImpl implements ManagedConnectionFactory,
     public void processClusterInvalidationsNext() {
         if (repository != null) {
             repository.processClusterInvalidationsNext();
+        }
+    }
+
+    @Override
+    public BinaryGarbageCollector getBinaryGarbageCollector() {
+        if (repository == null) {
+            return null;
+        }
+        return repository.getBinaryGarbageCollector();
+
+    }
+
+    @Override
+    public void markReferencedBinaries(BinaryGarbageCollector gc) {
+        if (repository != null) {
+            repository.markReferencedBinaries(gc);
         }
     }
 

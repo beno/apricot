@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -14,12 +14,10 @@
 
 package org.eclipse.ecr.core.query;
 
-import org.eclipse.ecr.core.CoreRuntimeException;
-
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-public class QueryParseException extends CoreRuntimeException {
+public class QueryParseException extends RuntimeException {
 
     private static final long serialVersionUID = -3557588796412733083L;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -35,7 +35,7 @@ import org.eclipse.ecr.automation.core.annotations.Operation;
 /**
  * The operation registry is thread safe and optimized for modifications at
  * startup and lookups at runtime.
- *
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class OperationServiceImpl implements AutomationService {
@@ -109,6 +109,21 @@ public class OperationServiceImpl implements AutomationService {
         }
     }
 
+    /**
+     * TODO avoid creating a temporary chain and then compile it. try to find a
+     * way to execute the single operation without compiling it. (for
+     * optimization)
+     */
+    @Override
+    public Object run(OperationContext ctx, String id,
+            Map<String, Object> params) throws OperationException,
+            InvalidChainException, Exception {
+        OperationChain chain = new OperationChain("operation");
+        OperationParameters oparams = new OperationParameters(id, params);
+        chain.add(oparams);
+        return run(ctx, chain);
+    }
+
     public synchronized void putOperationChain(OperationChain chain)
             throws OperationException {
         putOperationChain(chain, false);
@@ -157,14 +172,25 @@ public class OperationServiceImpl implements AutomationService {
         return chain;
     }
 
+    public synchronized void flushCompiledChains() {
+        for (ChainEntry entry : chains.values()) {
+            entry.cchain = null;
+        }
+        chainLookup = null;
+    }
+
     public void putOperation(Class<?> type) throws OperationException {
         OperationTypeImpl op = new OperationTypeImpl(this, type);
         putOperation(op, false);
     }
 
-    public void putOperation(Class<?> type, boolean replace)
+    public void putOperation(Class<?> type, boolean replace) throws OperationException {
+        putOperation(type, replace, null);
+    }    
+
+    public void putOperation(Class<?> type, boolean replace, String contributingComponent)
             throws OperationException {
-        OperationTypeImpl op = new OperationTypeImpl(this, type);
+        OperationTypeImpl op = new OperationTypeImpl(this, type, contributingComponent);
         putOperation(op, replace);
     }
 
@@ -271,8 +297,9 @@ public class OperationServiceImpl implements AutomationService {
         }
         TypeAdapter adapter = getTypeAdapter(toAdaptClass, targetType);
         if (adapter == null) {
-            throw new AdapterNotFoundException("No type adapter found for input: "
-                    + toAdapt.getClass() + " and output " + targetType, ctx);
+            throw new AdapterNotFoundException(
+                    "No type adapter found for input: " + toAdapt.getClass()
+                            + " and output " + targetType, ctx);
         }
         return (T) adapter.getAdaptedValue(ctx, toAdapt);
     }

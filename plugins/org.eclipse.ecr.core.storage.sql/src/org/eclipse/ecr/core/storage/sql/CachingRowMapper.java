@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -53,6 +53,8 @@ public class CachingRowMapper implements RowMapper {
     // references to it which would prevent its GCing
     private final Map<RowId, Row> cache;
 
+    private final Model model;
+
     /**
      * The {@link RowMapper} to which operations that cannot be processed from
      * the cache are delegated.
@@ -95,20 +97,26 @@ public class CachingRowMapper implements RowMapper {
     protected boolean forRemoteClient;
 
     @SuppressWarnings("unchecked")
-    public CachingRowMapper(RowMapper rowMapper,
+    public CachingRowMapper(Model model, RowMapper rowMapper,
             InvalidationsPropagator cachePropagator,
             InvalidationsPropagator eventPropagator,
             InvalidationsQueue repositoryEventQueue) {
+        this.model = model;
         this.rowMapper = rowMapper;
         cache = new ReferenceMap(ReferenceMap.HARD, ReferenceMap.SOFT);
         localInvalidations = new Invalidations();
         cacheQueue = new InvalidationsQueue("mapper-" + this);
         this.cachePropagator = cachePropagator;
-        cachePropagator.addQueue(cacheQueue); // TODO when to remove?
+        cachePropagator.addQueue(cacheQueue);
         eventQueue = repositoryEventQueue;
         this.eventPropagator = eventPropagator;
         eventPropagator.addQueue(repositoryEventQueue);
         forRemoteClient = false;
+    }
+
+    public void close() throws StorageException {
+        cachePropagator.removeQueue(cacheQueue);
+        eventPropagator.removeQueue(eventQueue); // TODO can be overriden
     }
 
     /*
@@ -192,6 +200,9 @@ public class CachingRowMapper implements RowMapper {
         }
 
         // invalidate our cache
+        if (invalidations.all) {
+            clearCache();
+        }
         if (invalidations.modified != null) {
             for (RowId rowId : invalidations.modified) {
                 cacheRemove(rowId);
@@ -284,29 +295,35 @@ public class CachingRowMapper implements RowMapper {
      * Use those from the cache if available, read from the mapper for the rest.
      */
     @Override
-    public List<? extends RowId> read(Collection<RowId> rowIds)
-            throws StorageException {
+    public List<? extends RowId> read(Collection<RowId> rowIds,
+            boolean cacheOnly) throws StorageException {
         List<RowId> res = new ArrayList<RowId>(rowIds.size());
         // find which are in cache, and which not
         List<RowId> todo = new LinkedList<RowId>();
         for (RowId rowId : rowIds) {
             Row row = cacheGet(rowId);
             if (row == null) {
-                todo.add(rowId);
+                if (cacheOnly) {
+                    res.add(new RowId(rowId));
+                } else {
+                    todo.add(rowId);
+                }
             } else if (isAbsent(row)) {
                 res.add(new RowId(rowId));
             } else {
                 res.add(row);
             }
         }
-        // ask missing ones to underlying row mapper
-        List<? extends RowId> fetched = rowMapper.read(todo);
-        // add them to the cache
-        for (RowId rowId : fetched) {
-            cachePutAbsentIfRowId(rowId);
+        if (!todo.isEmpty()) {
+            // ask missing ones to underlying row mapper
+            List<? extends RowId> fetched = rowMapper.read(todo, cacheOnly);
+            // add them to the cache
+            for (RowId rowId : fetched) {
+                cachePutAbsentIfRowId(rowId);
+            }
+            // merge results
+            res.addAll(fetched);
         }
-        // merge results
-        res.addAll(fetched);
         return res;
     }
 
@@ -332,6 +349,15 @@ public class CachingRowMapper implements RowMapper {
             }
         }
         for (RowId rowId : batch.deletes) {
+            if (rowId instanceof Row) {
+                throw new AssertionError();
+            }
+            cachePutAbsent(rowId);
+            if (!Model.FULLTEXT_TABLE_NAME.equals(rowId.tableName)) {
+                localInvalidations.addDeleted(rowId);
+            }
+        }
+        for (RowId rowId : batch.deletesDependent) {
             if (rowId instanceof Row) {
                 throw new AssertionError();
             }
@@ -380,44 +406,12 @@ public class CachingRowMapper implements RowMapper {
         }
     }
 
-    // TODO this API isn't cached well...
     @Override
-    public Row readChildHierRow(Serializable parentId, String childName,
-            boolean complexProp) throws StorageException {
-        Row row = rowMapper.readChildHierRow(parentId, childName, complexProp);
-        if (row != null) {
-            cachePut(row);
-        }
-        return row;
-    }
-
-    // TODO this API isn't cached well...
-    @Override
-    public List<Row> readChildHierRows(Serializable parentId,
-            boolean complexProp) throws StorageException {
-        List<Row> rows = rowMapper.readChildHierRows(parentId, complexProp);
-        for (Row row : rows) {
-            cachePut(row);
-        }
-        return rows;
-    }
-
-    // TODO this API isn't cached well...
-    @Override
-    public List<Row> getVersionRows(Serializable versionableId)
-            throws StorageException {
-        List<Row> rows = rowMapper.getVersionRows(versionableId);
-        for (Row row : rows) {
-            cachePut(row);
-        }
-        return rows;
-    }
-
-    // TODO this API isn't cached well...
-    @Override
-    public List<Row> getProxyRows(Serializable searchId, boolean byTarget,
-            Serializable parentId) throws StorageException {
-        List<Row> rows = rowMapper.getProxyRows(searchId, byTarget, parentId);
+    public List<Row> readSelectionRows(SelectionType selType,
+            Serializable selId, Serializable filter, Serializable criterion,
+            boolean limitToOne) throws StorageException {
+        List<Row> rows = rowMapper.readSelectionRows(selType, selId, filter,
+                criterion, limitToOne);
         for (Row row : rows) {
             cachePut(row);
         }
@@ -429,11 +423,10 @@ public class CachingRowMapper implements RowMapper {
      */
 
     @Override
-    public CopyHierarchyResult copyHierarchy(IdWithTypes source,
-            Serializable destParentId, String destName, Row overwriteRow)
-            throws StorageException {
-        CopyHierarchyResult result = rowMapper.copyHierarchy(source,
-                destParentId, destName, overwriteRow);
+    public CopyResult copy(IdWithTypes source, Serializable destParentId,
+            String destName, Row overwriteRow) throws StorageException {
+        CopyResult result = rowMapper.copy(source, destParentId, destName,
+                overwriteRow);
         Invalidations invalidations = result.invalidations;
         if (invalidations.modified != null) {
             for (RowId rowId : invalidations.modified) {
@@ -448,6 +441,23 @@ public class CachingRowMapper implements RowMapper {
             }
         }
         return result;
+    }
+
+    @Override
+    public List<NodeInfo> remove(NodeInfo rootInfo) throws StorageException {
+        List<NodeInfo> infos = rowMapper.remove(rootInfo);
+        for (NodeInfo info : infos) {
+            for (String fragmentName : model.getTypeFragments(new IdWithTypes(
+                    info.id, info.primaryType, null))) {
+                RowId rowId = new RowId(fragmentName, info.id);
+                cacheRemove(rowId);
+                localInvalidations.addDeleted(rowId);
+            }
+        }
+        // we only put as absent the root fragment, to avoid polluting the cache
+        // with lots of absent info. the rest is removed entirely
+        cachePutAbsent(new RowId(model.HIER_TABLE_NAME, rootInfo.id));
+        return infos;
     }
 
 }

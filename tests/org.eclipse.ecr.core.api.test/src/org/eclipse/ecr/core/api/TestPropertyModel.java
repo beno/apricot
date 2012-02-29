@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.ecr.core.api.impl.blob.StringBlob;
 import org.eclipse.ecr.core.api.model.Property;
@@ -175,8 +176,8 @@ public class TestPropertyModel extends NXRuntimeTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        deployBundle("org.eclipse.ecr.core.schema");
-        deployContrib("org.eclipse.ecr.core.api.test",
+        deployBundle("org.nuxeo.ecm.core.schema");
+        deployContrib("org.nuxeo.ecm.core.api.tests",
                 "OSGI-INF/test-propmodel-types-contrib.xml");
         SchemaManager mgr = Framework.getService(SchemaManager.class);
 //        XSDLoader loader = new XSDLoader((SchemaManagerImpl) mgr);
@@ -204,6 +205,20 @@ public class TestPropertyModel extends NXRuntimeTestCase {
                 }
             }
         }
+    }
+
+    protected static Map<String, Serializable> unPrefixedMap(
+            Map<String, Serializable> map) {
+        Map<String, Serializable> res = new HashMap<String, Serializable>();
+        for (Entry<String, Serializable> e : map.entrySet()) {
+            String key = e.getKey();
+            int pos = key.indexOf(':');
+            if (pos > -1) {
+                key = key.substring(pos + 1);
+            }
+            res.put(key, e.getValue());
+        }
+        return res;
     }
 
     @SuppressWarnings("unchecked")
@@ -725,13 +740,21 @@ public class TestPropertyModel extends NXRuntimeTestCase {
 
         dp.init(map);
 
-        // double s = System.currentTimeMillis();
-        ValueExporter me = new ValueExporter();
-        Map<String, Serializable> export = me.run(dp);
-        // double e = System.currentTimeMillis();
-        // System.out.println("#########visitor >>>> "+((e-s)/1000));
-
+        // prefixed export
+        ValueExporter ve = new ValueExporter(true);
+        Map<String, Serializable> export = ve.run(dp);
         assertEquals(map, export);
+
+        Map<String, Serializable> value = (Map<String, Serializable>) dp.getValue();
+        clearMap(value);
+        HashMap<String, Serializable> m = new HashMap<String, Serializable>(map);
+        m.put("book:price", Long.valueOf(111)); // default value exported too
+        assertEquals(m, value);
+
+        // now unprefixed
+        ve = new ValueExporter(false);
+        export = ve.run(dp);
+        assertEquals(unPrefixedMap(map), export);
     }
 
 }

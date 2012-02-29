@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -97,7 +97,7 @@ public class InvokableIteratorMethod extends InvokableMethod {
     @Override
     protected Object doInvoke(OperationContext ctx, Map<String, Object> args,
             Object input) throws Exception {
-        if (input instanceof Iterable == false) {
+        if (!(input instanceof Iterable)) {
             throw new IllegalStateException(
                     "An iterable method was called in a non iterable context");
         }

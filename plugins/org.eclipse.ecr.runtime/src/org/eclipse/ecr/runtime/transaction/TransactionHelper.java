@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -14,11 +14,9 @@ package org.eclipse.ecr.runtime.transaction;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
-import javax.transaction.SystemException;
+import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 import javax.transaction.UserTransaction;
 
@@ -66,7 +64,8 @@ public class TransactionHelper {
         int i = 0;
         for (String name : UT_NAMES) {
             try {
-                UserTransaction userTransaction = (UserTransaction) context.lookup(name);
+                final Object lookup = context.lookup(name);
+                UserTransaction userTransaction = (UserTransaction) lookup;
                 if (userTransaction != null) {
                     if (i != 0) {
                         // put successful name first for next time
@@ -159,11 +158,14 @@ public class TransactionHelper {
     /**
      * Starts a new User Transaction.
      *
-     * @return {@code true} if the transaction was successfully started, {@code
-     *         false} otherwise
+     * @return {@code true} if the transaction was successfully started,
+     *         {@code false} otherwise
      */
     public static boolean startTransaction() {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Starting transaction");
+            }
             lookupUserTransaction().begin();
             return true;
         } catch (NamingException e) {
@@ -175,15 +177,84 @@ public class TransactionHelper {
     }
 
     /**
+     * Suspend the current transaction if active and
+     * start a new transaction
+     *
+     * @return the suspended transaction or null
+     * @throws TransactionRuntimeException
+     * @since 5.6
+     */
+    public static Transaction requireNewTransaction() {
+        TransactionManager tm;
+        try {
+            tm = lookupTransactionManager();
+        } catch (NamingException e) {
+            return null;
+        }
+        try {
+            Transaction tx = null;
+            if (tm.getStatus() == Status.STATUS_ACTIVE) {
+                tx = tm.suspend();
+            }
+            tm.begin();
+            return tx;
+        } catch (Exception e) {
+            throw new TransactionRuntimeException("Cannot suspend tx", e);
+        }
+    }
+
+    /**
+     * Commit the current transaction if active and
+     * resume the principal transaction
+     * @param tx
+     */
+    public static void resumeTransaction(Transaction tx) {
+        TransactionManager mgr;
+        try {
+            mgr = lookupTransactionManager();
+        } catch (NamingException e) {
+            return;
+        }
+        try {
+            if (mgr.getStatus() == Status.STATUS_ACTIVE) {
+                mgr.commit();
+            }
+            if (tx != null) {
+                mgr.resume(tx);
+            }
+        } catch (Exception e) {
+            throw new TransactionRuntimeException("Cannot resume tx", e);
+        }
+    }
+
+    /**
+     * Starts a new User Transaction with the specified timeout.
+     *
+     * @param timeout the timeout in seconds, <= 0 for the default
+     * @return {@code true} if the transaction was successfully started,
+     *         {@code false} otherwise
+     *
+     * @since 5.6
+     */
+    public static boolean startTransaction(int timeout) {
+        if (timeout < 0) {
+            timeout = 0;
+        }
+        try {
+            lookupTransactionManager().setTransactionTimeout(timeout);
+        } catch (NamingException e) {
+            // no transaction
+            return false;
+        } catch (Exception e) {
+            log.error("Unable to set transaction timeout: " + timeout, e);
+            return false;
+        }
+        return startTransaction();
+    }
+
+    /**
      * Commits or rolls back the User Transaction depending on the transaction
      * status.
-     *
-     * @throws SystemException
-     * @throws HeuristicRollbackException
-     * @throws HeuristicMixedException
-     * @throws RollbackException
-     * @throws IllegalStateException
-     * @throws SecurityException
      */
     public static void commitOrRollbackTransaction() {
         UserTransaction ut;
@@ -205,6 +276,11 @@ public class TransactionHelper {
                     log.debug("Cannot commit transaction because it is marked rollback only");
                 }
                 ut.rollback();
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Cannot commit transaction with unknown status: "
+                            + status);
+                }
             }
         } catch (Exception e) {
             String msg = "Unable to commit/rollback  " + ut;
@@ -228,6 +304,9 @@ public class TransactionHelper {
      */
     public static boolean setTransactionRollbackOnly() {
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Setting transaction as rollback only");
+            }
             lookupUserTransaction().setRollbackOnly();
             return true;
         } catch (NamingException e) {

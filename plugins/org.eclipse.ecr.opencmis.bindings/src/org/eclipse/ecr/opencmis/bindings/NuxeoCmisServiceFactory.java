@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.chemistry.opencmis.commons.exceptions.CmisInvalidArgumentException;
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractServiceFactory;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.server.CmisService;
@@ -35,11 +36,8 @@ import org.eclipse.ecr.opencmis.impl.server.NuxeoRepository;
 public class NuxeoCmisServiceFactory extends AbstractServiceFactory {
 
     public static final BigInteger DEFAULT_TYPES_MAX_ITEMS = BigInteger.valueOf(100);
-
     public static final BigInteger DEFAULT_TYPES_DEPTH = BigInteger.valueOf(-1);
-
     public static final BigInteger DEFAULT_MAX_ITEMS = BigInteger.valueOf(100);
-
     public static final BigInteger DEFAULT_DEPTH = BigInteger.valueOf(2);
 
     protected Map<String, NuxeoRepository> repositories;
@@ -57,8 +55,21 @@ public class NuxeoCmisServiceFactory extends AbstractServiceFactory {
     @Override
     public CmisService getService(CallContext context) {
         String repositoryId = context.getRepositoryId();
-        NuxeoRepository repository = NuxeoRepositories.getRepository(repositoryId);
+        NuxeoRepository repository;
+        if (repositoryId == null) {
+            repository = null;
+        } else {
+            repository = NuxeoRepositories.getRepository(repositoryId);
+            if (repository == null) {
+                throw new CmisInvalidArgumentException("No such repository: "
+                        + repositoryId);
+            }
+        }
         NuxeoCmisService service = new NuxeoCmisService(repository, context);
+        if (repository != null && service.getCoreSession() == null) {
+            throw new CmisInvalidArgumentException("No such repository: "
+                    + repositoryId);
+        }
 
         // wrap the service to provide default parameter checks
         return new CmisServiceWrapper<NuxeoCmisService>(service,

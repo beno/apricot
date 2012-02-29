@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,13 +8,12 @@
  *
  * Contributors:
  *     Nuxeo - initial API and implementation
- *
- * $Id$
  */
 
 package org.eclipse.ecr.runtime.model.impl;
 
 import java.net.URL;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -73,15 +72,13 @@ public class RegistrationInfoImpl implements RegistrationInfo {
     // the registration state
     int state = UNREGISTERED;
 
+    // my aliases
+    @XNodeList(value = "alias", type = HashSet.class, componentType = ComponentName.class)
+    Set<ComponentName> aliases;
+
     // the object names I depend of
     @XNodeList(value = "require", type = HashSet.class, componentType = ComponentName.class)
     Set<ComponentName> requires;
-
-    // the object names I depend of and that are blocking my registration
-    Set<ComponentName> waitsFor;
-
-    // registration that depends on me
-    Set<RegistrationInfoImpl> dependsOnMe;
 
     @XNode("implementation@class")
     String implementation;
@@ -136,6 +133,20 @@ public class RegistrationInfoImpl implements RegistrationInfo {
         this.name = name;
     }
 
+    /**
+     * Attach to a manager - this method must be called after all registration
+     * fields are initialized.
+     *
+     * @param manager
+     */
+    public void attach(ComponentManagerImpl manager) {
+        if (this.manager != null) {
+            throw new IllegalStateException("Registration '" + name
+                    + "' was already attached to a manager");
+        }
+        this.manager = manager;
+    }
+
     public void setContext(RuntimeContext rc) {
         this.context = rc;
     }
@@ -143,14 +154,6 @@ public class RegistrationInfoImpl implements RegistrationInfo {
     @Override
     public boolean isDisabled() {
         return disabled;
-    }
-
-    public Set<RegistrationInfoImpl> getDependsOnMe() {
-        return dependsOnMe;
-    }
-
-    public Set<ComponentName> getWaitsFor() {
-        return waitsFor;
     }
 
     @Override
@@ -163,22 +166,10 @@ public class RegistrationInfoImpl implements RegistrationInfo {
         this.isPersistent = isPersistent;
     }
 
-    public final boolean isPending() {
-        return waitsFor != null;
-    }
-
     public void destroy() {
-        if (waitsFor != null) {
-            waitsFor.clear();
-            waitsFor = null;
-        }
         if (requires != null) {
             requires.clear();
             requires = null;
-        }
-        if (dependsOnMe != null) {
-            dependsOnMe.clear();
-            dependsOnMe = null;
         }
         component = null;
         name = null;
@@ -201,6 +192,7 @@ public class RegistrationInfoImpl implements RegistrationInfo {
 
     /**
      * Reload the underlying component if reload is supported
+     *
      * @throws Exception
      */
     public synchronized void reload() throws Exception {
@@ -236,6 +228,12 @@ public class RegistrationInfoImpl implements RegistrationInfo {
     @Override
     public Extension[] getExtensions() {
         return extensions;
+    }
+
+    @Override
+    public Set<ComponentName> getAliases() {
+        return aliases == null ? Collections.<ComponentName> emptySet()
+                : aliases;
     }
 
     @Override
@@ -314,11 +312,30 @@ public class RegistrationInfoImpl implements RegistrationInfo {
     }
 
     @Override
+    public int getApplicationStartedOrder() {
+        if (component == null) {
+            return 0;
+        }
+        Object ci = component.getInstance();
+        if (!(ci instanceof Component)) {
+            return 0;
+        }
+        return ((Component) ci).getApplicationStartedOrder();
+    }
+
+    @Override
     public void notifyApplicationStarted() throws Exception {
         if (component != null) {
             Object ci = component.getInstance();
             if (ci instanceof Component) {
-                ((Component) ci).applicationStarted(component);
+                try {
+                    ((Component) ci).applicationStarted(component);
+                } catch (Exception e) {
+                    log.error(
+                            "Component notification of application started failed.",
+                            e);
+                    state = RESOLVED;
+                }
             }
         }
     }
@@ -336,6 +353,7 @@ public class RegistrationInfoImpl implements RegistrationInfo {
 
         // activate component
         component.activate();
+        log.info("Component activated: " + name);
 
         state = ACTIVATED;
         manager.sendEvent(new ComponentEvent(
@@ -507,6 +525,22 @@ public class RegistrationInfoImpl implements RegistrationInfo {
     @Override
     public URL getXmlFileUrl() {
         return xmlFileUrl;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof RegistrationInfo) {
+            return name.equals(((RegistrationInfo) obj).getName());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
     }
 
 }

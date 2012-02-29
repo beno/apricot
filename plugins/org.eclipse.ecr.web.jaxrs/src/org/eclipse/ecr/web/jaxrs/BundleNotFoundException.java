@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,13 +13,13 @@ package org.eclipse.ecr.web.jaxrs;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
  */
-@SuppressWarnings("serial")
 public class BundleNotFoundException extends Exception {
 
+    private static final long serialVersionUID = 1L;
+
     public BundleNotFoundException(String bundleName) {
-        super ("No bundle named '"+bundleName+"' was found.");
+        super("No bundle named '" + bundleName + "' was found.");
     }
 
 }

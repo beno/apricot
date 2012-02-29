@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -22,18 +22,20 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.runtime.model.ComponentContext;
 import org.eclipse.ecr.runtime.model.ComponentInstance;
 import org.eclipse.ecr.runtime.model.ComponentName;
 import org.eclipse.ecr.runtime.model.DefaultComponent;
 
 /**
- *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
  */
 public class RepositoryManagerImpl extends DefaultComponent implements
         RepositoryManager {
+
+    private static final Log log = LogFactory.getLog(RepositoryManagerImpl.class);
 
     public static final ComponentName NAME = new ComponentName(
             "org.eclipse.ecr.core.api.repository.RepositoryManager");
@@ -42,7 +44,13 @@ public class RepositoryManagerImpl extends DefaultComponent implements
 
     @Override
     public void addRepository(Repository repository) {
-        repositories.put(repository.getName(), repository);
+        String repoName = repository.getName();
+        if (repositories.containsKey(repoName)) {
+            log.info("Overriding repository " + repoName);
+        } else {
+            log.info("Registering repository " + repoName);
+        }
+        repositories.put(repoName, repository);
     }
 
     @Override
@@ -57,6 +65,7 @@ public class RepositoryManagerImpl extends DefaultComponent implements
 
     @Override
     public void removeRepository(String name) {
+        log.info("Removing repository " + name);
         repositories.remove(name);
     }
 

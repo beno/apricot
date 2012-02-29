@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,7 +18,6 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.runtime.transaction.Transacted;
 import org.eclipse.ecr.runtime.transaction.TransactedServiceProvider;
 
 
@@ -69,7 +68,7 @@ public abstract class AnnotatedServiceProvider implements ServiceProvider {
                 return true;
             }
             for (Method m : srvClass.getMethods()) {
-                if (m.getAnnotation(Transacted.class) != null) {
+                if (m.getAnnotation(annotationClass) != null) {
                     return true;
                 }
             }

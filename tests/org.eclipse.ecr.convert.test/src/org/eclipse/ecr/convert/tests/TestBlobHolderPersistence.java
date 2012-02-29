@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -23,8 +23,8 @@ import junit.framework.TestCase;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.core.api.impl.blob.StringBlob;
-import org.eclipse.ecr.convert.cache.CachableBlobHolder;
-import org.eclipse.ecr.convert.cache.SimpleCachableBlobHolder;
+import org.eclipse.ecr.core.convert.cache.CachableBlobHolder;
+import org.eclipse.ecr.core.convert.cache.SimpleCachableBlobHolder;
 
 public class TestBlobHolderPersistence extends TestCase {
 

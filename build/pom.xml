@@ -16,12 +16,14 @@
     <module>./pom-test.xml</module>
     <module>../plugins/org.eclipse.ecr.common</module>
     <module>../plugins/org.eclipse.ecr.application</module>
-    <module>../plugins/org.eclipse.ecr.audit.api</module>
+    <module>../plugins/org.eclipse.ecr.platform.audit.api</module>
+    <module>../plugins/org.eclipse.ecr.platform.query.api</module>
+    <module>../plugins/org.eclipse.ecr.platform.search.api</module>
     <module>../plugins/org.eclipse.ecr.auth</module>
     <module>../plugins/org.eclipse.ecr.automation.core</module>
     <module>../plugins/org.eclipse.ecr.automation.server</module>
-    <module>../plugins/org.eclipse.ecr.convert</module>
-    <module>../plugins/org.eclipse.ecr.convert.api</module>
+    <module>../plugins/org.eclipse.ecr.core.convert</module>
+    <module>../plugins/org.eclipse.ecr.core.convert.api</module>
     <module>../plugins/org.eclipse.ecr.core</module>
     <module>../plugins/org.eclipse.ecr.core.api</module>
     <module>../plugins/org.eclipse.ecr.core.event</module>
@@ -39,8 +41,8 @@
     <module>../plugins/org.eclipse.ecr.web.jaxrs</module>
     <module>../plugins/org.eclipse.ecr.web.rendering</module>
     <module>../plugins/org.eclipse.ecr.web.framework</module>
-    <module>../plugins/org.eclipse.ecr.testlib</module>
-    <module>../plugins/org.eclipse.ecr.core.storage.sql.testlib</module>
+    <!--module>../plugins/org.eclipse.ecr.testlib</module-->
+    <!--module>../plugins/org.eclipse.ecr.core.storage.sql.testlib</module-->
 
     <module>../config/org.eclipse.ecr.configuration.base</module>
     <module>../config/org.eclipse.ecr.configuration.jetty</module>
@@ -48,7 +50,7 @@
     <module>../config/org.eclipse.ecr.configuration.cmis</module>
     <module>../config/org.eclipse.ecr.core.h2.extensions</module>
 
-    <module>../tests/org.eclipse.ecr.convert.test</module>
+    <!--module>../tests/org.eclipse.ecr.convert.test</module>
     <module>../tests/org.eclipse.ecr.core.api.test</module>
     <module>../tests/org.eclipse.ecr.core.event.test</module>
     <module>../tests/org.eclipse.ecr.core.io.test</module>
@@ -56,7 +58,7 @@
     <module>../tests/org.eclipse.ecr.core.schema.test</module>
     <module>../tests/org.eclipse.ecr.core.storage.sql.test</module>
     <module>../tests/org.eclipse.ecr.core.test</module>
-    <module>../tests/org.eclipse.ecr.runtime.test</module>
+    <module>../tests/org.eclipse.ecr.runtime.test</module-->
 
     <module>../features/org.eclipse.ecr.equinox</module>
     <module>../features/org.eclipse.ecr.equinox.sdk</module>
@@ -70,7 +72,7 @@
     <module>../features/org.eclipse.ecr.web.sdk</module>
     <module>../features/org.eclipse.ecr.opencmis</module>
     <module>../features/org.eclipse.ecr.opencmis.sdk</module>
-    <module>../features/org.eclipse.ecr.test</module>
+    <!--module>../features/org.eclipse.ecr.test</module-->
 
     <module>repository</module>
   </modules>
@@ -89,7 +91,7 @@
     <nuxeo-osgi-url>http://osgi.nuxeo.org/p2</nuxeo-osgi-url>
     <equinox-site>${nuxeo-osgi-url}/mirrors/eclipse/updates/${eclipse-version}</equinox-site>
     <orbit-site>${nuxeo-osgi-url}/mirrors/eclipse/orbit/${orbit-version}</orbit-site>
-    <libs-site>${nuxeo-osgi-url}/libs/${nuxeo-version}/repository</libs-site>
+    <libs-site>${nuxeo-osgi-url}/libs/last</libs-site>
   </properties>
 
   <profiles>

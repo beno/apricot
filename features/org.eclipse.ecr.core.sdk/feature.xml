@@ -78,7 +78,7 @@
          unpack="false"/>
 
    <plugin
-         id="org.eclipse.ecr.convert.api.source"
+         id="org.eclipse.ecr.core.convert.api.source"
          download-size="0"
          install-size="0"
          version="0.0.0"
@@ -141,7 +141,7 @@
          unpack="false"/>
 
    <plugin
-         id="org.eclipse.ecr.convert.source"
+         id="org.eclipse.ecr.core.convert.source"
          download-size="0"
          install-size="0"
          version="0.0.0"
@@ -155,7 +155,21 @@
          unpack="false"/>
 
    <plugin
-         id="org.eclipse.ecr.audit.api.source"
+         id="org.eclipse.ecr.platform.audit.api.source"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.ecr.platform.query.api.source"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.ecr.platform.search.api.source"
          download-size="0"
          install-size="0"
          version="0.0.0"

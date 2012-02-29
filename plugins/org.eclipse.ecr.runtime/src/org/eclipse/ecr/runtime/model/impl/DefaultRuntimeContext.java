@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -100,8 +100,12 @@ public class DefaultRuntimeContext implements RuntimeContext {
         if (deployedFiles.containsKey(name)) {
             return null;
         }
-        log.debug("Deploying component from url " + name);
         RegistrationInfoImpl ri = createRegistrationInfo(ref);
+        if (ri.name == null) {
+            // not parsed correctly, e.g., faces-config.xml
+            return null;
+        }
+        log.debug("Deploying component from url " + name);
         ri.context = this;
         ri.xmlFileUrl = ref.asURL();
         if (ri.getBundle() != null) {

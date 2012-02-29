@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -236,6 +236,11 @@ public class ConnectionImpl implements Session {
     }
 
     @Override
+    public void removePropertyNode(Node node) throws StorageException {
+        getSession().removePropertyNode(node);
+    }
+
+    @Override
     public Node getParentNode(Node node) throws StorageException {
         return getSession().getParentNode(node);
     }
@@ -304,6 +309,12 @@ public class ConnectionImpl implements Session {
     }
 
     @Override
+    public void setProxyTarget(Node proxy, Serializable targetId)
+            throws StorageException {
+        getSession().setProxyTarget(proxy, targetId);
+    }
+
+    @Override
     public Node addProxy(Serializable targetId, Serializable versionSeriesId,
             Node parent, String name, Long pos) throws StorageException {
         return getSession().addProxy(targetId, versionSeriesId, parent, name,
@@ -315,6 +326,13 @@ public class ConnectionImpl implements Session {
             QueryFilter queryFilter, boolean countTotal)
             throws StorageException {
         return getSession().query(query, queryFilter, countTotal);
+    }
+
+    @Override
+    public PartialList<Serializable> query(String query, String queryType,
+            QueryFilter queryFilter, boolean countTotal)
+            throws StorageException {
+        return getSession().query(query, queryType, queryFilter, countTotal);
     }
 
     @Override

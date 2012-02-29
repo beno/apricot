@@ -38,6 +38,28 @@
          version="0.0.0"
          unpack="false"/>
 
+   <!-- this lib is required by cmis -->
+   <plugin
+         id="com.googlecode.json-simple"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="jackson-core-asl"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="jackson-mapper-asl"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
    <plugin
          id="net.sf.json"
          download-size="0"

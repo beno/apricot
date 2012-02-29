@@ -1,0 +1,33 @@
+Export-Package: org.eclipse.ecr.core.search.api.client,
+ org.eclipse.ecr.core.search.api.client.querymodel,
+ org.eclipse.ecr.core.search.api.client.querymodel.descriptor,
+ org.eclipse.ecr.core.search.api.client.search.results,
+ org.eclipse.ecr.core.search.api.client.search.results.document,
+ org.eclipse.ecr.core.search.api.client.search.results.impl
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
+Manifest-Version: 1.0
+Bundle-Name: ECR Audit API (Incubation)
+Created-By: 1.6.0_20 (Sun Microsystems Inc.)
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Vendor: Nuxeo
+Bundle-Version: 0.5.4.qualifier
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: org.eclipse.ecr.platform.search.api
+Import-Package: org.apache.commons.lang;version="2.4.0",
+ org.apache.commons.logging;version="1.1.1",
+ org.eclipse.ecr.common.utils,
+ org.eclipse.ecr.common.xmap.annotation,
+ org.eclipse.ecr.core.api;api=split,
+ org.eclipse.ecr.core.api.event,
+ org.eclipse.ecr.core.api.impl,
+ org.eclipse.ecr.core.api.model,
+ org.eclipse.ecr.core.api.security,
+ org.eclipse.ecr.core.event,
+ org.eclipse.ecr.core.query.sql,
+ org.eclipse.ecr.core.query.sql.model,
+ org.eclipse.ecr.core.schema,
+ org.eclipse.ecr.core.schema.types,
+ org.eclipse.ecr.runtime,
+ org.eclipse.ecr.runtime.api,
+ org.eclipse.ecr.runtime.model

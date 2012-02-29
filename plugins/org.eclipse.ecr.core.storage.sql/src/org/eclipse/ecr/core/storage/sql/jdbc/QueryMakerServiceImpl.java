@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -19,6 +19,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.core.query.sql.NXQL;
 import org.eclipse.ecr.runtime.model.ComponentInstance;
 import org.eclipse.ecr.runtime.model.DefaultComponent;
 
@@ -99,7 +100,7 @@ public class QueryMakerServiceImpl extends DefaultComponent implements
             }
             Collections.reverse(queryMakers);
             // BBB backward compat
-            if (queryMakers.isEmpty() && !done.contains("NXQL")) {
+            if (queryMakers.isEmpty() && !done.contains(NXQL.NXQL)) {
                 queryMakers.add(NXQLQueryMaker.class);
             }
         }

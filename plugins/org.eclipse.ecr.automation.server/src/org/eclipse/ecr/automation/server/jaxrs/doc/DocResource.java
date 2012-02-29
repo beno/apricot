@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,11 +27,11 @@ import javax.ws.rs.core.UriInfo;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationDocumentation;
-import org.eclipse.ecr.common.utils.StringUtils;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.views.TemplateView;
+import org.eclipse.ecr.runtime.api.Framework;
 
 
 /**

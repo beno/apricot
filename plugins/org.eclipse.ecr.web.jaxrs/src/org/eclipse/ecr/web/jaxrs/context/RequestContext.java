@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -20,15 +20,14 @@ import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-
 /**
  * An HTTP request context
  *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
  */
-@SuppressWarnings("serial")
 public class RequestContext extends HashMap<String, Object> {
+
+    private static final long serialVersionUID = 1L;
 
     private static final ThreadLocal<RequestContext> CTX = new ThreadLocal<RequestContext>();
 
@@ -37,7 +36,7 @@ public class RequestContext extends HashMap<String, Object> {
     }
 
     public static RequestContext getActiveContext(ServletRequest request) {
-        return (RequestContext)request.getAttribute(RequestContext.class.getName());
+        return (RequestContext) request.getAttribute(RequestContext.class.getName());
     }
 
     protected HttpServletRequest request;
@@ -46,8 +45,8 @@ public class RequestContext extends HashMap<String, Object> {
 
     protected List<RequestCleanupHandler> cleanupHandlers;
 
-
-    public RequestContext(HttpServletRequest request, HttpServletResponse response) {
+    public RequestContext(HttpServletRequest request,
+            HttpServletResponse response) {
         this.request = request;
         this.response = response;
         this.cleanupHandlers = new ArrayList<RequestCleanupHandler>();
@@ -70,7 +69,7 @@ public class RequestContext extends HashMap<String, Object> {
     @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> type) {
         Object o = get(key);
-        return (T)o;
+        return (T) o;
     }
 
     public void addRequestCleanupHandler(RequestCleanupHandler handler) {

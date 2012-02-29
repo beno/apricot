@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -21,7 +21,6 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.common.utils.StringUtils;
-import org.eclipse.ecr.convert.api.ConversionService;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
@@ -32,6 +31,7 @@ import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
 import org.eclipse.ecr.core.api.blobholder.SimpleBlobHolder;
+import org.eclipse.ecr.core.convert.api.ConversionService;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventBundle;
 import org.eclipse.ecr.core.event.EventContext;
@@ -120,9 +120,14 @@ public class BinaryTextListener implements PostCommitEventListener {
                 continue;
             }
             DocumentModel indexedDoc = session.getDocument(docRef);
+
             if (indexedDoc.isProxy()) {
                 // proxies don't have any fulltext attached, it's
                 // the target document that carries it
+                continue;
+            }
+
+            if (Boolean.FALSE.equals(fulltextInfo.isFulltextIndexable(indexedDoc.getType()))) {
                 continue;
             }
 
@@ -138,7 +143,7 @@ public class BinaryTextListener implements PostCommitEventListener {
                         fulltextInfo.propPathsExcludedByIndexBinary.get(indexName),
                         fulltextInfo.indexesAllBinary.contains(indexName));
                 List<Blob> blobs = extractor.getBlobs(indexedDoc);
-                String text = blobsToText(blobs);
+                String text = blobsToText(blobs, (String) id);
                 String impactedQuery =
                     String.format("SELECT * from Document where ecm:fulltextJobId = '%s'",
                             indexedDoc.getId());
@@ -176,7 +181,7 @@ public class BinaryTextListener implements PostCommitEventListener {
         return (ModelFulltext) eventContext.getArguments()[1];
     }
 
-    protected String blobsToText(List<Blob> blobs) {
+    protected String blobsToText(List<Blob> blobs, String docId) {
         List<String> strings = new LinkedList<String>();
         for (Blob blob : blobs) {
             try {
@@ -197,7 +202,10 @@ public class BinaryTextListener implements PostCommitEventListener {
                 }
                 strings.add(string);
             } catch (Exception e) {
-                log.error(e.getMessage(), e);
+                String msg = "Could not extract fulltext of file '"
+                        + blob.getFilename() + "' for document: " + docId;
+                log.warn(msg);
+                log.debug(msg, e);
                 continue;
             }
         }

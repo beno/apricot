@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,14 +11,19 @@
  */
 package org.eclipse.ecr.opencmis.impl.server;
 
+import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_CREATED;
+import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_REMOVED;
+import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_UPDATED;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -49,15 +54,7 @@ import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.PropertyData;
 import org.apache.chemistry.opencmis.commons.data.RenditionData;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyBooleanDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyDateTimeDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyDecimalDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.PropertyDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyHtmlDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyIdDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyIntegerDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyStringDefinition;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyUriDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionContainer;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
@@ -97,11 +94,11 @@ import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.server.ObjectInfo;
 import org.apache.chemistry.opencmis.commons.spi.BindingsObjectFactory;
 import org.apache.chemistry.opencmis.commons.spi.Holder;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.audit.api.AuditReader;
-import org.eclipse.ecr.audit.api.LogEntry;
 import org.eclipse.ecr.common.utils.Path;
+import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
@@ -113,10 +110,10 @@ import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.LifeCycleConstants;
 import org.eclipse.ecr.core.api.PathRef;
 import org.eclipse.ecr.core.api.VersioningOption;
-import org.eclipse.ecr.core.api.event.DocumentEventTypes;
 import org.eclipse.ecr.core.api.impl.CompoundFilter;
 import org.eclipse.ecr.core.api.impl.FacetFilter;
 import org.eclipse.ecr.core.api.impl.LifeCycleFilter;
+import org.eclipse.ecr.core.api.impl.blob.ByteArrayBlob;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.pathsegment.PathSegmentService;
 import org.eclipse.ecr.core.api.repository.Repository;
@@ -124,14 +121,16 @@ import org.eclipse.ecr.core.api.repository.RepositoryManager;
 import org.eclipse.ecr.core.schema.FacetNames;
 import org.eclipse.ecr.opencmis.impl.util.ListUtils;
 import org.eclipse.ecr.opencmis.impl.util.ListUtils.BatchedList;
+import org.eclipse.ecr.opencmis.impl.util.SimpleImageInfo;
+import org.eclipse.ecr.opencmis.impl.util.TypeManagerImpl;
+import org.eclipse.ecr.platform.audit.api.AuditReader;
+import org.eclipse.ecr.platform.audit.api.LogEntry;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * Nuxeo implementation of the CMIS Services, on top of a {@link CoreSession}.
  */
 public class NuxeoCmisService extends AbstractCmisService {
-
-    private static final Log log = LogFactory.getLog(NuxeoCmisService.class);
 
     public static final int DEFAULT_TYPE_LEVELS = 2;
 
@@ -143,7 +142,11 @@ public class NuxeoCmisService extends AbstractCmisService {
 
     public static final int DEFAULT_MAX_CHILDREN = 100;
 
+    public static final int DEFAULT_MAX_RELATIONSHIPS = 100;
+
     public static final String NUXEO_WAR = "nuxeo.war";
+
+    private static final Log log = LogFactory.getLog(NuxeoCmisService.class);
 
     protected final BindingsObjectFactory objectFactory = new BindingsObjectFactoryImpl();
 
@@ -343,6 +346,7 @@ public class NuxeoCmisService extends AbstractCmisService {
         return !documentFilter.accept(doc);
     }
 
+    /** Creates bare unsaved document model. */
     protected DocumentModel createDocumentModel(ObjectId folder,
             TypeDefinition type) {
         DocumentModel doc;
@@ -374,9 +378,41 @@ public class NuxeoCmisService extends AbstractCmisService {
         return doc;
     }
 
+    /** Creates and save document model. */
+    protected DocumentModel createDocumentModel(ObjectId folder,
+            ContentStream contentStream, String name) {
+
+        DocumentModel parent;
+        try {
+            parent = coreSession.getDocument(new IdRef(folder.getId()));
+        } catch (ClientException e) {
+            throw new CmisRuntimeException("Cannot create object", e);
+        }
+        String path = parent.getPathAsString();
+
+        Blob blob;
+        if (contentStream == null) {
+            blob = new ByteArrayBlob(new byte[0], null, null, name, null);
+        } else {
+            try {
+                blob = NuxeoPropertyData.getPersistentBlob(contentStream, null);
+            } catch (IOException e) {
+                throw new CmisRuntimeException(e.toString(), e);
+            }
+        }
+
+        try {
+            return BlobHelper.createDocumentFromBlob(coreSession, blob, path,
+                    name);
+        } catch (Exception e) {
+            throw new CmisRuntimeException(e.toString(), e);
+        }
+    }
+
     // create and save session
-    protected NuxeoObjectData createObject(Properties properties,
-            ObjectId folder, BaseTypeId baseType, ContentStream contentStream) {
+    protected NuxeoObjectData createObject(String repositoryId,
+            Properties properties, ObjectId folder, BaseTypeId baseType,
+            ContentStream contentStream) {
         String typeId;
         Map<String, PropertyData<?>> p;
         PropertyData<?> d;
@@ -398,7 +434,7 @@ public class NuxeoCmisService extends AbstractCmisService {
         if (typeId == null) {
             switch (baseType) {
             case CMIS_DOCUMENT:
-                typeId = "File"; // TODO constant
+                typeId = BaseTypeId.CMIS_DOCUMENT.value();
                 break;
             case CMIS_FOLDER:
                 typeId = BaseTypeId.CMIS_FOLDER.value();
@@ -420,42 +456,62 @@ public class NuxeoCmisService extends AbstractCmisService {
         if (type.isCreatable() == Boolean.FALSE) {
             throw new CmisInvalidArgumentException("Not creatable: " + typeId);
         }
-        DocumentModel doc = createDocumentModel(folder, type);
+
+        // name from properties
+        PropertyData<?> npd = properties.getProperties().get(PropertyIds.NAME);
+        String name = npd == null ? null : (String) npd.getFirstValue();
+        if (StringUtils.isBlank(name)) {
+            name = null;
+        }
+
+        // content stream filename default
+        if (contentStream != null
+                && StringUtils.isBlank(contentStream.getFileName())
+                && name != null) {
+            // infer filename from name property
+            contentStream = new ContentStreamImpl(name,
+                    contentStream.getBigLength(), contentStream.getMimeType(),
+                    contentStream.getStream());
+        }
+
+        DocumentModel doc = null;
+        if (BaseTypeId.CMIS_DOCUMENT.value().equals(typeId)) {
+            doc = createDocumentModel(folder, contentStream, name);
+        }
+        boolean created = doc != null;
+        if (!created) {
+            doc = createDocumentModel(folder, type);
+        }
+
         NuxeoObjectData data = new NuxeoObjectData(this, doc);
         updateProperties(data, null, properties, true);
-        try {
-            if (contentStream != null) {
-                if (contentStream.getFileName() == null) {
-                    // infer filename from properties
-                    PropertyData<?> pd = properties.getProperties().get(
-                            PropertyIds.NAME);
-                    if (pd != null) {
-                        String filename = (String) pd.getFirstValue();
-                        contentStream = new ContentStreamImpl(filename,
-                                contentStream.getBigLength(),
-                                contentStream.getMimeType(),
-                                contentStream.getStream());
-                    }
-                }
-                try {
-                    NuxeoPropertyData.setContentStream(doc, contentStream, true);
-                } catch (CmisContentAlreadyExistsException e) {
-                    // cannot happen, overwrite = true
-                }
+        if (!created && contentStream != null) {
+            try {
+                NuxeoPropertyData.setContentStream(doc, contentStream, true);
+            } catch (CmisContentAlreadyExistsException e) {
+                // cannot happen, overwrite = true
+            } catch (IOException e) {
+                throw new CmisRuntimeException(e.toString(), e);
             }
-            // set path segment from title
-            PathSegmentService pss = Framework.getService(PathSegmentService.class);
-            String pathSegment = pss.generatePathSegment(doc);
-            Path path = doc.getPath();
-            doc.setPathInfo(path == null ? null
-                    : path.removeLastSegments(1).toString(), pathSegment);
-            data.doc = coreSession.createDocument(doc);
+        }
+        try {
+            if (!created) {
+                // set path segment from properties (name/title)
+                PathSegmentService pss = Framework.getLocalService(PathSegmentService.class);
+                String pathSegment = pss.generatePathSegment(doc);
+                Path path = doc.getPath();
+                doc.setPathInfo(path == null ? null
+                        : path.removeLastSegments(1).toString(), pathSegment);
+                doc = coreSession.createDocument(doc);
+            } else {
+                doc = coreSession.saveDocument(doc);
+            }
+            data.doc = doc;
             coreSession.save();
-        } catch (IOException e) {
-            throw new CmisRuntimeException(e.toString(), e);
-        } catch (Exception e) {
+        } catch (ClientException e) {
             throw new CmisRuntimeException("Cannot create", e);
         }
+        collectObjectInfo(repositoryId, data);
         return data;
     }
 
@@ -531,27 +587,37 @@ public class NuxeoCmisService extends AbstractCmisService {
         np.setValue(value);
     }
 
-    protected NuxeoObjectData setInitialVersioningState(NuxeoObjectData object,
+    /** Sets initial versioning state and returns its id. */
+    protected String setInitialVersioningState(NuxeoObjectData object,
             VersioningState versioningState) {
         try {
             if (versioningState == null) {
                 // default is MAJOR, per spec
                 versioningState = VersioningState.MAJOR;
             }
+            String id;
+            DocumentRef ref = null;
             switch (versioningState) {
             case NONE: // cannot be made non-versionable in Nuxeo
             case CHECKEDOUT:
+                id = object.getId();
                 break;
             case MINOR:
-                object.doc.checkIn(VersioningOption.MINOR, null);
+                ref = object.doc.checkIn(VersioningOption.MINOR, null);
                 object.doc.getCoreSession().save();
+                // id = ref.toString();
+                id = object.getId();
                 break;
             case MAJOR:
-                object.doc.checkIn(VersioningOption.MAJOR, null);
+                ref = object.doc.checkIn(VersioningOption.MAJOR, null);
                 object.doc.getCoreSession().save();
+                // id = ref.toString();
+                id = object.getId();
                 break;
+            default:
+                throw new AssertionError(versioningState);
             }
-            return object;
+            return id;
         } catch (ClientException e) {
             throw new CmisRuntimeException(e.toString(), e);
         }
@@ -563,10 +629,9 @@ public class NuxeoCmisService extends AbstractCmisService {
             VersioningState versioningState, List<String> policies,
             ExtensionsData extension) {
         // TODO policies
-        NuxeoObjectData object = createObject(properties, new ObjectIdImpl(
-                folderId), null, contentStream);
-        setInitialVersioningState(object, versioningState);
-        return object.getId();
+        NuxeoObjectData object = createObject(repositoryId, properties,
+                new ObjectIdImpl(folderId), null, contentStream);
+        return setInitialVersioningState(object, versioningState);
     }
 
     @Override
@@ -575,10 +640,10 @@ public class NuxeoCmisService extends AbstractCmisService {
             VersioningState versioningState, List<String> policies,
             Acl addAces, Acl removeAces, ExtensionsData extension) {
         // TODO policies, addAces, removeAces
-        NuxeoObjectData object = createObject(properties, new ObjectIdImpl(
-                folderId), BaseTypeId.CMIS_DOCUMENT, contentStream);
-        setInitialVersioningState(object, versioningState);
-        return object.getId();
+        NuxeoObjectData object = createObject(repositoryId, properties,
+                new ObjectIdImpl(folderId), BaseTypeId.CMIS_DOCUMENT,
+                contentStream);
+        return setInitialVersioningState(object, versioningState);
     }
 
     @Override
@@ -586,8 +651,8 @@ public class NuxeoCmisService extends AbstractCmisService {
             String folderId, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
         // TODO policies, addAces, removeAces
-        NuxeoObjectData object = createObject(properties, new ObjectIdImpl(
-                folderId), BaseTypeId.CMIS_FOLDER, null);
+        NuxeoObjectData object = createObject(repositoryId, properties,
+                new ObjectIdImpl(folderId), BaseTypeId.CMIS_FOLDER, null);
         return object.getId();
     }
 
@@ -602,7 +667,7 @@ public class NuxeoCmisService extends AbstractCmisService {
     public String createRelationship(String repositoryId,
             Properties properties, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
-        NuxeoObjectData object = createObject(properties, null,
+        NuxeoObjectData object = createObject(repositoryId, properties, null,
                 BaseTypeId.CMIS_RELATIONSHIP, null);
         return object.getId();
     }
@@ -628,8 +693,7 @@ public class NuxeoCmisService extends AbstractCmisService {
                 copy.doc = coreSession.saveDocument(copyDoc);
             }
             coreSession.save();
-            setInitialVersioningState(copy, versioningState);
-            return copy.getId();
+            return setInitialVersioningState(copy, versioningState);
         } catch (ClientException e) {
             throw new CmisRuntimeException(e.toString(), e);
         }
@@ -650,8 +714,15 @@ public class NuxeoCmisService extends AbstractCmisService {
                 copy.doc = coreSession.saveDocument(copyDoc);
             }
             coreSession.save();
-            setInitialVersioningState(copy, versioningState);
-            return copy;
+            String id = setInitialVersioningState(copy, versioningState);
+            NuxeoObjectData res;
+            if (id.equals(copy.getId())) {
+                res = copy;
+            } else {
+                // return the version
+                res = new NuxeoObjectData(this, getDocumentModel(id));
+            }
+            return res;
         } catch (ClientException e) {
             throw new CmisRuntimeException(e.toString(), e);
         }
@@ -722,16 +793,18 @@ public class NuxeoCmisService extends AbstractCmisService {
                 int slash = iconPath.lastIndexOf('/');
                 String filename = slash == -1 ? iconPath
                         : iconPath.substring(slash + 1);
-                long len;
+
+                SimpleImageInfo info;
                 try {
-                    len = NuxeoObjectData.getStreamLength(is);
+                    info = new SimpleImageInfo(is);
                 } catch (IOException e) {
                     throw new CmisRuntimeException(e.toString(), e);
                 }
                 // refetch now-consumed stream
                 is = NuxeoObjectData.getIconStream(iconPath, callContext);
-                return new ContentStreamImpl(filename, BigInteger.valueOf(len),
-                        NuxeoObjectData.getIconMimeType(iconPath), is);
+                return new ContentStreamImpl(filename,
+                        BigInteger.valueOf(info.getLength()),
+                        info.getMimeType(), is);
             } catch (ClientException e) {
                 throw new CmisRuntimeException(e.toString(), e);
             }
@@ -843,7 +916,7 @@ public class NuxeoCmisService extends AbstractCmisService {
     // part of CMIS API and of ObjectInfoHandler
     @Override
     public ObjectInfo getObjectInfo(String repositoryId, String objectId) {
-        ObjectInfo info = getObjectInfos().get(objectId);
+        ObjectInfo info = getObjectInfo().get(objectId);
         if (info != null) {
             return info;
         }
@@ -855,16 +928,15 @@ public class NuxeoCmisService extends AbstractCmisService {
     }
 
     // AbstractCmisService helper
-    @Override
     protected ObjectInfo getObjectInfo(String repositoryId, ObjectData data) {
-        ObjectInfo info = getObjectInfos().get(data.getId());
+        ObjectInfo info = getObjectInfo().get(data.getId());
         if (info != null) {
             return info;
         }
         try {
             collectObjectInfos = false;
             info = getObjectInfoIntern(repositoryId, data);
-            getObjectInfos().put(info.getId(), info);
+            getObjectInfo().put(info.getId(), info);
         } catch (Exception e) {
             log.error(e.toString(), e);
         } finally {
@@ -873,7 +945,7 @@ public class NuxeoCmisService extends AbstractCmisService {
         return info;
     }
 
-    protected Map<String, ObjectInfo> getObjectInfos() {
+    protected Map<String, ObjectInfo> getObjectInfo() {
         if (objectInfos == null) {
             objectInfos = new HashMap<String, ObjectInfo>();
         }
@@ -1043,16 +1115,17 @@ public class NuxeoCmisService extends AbstractCmisService {
             if (max < 0) {
                 max = DEFAULT_CHANGE_LOG_SIZE;
             }
-            // TODO XXX repositoryId as well
             Map<String, Object> params = new HashMap<String, Object>();
             String query = "FROM LogEntry log" //
                     + " WHERE log.eventDate >= :minDate" //
                     + "   AND log.eventId IN (:evCreated, :evModified, :evRemoved)" //
+                    + "   AND log.repositoryId = :repoId" //
                     + " ORDER BY log.eventDate";
             params.put("minDate", new Date(minDate));
-            params.put("evCreated", DocumentEventTypes.DOCUMENT_CREATED);
-            params.put("evModified", DocumentEventTypes.DOCUMENT_UPDATED);
-            params.put("evRemoved", DocumentEventTypes.DOCUMENT_REMOVED);
+            params.put("evCreated", DOCUMENT_CREATED);
+            params.put("evModified", DOCUMENT_UPDATED);
+            params.put("evRemoved", DOCUMENT_REMOVED);
+            params.put("repoId", repositoryId);
             List<?> entries = reader.nativeQuery(query, params, 1, max + 1);
             ObjectListImpl ol = new ObjectListImpl();
             boolean hasMoreItems = entries.size() > max;
@@ -1069,11 +1142,11 @@ public class NuxeoCmisService extends AbstractCmisService {
                 // change type
                 String eventId = logEntry.getEventId();
                 ChangeType changeType;
-                if (DocumentEventTypes.DOCUMENT_CREATED.equals(eventId)) {
+                if (DOCUMENT_CREATED.equals(eventId)) {
                     changeType = ChangeType.CREATED;
-                } else if (DocumentEventTypes.DOCUMENT_UPDATED.equals(eventId)) {
+                } else if (DOCUMENT_UPDATED.equals(eventId)) {
                     changeType = ChangeType.UPDATED;
-                } else if (DocumentEventTypes.DOCUMENT_REMOVED.equals(eventId)) {
+                } else if (DOCUMENT_REMOVED.equals(eventId)) {
                     changeType = ChangeType.DELETED;
                 } else {
                     continue;
@@ -1111,16 +1184,16 @@ public class NuxeoCmisService extends AbstractCmisService {
             if (reader == null) {
                 log.warn("Audit Service not found. latest change log token will be '0'");
                 return "0";
-                //throw new CmisRuntimeException("Cannot find audit service");
+                // throw new CmisRuntimeException("Cannot find audit service");
             }
             // TODO XXX repositoryId as well
             Map<String, Object> params = new HashMap<String, Object>();
             String query = "FROM LogEntry log" //
                     + " WHERE log.eventId IN (:evCreated, :evModified, :evRemoved)" //
                     + " ORDER BY log.eventDate DESC";
-            params.put("evCreated", DocumentEventTypes.DOCUMENT_CREATED);
-            params.put("evModified", DocumentEventTypes.DOCUMENT_UPDATED);
-            params.put("evRemoved", DocumentEventTypes.DOCUMENT_REMOVED);
+            params.put("evCreated", DOCUMENT_CREATED);
+            params.put("evModified", DOCUMENT_UPDATED);
+            params.put("evRemoved", DOCUMENT_REMOVED);
             List<?> entries = reader.nativeQuery(query, params, 1, 1);
             if (entries.size() == 0) {
                 return "0";
@@ -1150,8 +1223,11 @@ public class NuxeoCmisService extends AbstractCmisService {
         IterableQueryResult res = null;
         try {
             Map<String, PropertyDefinition<?>> typeInfo = new HashMap<String, PropertyDefinition<?>>();
+            if (searchAllVersions == null) {
+                searchAllVersions = Boolean.FALSE; // spec default 2.2.6.1.1
+            }
             res = coreSession.queryAndFetch(statement, CMISQLQueryMaker.TYPE,
-                    this, typeInfo);
+                    this, typeInfo, searchAllVersions);
 
             // convert from Nuxeo to CMIS format
             list = new ArrayList<ObjectData>();
@@ -1159,33 +1235,35 @@ public class NuxeoCmisService extends AbstractCmisService {
                 res.skipTo(skip);
             }
             for (Map<String, Serializable> map : res) {
-                ObjectDataImpl od = new ObjectDataImpl();
-
-                // properties (kept in list form)
-                PropertiesImpl properties = new PropertiesImpl();
-                for (Entry<String, Serializable> en : map.entrySet()) {
-                    String queryName = en.getKey();
-                    PropertyDefinition<?> pd = typeInfo.get(queryName);
-                    if (pd == null) {
-                        throw new NullPointerException("Cannot get "
-                                + queryName);
-                    }
-                    PropertyData<?> p = createPropertyData(pd, en.getValue(),
-                            queryName);
-                    properties.addProperty(p);
-                }
-                od.setProperties(properties);
+                ObjectDataImpl od = makeObjectData(map, typeInfo);
 
                 // optional stuff
-                if (Boolean.TRUE.equals(includeAllowableActions)) {
-                    // od.setAllowableActions(allowableActions);
-                }
-                if (includeRelationships != null
-                        && includeRelationships != IncludeRelationships.NONE) {
-                    // od.setRelationships(relationships);
-                }
-                if (renditionFilter != null && renditionFilter.length() > 0) {
-                    // od.setRenditions(renditions);
+                String id = od.getId();
+                if (id != null) { // null if JOIN in original query
+                    DocumentModel doc = null;
+                    if (Boolean.TRUE.equals(includeAllowableActions)) {
+                        doc = getDocumentModel(id);
+                        AllowableActions allowableActions = NuxeoObjectData.getAllowableActions(
+                                doc, false);
+                        od.setAllowableActions(allowableActions);
+                    }
+                    if (includeRelationships != null
+                            && includeRelationships != IncludeRelationships.NONE) {
+                        // TODO get relationships using a JOIN
+                        // added to the original query
+                        List<ObjectData> relationships = NuxeoObjectData.getRelationships(
+                                id, includeRelationships, coreSession, this);
+                        od.setRelationships(relationships);
+                    }
+                    if (renditionFilter != null && renditionFilter.length() > 0) {
+                        if (doc == null) {
+                            doc = getDocumentModel(id);
+                        }
+                        // TODO parse rendition filter; for now returns them all
+                        List<RenditionData> renditions = NuxeoObjectData.getRenditions(
+                                doc, null, null, callContext);
+                        od.setRenditions(renditions);
+                    }
                 }
 
                 list.add(od);
@@ -1208,83 +1286,27 @@ public class NuxeoCmisService extends AbstractCmisService {
         return objList;
     }
 
-    // TODO extract and move to BindingsObjectFactoryImpl
-    @SuppressWarnings("unchecked")
-    protected <T> PropertyData<T> createPropertyData(PropertyDefinition<T> pd,
-            Serializable value, String queryName) {
-        AbstractPropertyData<T> p;
-        String id = pd.getId();
-        if (pd instanceof PropertyIdDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyIdData(
-                        id, (String) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyIdData(
-                        id, (List<String>) value);
+    protected ObjectDataImpl makeObjectData(Map<String, Serializable> map,
+            Map<String, PropertyDefinition<?>> typeInfo) {
+        ObjectDataImpl od = new ObjectDataImpl();
+        PropertiesImpl properties = new PropertiesImpl();
+        for (Entry<String, Serializable> en : map.entrySet()) {
+            String queryName = en.getKey();
+            PropertyDefinition<?> pd = typeInfo.get(queryName);
+            if (pd == null) {
+                throw new NullPointerException("Cannot get " + queryName);
             }
-        } else if (pd instanceof PropertyStringDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyStringData(
-                        id, (String) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyStringData(
-                        id, (List<String>) value);
-            }
-        } else if (pd instanceof PropertyDateTimeDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyDateTimeData(
-                        id, (GregorianCalendar) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyDateTimeData(
-                        id, (List<GregorianCalendar>) value);
-            }
-        } else if (pd instanceof PropertyBooleanDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyBooleanData(
-                        id, (Boolean) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyBooleanData(
-                        id, (List<Boolean>) value);
-            }
-        } else if (pd instanceof PropertyIntegerDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyIntegerData(
-                        id, (BigInteger) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyIntegerData(
-                        id, (List<BigInteger>) value);
-            }
-        } else if (pd instanceof PropertyDecimalDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyDecimalData(
-                        id, (BigDecimal) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyDecimalData(
-                        id, (List<BigDecimal>) value);
-            }
-        } else if (pd instanceof PropertyHtmlDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyHtmlData(
-                        id, (String) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyHtmlData(
-                        id, (List<String>) value);
-            }
-        } else if (pd instanceof PropertyUriDefinition) {
-            if (pd.getCardinality() == Cardinality.SINGLE) {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyUriData(
-                        id, (String) value);
-            } else {
-                p = (AbstractPropertyData<T>) objectFactory.createPropertyUriData(
-                        id, (List<String>) value);
-            }
-        } else {
-            throw new CmisRuntimeException("Unknown property definition: " + pd);
+            AbstractPropertyData<?> p = (AbstractPropertyData<?>) objectFactory.createPropertyData(
+                    pd, en.getValue());
+            p.setLocalName(pd.getLocalName());
+            p.setDisplayName(pd.getDisplayName());
+            // queryName and pd.getQueryName() may be different
+            // for qualified properties
+            p.setQueryName(queryName);
+            properties.addProperty(p);
         }
-        p.setLocalName(pd.getLocalName());
-        p.setDisplayName(pd.getDisplayName());
-        p.setQueryName(queryName);
-        return p;
+        od.setProperties(properties);
+        return od;
     }
 
     @Override
@@ -1363,7 +1385,11 @@ public class NuxeoCmisService extends AbstractCmisService {
             list.add(oifd);
             collectObjectInfo(repositoryId, data);
         }
-        // TODO orderBy
+
+        if (StringUtils.isNotBlank(orderBy)) {
+            Collections.sort(list, new OrderByComparator(orderBy, repository));
+        }
+
         BatchedList<ObjectInFolderData> batch = ListUtils.getBatchedList(list,
                 maxItems, skipCount, DEFAULT_MAX_CHILDREN);
         result.setObjects(batch.getList());
@@ -1371,6 +1397,78 @@ public class NuxeoCmisService extends AbstractCmisService {
         result.setNumItems(batch.getNumItems());
         collectObjectInfo(repositoryId, folderId);
         return result;
+    }
+
+    public static class OrderByComparator implements
+            Comparator<ObjectInFolderData> {
+
+        protected static String ASC = " asc";
+
+        protected static String DESC = " desc";
+
+        protected String[] props;
+
+        protected boolean[] descs;
+
+        public OrderByComparator(String orderBy, NuxeoRepository repository) {
+            TypeManagerImpl typeManager = repository.getTypeManager();
+            String[] orders = orderBy.split(",");
+            props = new String[orders.length];
+            descs = new boolean[orders.length];
+            for (int i = 0; i < orders.length; i++) {
+                String order = orders[i].trim();
+                String lower = order.toLowerCase();
+                String prop;
+                boolean desc;
+                if (lower.endsWith(DESC)) {
+                    prop = order.substring(0, order.length() - DESC.length()).trim();
+                    desc = true;
+                } else if (lower.endsWith(ASC)) {
+                    prop = order.substring(0, order.length() - ASC.length()).trim();
+                    desc = false;
+                } else {
+                    prop = order;
+                    desc = false;
+                }
+                String propId = typeManager.getPropertyIdForQueryName(prop);
+                if (propId == null) {
+                    throw new CmisInvalidArgumentException("Invalid orderBy: "
+                            + orderBy);
+                }
+                props[i] = propId;
+                descs[i] = desc;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public int compare(ObjectInFolderData ob1, ObjectInFolderData ob2) {
+            int cmp = 0;
+            for (int i = 0; i < props.length; i++) {
+                String prop = props[i];
+                boolean desc = descs[i];
+                NuxeoPropertyDataBase<?> p1 = ((NuxeoObjectData) ob1.getObject()).getProperty(prop);
+                NuxeoPropertyDataBase<?> p2 = ((NuxeoObjectData) ob2.getObject()).getProperty(prop);
+                Object v1 = p1 == null ? null : p1.getValue();
+                Object v2 = p2 == null ? null : p2.getValue();
+                if (v1 == null && v2 == null) {
+                    cmp = 0;
+                } else if (v1 == null) {
+                    cmp = -1;
+                } else if (v2 == null) {
+                    cmp = 1;
+                } else {
+                    cmp = ((Comparable<Object>) v1).compareTo(v2);
+                }
+                if (desc) {
+                    cmp = -cmp;
+                }
+                if (cmp != 0) {
+                    break;
+                }
+            }
+            return cmp;
+        }
     }
 
     @Override
@@ -1536,10 +1634,26 @@ public class NuxeoCmisService extends AbstractCmisService {
             RelationshipDirection relationshipDirection, String typeId,
             String filter, Boolean includeAllowableActions,
             BigInteger maxItems, BigInteger skipCount, ExtensionsData extension) {
+        IncludeRelationships includeRelationships;
+        if (relationshipDirection == null
+                || relationshipDirection == RelationshipDirection.SOURCE) {
+            includeRelationships = IncludeRelationships.SOURCE;
+        } else if (relationshipDirection == RelationshipDirection.TARGET) {
+            includeRelationships = IncludeRelationships.TARGET;
+        } else { // RelationshipDirection.EITHER
+            includeRelationships = IncludeRelationships.BOTH;
+        }
+        List<ObjectData> rels = NuxeoObjectData.getRelationships(objectId,
+                includeRelationships, coreSession, this);
+        BatchedList<ObjectData> batch = ListUtils.getBatchedList(rels,
+                maxItems, skipCount, DEFAULT_MAX_RELATIONSHIPS);
         ObjectListImpl res = new ObjectListImpl();
-        res.setNumItems(BigInteger.valueOf(0));
-        res.setHasMoreItems(Boolean.FALSE);
-        res.setObjects(Collections.<ObjectData> emptyList());
+        res.setObjects(batch.getList());
+        res.setNumItems(batch.getNumItems());
+        res.setHasMoreItems(batch.getHasMoreItems());
+        for (ObjectData data : res.getObjects()) {
+            collectObjectInfo(repositoryId, data);
+        }
         return res;
     }
 
@@ -1564,6 +1678,13 @@ public class NuxeoCmisService extends AbstractCmisService {
 
         NuxeoObjectData object = new NuxeoObjectData(this, doc);
         updateProperties(object, null, properties, false);
+        if (contentStream != null) {
+            try {
+                NuxeoPropertyData.setContentStream(doc, contentStream, true);
+            } catch (IOException e) {
+                throw new CmisRuntimeException(e.toString(), e);
+            }
+        }
         try {
             coreSession.saveDocument(doc);
             DocumentRef ver = doc.checkIn(option, checkinComment);
@@ -1586,6 +1707,13 @@ public class NuxeoCmisService extends AbstractCmisService {
         }
         NuxeoObjectData object = new NuxeoObjectData(this, doc);
         updateProperties(object, null, properties, type, false);
+        if (contentStream != null) {
+            try {
+                NuxeoPropertyData.setContentStream(doc, contentStream, true);
+            } catch (IOException e) {
+                throw new CmisRuntimeException(e.toString(), e);
+            }
+        }
         try {
             coreSession.saveDocument(doc);
             DocumentRef ver = doc.checkIn(option, checkinComment);
@@ -1658,8 +1786,13 @@ public class NuxeoCmisService extends AbstractCmisService {
             DocumentRef docRef = doc.getRef();
             // find last version
             DocumentRef verRef = coreSession.getLastDocumentVersionRef(docRef);
-            // restore and keep checked in
-            coreSession.restoreToVersion(docRef, verRef, true, true);
+            if (verRef == null) {
+                // delete
+                coreSession.removeDocument(docRef);
+            } else {
+                // restore and keep checked in
+                coreSession.restoreToVersion(docRef, verRef, true, true);
+            }
             coreSession.save();
         } catch (ClientException e) {
             throw new CmisRuntimeException(e.toString(), e);
@@ -1671,8 +1804,39 @@ public class NuxeoCmisService extends AbstractCmisService {
             String filter, String orderBy, Boolean includeAllowableActions,
             IncludeRelationships includeRelationships, String renditionFilter,
             BigInteger maxItems, BigInteger skipCount, ExtensionsData extension) {
-        // TODO implement using query on non-proxy non-version non-checkedin
-        throw new CmisNotSupportedException();
+        // columns from filter
+        List<String> props;
+        if (StringUtils.isBlank(filter)) {
+            props = Arrays.asList(PropertyIds.OBJECT_ID,
+                    PropertyIds.OBJECT_TYPE_ID, PropertyIds.BASE_TYPE_ID);
+        } else {
+            props = NuxeoObjectData.getPropertyIdsFromFilter(filter);
+            // same as query names
+        }
+        // clause from folderId
+        List<String> clauses = new ArrayList<String>(3);
+        clauses.add(NuxeoTypeHelper.NX_ISVERSION + " = false");
+        // TODO optimize storage of ecm:isCheckedIn to avoid this OR
+        clauses.add("(" + NuxeoTypeHelper.NX_ISCHECKEDIN + " = false" //
+                + " OR " + NuxeoTypeHelper.NX_ISCHECKEDIN + " IS NULL)");
+        if (folderId != null) {
+            String qid = "'" + folderId.replace("'", "''") + "'";
+            clauses.add("IN_FOLDER(" + qid + ")");
+        }
+        // orderBy
+        String order;
+        if (StringUtils.isBlank(orderBy)) {
+            order = "";
+        } else {
+            order = " ORDER BY " + orderBy;
+        }
+        String statement = "SELECT " + StringUtils.join(props, ", ") + " FROM "
+                + BaseTypeId.CMIS_DOCUMENT.value() + " WHERE "
+                + StringUtils.join(clauses, " AND ") + order;
+        Boolean searchAllVersions = Boolean.TRUE;
+        return query(repositoryId, statement, searchAllVersions,
+                includeAllowableActions, includeRelationships, renditionFilter,
+                maxItems, skipCount, extension);
     }
 
     @Override
@@ -1700,6 +1864,15 @@ public class NuxeoCmisService extends AbstractCmisService {
                 ObjectData od = getObject(repositoryId, verId, filter,
                         includeAllowableActions, IncludeRelationships.NONE,
                         null, Boolean.FALSE, Boolean.FALSE, null);
+                list.add(od);
+            }
+            // PWC last
+            DocumentModel pwc = doc.isVersion() ? coreSession.getWorkingCopy(doc.getRef())
+                    : doc;
+            if (pwc != null && pwc.isCheckedOut()) {
+                NuxeoObjectData od = new NuxeoObjectData(this, pwc, filter,
+                        includeAllowableActions, IncludeRelationships.NONE,
+                        null, Boolean.FALSE, Boolean.FALSE, extension);
                 list.add(od);
             }
             // CoreSession returns them in creation order,

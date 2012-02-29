@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,17 +8,9 @@
  *
  * Contributors:
  *     Nuxeo - initial API and implementation
- *
- * $Id$
  */
-
 package org.eclipse.ecr.core.api;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.core.api.ClientException;
-import org.eclipse.ecr.core.api.DocumentException;
-import org.eclipse.ecr.core.api.DocumentRef;
 import org.eclipse.ecr.core.api.impl.DocsQueryProviderDef;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
 import org.eclipse.ecr.core.model.Document;
@@ -29,10 +21,7 @@ import org.eclipse.ecr.core.query.QueryException;
 /**
  * @author <a href="mailto:dm@nuxeo.com">Dragos Mihalache</a>
  */
-@SuppressWarnings({"SuppressionAnnotation"})
 final class DocsQueryProviderFactory {
-
-    private static final Log log = LogFactory.getLog(DocsQueryProviderFactory.class);
 
     private final AbstractSession session;
 
@@ -56,10 +45,6 @@ final class DocsQueryProviderFactory {
                     break;
                 case TYPE_QUERY:
                     dqp = getDQPQueryResult(dqpDef.getQuery());
-                    break;
-                case TYPE_QUERY_FTS:
-                    dqp = getDQPQueryFtsResult(dqpDef.getQuery(),
-                            dqpDef.getStartingPath());
                     break;
                 default:
                     throw new IllegalArgumentException("cannot get here");
@@ -98,58 +83,6 @@ final class DocsQueryProviderFactory {
                 return true;
             }
         };
-    }
-
-    private DocsQueryProvider getDQPQueryFtsResult(String keywords, String startingPath)
-            throws ClientException {
-
-        final StringBuffer xpathPrefix = new StringBuffer("//");
-        // extract path elements and send as params
-        // so they could be escaped correctly
-        String[] pathElements = new String[0];
-        if (startingPath != null) {
-            pathElements = startingPath.split("\\/");
-            for (String element : pathElements) {
-                xpathPrefix.append("?/");
-            }
-        }
-
-        //final String xpathQ = xpathPrefix + "element(*, ecmnt:document)[jcr:contains(.,'*" + keywords
-        //        + "*')]";
-        final String xpathQ = xpathPrefix + "element(*, ecmnt:document)[jcr:contains(.,'*?*')]";
-
-        String[] params = new String[pathElements.length + 1];
-        System.arraycopy(pathElements, 0, params, 0, pathElements.length);
-        params[params.length - 1] = keywords;
-
-        final Query compiledQuery;
-        try {
-            compiledQuery = session.getSession().createQuery(xpathQ,
-                    Query.Type.XPATH, params);
-        } catch (QueryException e) {
-            log.error("Error executing xpath query: " + xpathQ, e);
-            throw new ClientException("qe", e);
-        }
-
-        DocsQueryProvider dqProvider = new DocsQueryProvider() {
-            @Override
-            public DocumentIterator getDocs(int start) throws ClientException {
-                DocumentIterator documents;
-                try {
-                    documents = (DocumentIterator) compiledQuery.execute().getDocuments(
-                            start);
-                } catch (QueryException e) {
-                    throw new ClientException("Query exception, ", e);
-                }
-                return documents;
-            }
-
-            @Override
-            public boolean accept(Document child) {
-                return true;
-            }
-        };
-        return dqProvider;
     }
 
     private DocsQueryProvider getDQPChildren(DocumentRef parent)

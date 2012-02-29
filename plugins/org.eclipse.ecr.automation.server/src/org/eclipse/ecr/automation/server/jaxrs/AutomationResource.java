@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationType;
+import org.eclipse.ecr.automation.server.jaxrs.batch.BatchResource;
 import org.eclipse.ecr.automation.server.jaxrs.debug.DebugResource;
 import org.eclipse.ecr.automation.server.jaxrs.doc.DocResource;
 import org.eclipse.ecr.core.api.Blob;
@@ -34,8 +35,8 @@ import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.IdRef;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;
 import org.eclipse.ecr.core.api.model.PropertyException;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -135,6 +136,11 @@ public class AutomationResource {
                         "Failed to invoke operation: " + oid, e);
             }
         }
+    }
+
+    @Path("batch")
+    public Object getBatchManager() {
+        return new BatchResource();
     }
 
 }

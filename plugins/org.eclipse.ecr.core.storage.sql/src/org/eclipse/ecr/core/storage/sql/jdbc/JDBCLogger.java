@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -78,6 +78,17 @@ public class JDBCLogger {
         if (count > 0 && isLogEnabled()) {
             log("  -> " + count + " row" + (count > 1 ? "s" : ""));
         }
+    }
+
+    public void logCounts(int[] counts) {
+        if (!isLogEnabled()) {
+            return;
+        }
+        int count = 0;
+        for (int c : counts) {
+            count += c;
+        }
+        logCount(count);
     }
 
     public void logResultSet(ResultSet rs, List<Column> columns)
@@ -183,6 +194,9 @@ public class JDBCLogger {
                     cal.get(Calendar.SECOND), //
                     cal.get(Calendar.MILLISECOND), //
                     sign, offset / 60, offset % 60);
+        }
+        if (value instanceof java.sql.Date) {
+            return "DATE '" + value.toString() + "'";
         }
         if (value instanceof Binary) {
             return "'" + ((Binary) value).getDigest() + "'";

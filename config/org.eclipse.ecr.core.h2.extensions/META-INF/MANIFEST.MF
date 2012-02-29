@@ -6,4 +6,4 @@ Bundle-Version: 0.5.4.qualifier
 Bundle-Vendor: Nuxeo
 Fragment-Host: org.h2
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Import-Package: org.eclipse.ecr.core.storage.sql.extensions
+Import-Package: org.eclipse.ecr.core.storage.sql.db

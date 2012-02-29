@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -39,20 +39,24 @@ public class ListPropertyTemplate extends PropertyWrapper implements
         this.property = property;
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
+    @SuppressWarnings("rawtypes")
     public Object getAdaptedObject(Class hint) {
         return property;
     }
 
+    @Override
     public TemplateModelIterator iterator() throws TemplateModelException {
         return new PropertyIteratorTemplate(wrapper, property.iterator());
     }
 
+    @Override
     public TemplateModel get(int arg0) throws TemplateModelException {
         Property p = property.get(arg0);
         return wrap(p);
     }
 
+    @Override
     public int size() throws TemplateModelException {
         return property.size();
     }

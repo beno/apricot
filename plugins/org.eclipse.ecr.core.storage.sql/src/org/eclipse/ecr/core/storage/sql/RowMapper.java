@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -46,12 +46,13 @@ public interface RowMapper {
      * absent row.
      *
      * @param rowIds the row ids (including their table name)
+     * @param cacheOnly if {@code true}, only hit memory
      * @return the collection of {@link Row}s (or {@link RowId}s if the row was
      *         absent from the database). Order is not the same as the input
      *         {@code rowIds}
      * @throws StorageException
      */
-    List<? extends RowId> read(Collection<RowId> rowIds)
+    List<? extends RowId> read(Collection<RowId> rowIds, boolean cacheOnly)
             throws StorageException;
 
     /**
@@ -114,20 +115,29 @@ public interface RowMapper {
          */
         public final Set<RowId> deletes;
 
+        /**
+         * Dependent deletes aren't executed in the database but still trigger
+         * invalidations.
+         */
+        public final Set<RowId> deletesDependent;
+
         public RowBatch() {
             creates = new LinkedList<Row>();
             updates = new HashSet<RowUpdate>();
             deletes = new HashSet<RowId>();
+            deletesDependent = new HashSet<RowId>();
         }
 
         public boolean isEmpty() {
-            return creates.isEmpty() && updates.isEmpty() && deletes.isEmpty();
+            return creates.isEmpty() && updates.isEmpty() && deletes.isEmpty()
+                    && deletesDependent.isEmpty();
         }
 
         @Override
         public String toString() {
             return getClass().getSimpleName() + "(creates=" + creates
-                    + ", updates=" + updates + ", deletes=" + deletes + ')';
+                    + ", updates=" + updates + ", deletes=" + deletes
+                    + ", deletesDependent=" + deletesDependent + ')';
         }
     }
 
@@ -162,60 +172,27 @@ public interface RowMapper {
     Serializable[] readCollectionRowArray(RowId rowId) throws StorageException;
 
     /**
-     * Reads the hierarchy row for a child, given its parent id and the child
-     * name.
+     * Reads the rows corresponding to a selection.
      *
-     * @param parentId the parent id
-     * @param childName the child name
-     * @param complexProp whether to get complex properties ({@code true}) or
-     *            regular children({@code false})
-     * @return the child hierarchy row, or {@code null}
+     * @param selType the selection type
+     * @param selId the selection id (parent id for a hierarchy selection)
+     * @param filter the filter value (name for a hierarchy selection)
+     * @param criterion an optional additional criterion depending on the
+     *            selection type (complex prop flag for a hierarchy selection)
+     * @param limitToOne whether to stop after one row retrieved
+     * @return the list of rows
      */
-    Row readChildHierRow(Serializable parentId, String childName,
-            boolean complexProp) throws StorageException;
-
-    /**
-     * Reads the hierarchy rows for all the children of parent.
-     * <p>
-     * Depending on the boolean {@literal complexProp}, only the complex
-     * properties or only the regular children are returned.
-     *
-     * @param parentId the parent id
-     * @param complexProp whether to get complex properties ({@code true}) or
-     *            regular children({@code false})
-     * @return the child hierarchy rows
-     */
-    List<Row> readChildHierRows(Serializable parentId, boolean complexProp)
+    List<Row> readSelectionRows(SelectionType selType, Serializable selId,
+            Serializable filter, Serializable criterion, boolean limitToOne)
             throws StorageException;
-
-    /**
-     * Gets the list of version rows for all the versions in a given version
-     * series id.
-     *
-     * @param versionSeriesId the version series id
-     * @return the list of version rows
-     * @throws StorageException
-     */
-    List<Row> getVersionRows(Serializable versionSeriesId)
-            throws StorageException;
-
-    /**
-     * Finds proxies, maybe restricted to the children of a given parent.
-     *
-     * @param searchId the id to look for
-     * @param byTarget {@code true} if the searchId is a proxy target id,
-     *            {@code false} if the searchId is a version series id
-     * @param parentId the parent to which to restrict, if not {@code null}
-     * @return the list of proxies rows
-     * @throws StorageException
-     */
-    List<Row> getProxyRows(Serializable searchId, boolean byTarget,
-            Serializable parentId) throws StorageException;
 
     /*
      * ----- Copy -----
      */
 
+    /**
+     * A document id and its primary type and mixin types.
+     */
     public static final class IdWithTypes implements Serializable {
         private static final long serialVersionUID = 1L;
 
@@ -237,9 +214,15 @@ public interface RowMapper {
             this.primaryType = node.getPrimaryType();
             this.mixinTypes = node.getMixinTypes();
         }
+
+        public IdWithTypes(SimpleFragment hierFragment) throws StorageException {
+            this.id = hierFragment.getId();
+            this.primaryType = hierFragment.getString(Model.MAIN_PRIMARY_TYPE_KEY);
+            this.mixinTypes = (String[]) hierFragment.get(Model.MAIN_MIXIN_TYPES_KEY);
+        }
     }
 
-    public static final class CopyHierarchyResult implements Serializable {
+    public static final class CopyResult implements Serializable {
         private static final long serialVersionUID = 1L;
 
         /** The id of the root of the copy. */
@@ -248,10 +231,14 @@ public interface RowMapper {
         /** The invalidations generated by the copy. */
         public final Invalidations invalidations;
 
-        public CopyHierarchyResult(Serializable copyId,
-                Invalidations invalidations) {
+        /** The ids of newly created proxies. */
+        public final Set<Serializable> proxyIds;
+
+        public CopyResult(Serializable copyId, Invalidations invalidations,
+                Set<Serializable> proxyIds) {
             this.copyId = copyId;
             this.invalidations = invalidations;
+            this.proxyIds = proxyIds;
         }
     }
 
@@ -274,9 +261,77 @@ public interface RowMapper {
      * @return info about the copy
      * @throws StorageException
      */
-    CopyHierarchyResult copyHierarchy(IdWithTypes source,
-            Serializable destParentId, String destName, Row overwriteRow)
-            throws StorageException;
+    CopyResult copy(IdWithTypes source, Serializable destParentId,
+            String destName, Row overwriteRow) throws StorageException;
+
+    /**
+     * A document id, parent id and primary type, along with the version and
+     * proxy information (the potentially impacted selections).
+     * <p>
+     * Used to return info about a descendants tree for removal.
+     */
+    public static final class NodeInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        public final Serializable id;
+
+        public final Serializable parentId;
+
+        public final String primaryType;
+
+        public final Boolean isProperty;
+
+        public final Serializable versionSeriesId;
+
+        public final Serializable targetId;
+
+        /**
+         * Creates node info for a node that may also be a proxy.
+         */
+        public NodeInfo(Serializable id, Serializable parentId,
+                String primaryType, Boolean isProperty,
+                Serializable versionSeriesId, Serializable targetId) {
+            this.id = id;
+            this.parentId = parentId;
+            this.primaryType = primaryType;
+            this.isProperty = isProperty;
+            this.versionSeriesId = versionSeriesId;
+            this.targetId = targetId;
+        }
+
+        /**
+         * Creates node info for a node that may also be a proxy or a version.
+         */
+        public NodeInfo(SimpleFragment hierFragment,
+                SimpleFragment versionFragment, SimpleFragment proxyFragment)
+                throws StorageException {
+            id = hierFragment.getId();
+            parentId = hierFragment.get(Model.HIER_PARENT_KEY);
+            primaryType = hierFragment.getString(Model.MAIN_PRIMARY_TYPE_KEY);
+            isProperty = (Boolean) hierFragment.get(Model.HIER_CHILD_ISPROPERTY_KEY);
+            Serializable ps = proxyFragment == null ? null
+                    : proxyFragment.get(Model.PROXY_VERSIONABLE_KEY);
+            if (ps == null) {
+                versionSeriesId = versionFragment == null ? null
+                        : versionFragment.get(Model.VERSION_VERSIONABLE_KEY);
+                // may still be null
+                targetId = null; // marks it as a version if versionableId not
+                                 // null
+            } else {
+                versionSeriesId = ps;
+                targetId = proxyFragment.get(Model.PROXY_TARGET_KEY);
+            }
+        }
+    }
+
+    /**
+     * Deletes a hierarchy and returns information to generate invalidations.
+     *
+     * @param rootInfo info about the root to be deleted with its children (root
+     *            id, and the rest is for invalidations)
+     * @return info about the descendants removed (including the root)
+     */
+    List<NodeInfo> remove(NodeInfo rootInfo) throws StorageException;
 
     /**
      * Processes and returns the invalidations queued for processing by the

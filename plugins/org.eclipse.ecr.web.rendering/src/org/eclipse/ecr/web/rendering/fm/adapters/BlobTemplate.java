@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -45,19 +45,23 @@ public class BlobTemplate extends PropertyWrapper implements
         this.blob = blob;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
+    @Override
     public Object getAdaptedObject(Class hint) {
         return blob;
     }
 
+    @Override
     public TemplateCollectionModel keys() throws TemplateModelException {
         return (TemplateCollectionModel) wrapper.wrap(keys);
     }
 
+    @Override
     public int size() throws TemplateModelException {
         return keys.length;
     }
 
+    @Override
     public TemplateCollectionModel values() throws TemplateModelException {
         try {
             List<Object> list = new ArrayList<Object>(keys.length);
@@ -83,6 +87,7 @@ public class BlobTemplate extends PropertyWrapper implements
         }
     }
 
+    @Override
     public TemplateModel get(String name) throws TemplateModelException {
         try {
             if (blob != null) {
@@ -106,6 +111,7 @@ public class BlobTemplate extends PropertyWrapper implements
         }
     }
 
+    @Override
     public boolean isEmpty() throws TemplateModelException {
         return false;
     }

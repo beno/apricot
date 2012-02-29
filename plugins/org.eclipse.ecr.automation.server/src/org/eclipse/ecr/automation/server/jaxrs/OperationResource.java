@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,15 +13,10 @@ package org.eclipse.ecr.automation.server.jaxrs;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Response;
-
-import net.sf.json.JSONObject;
 
 import org.eclipse.ecr.automation.AutomationService;
 import org.eclipse.ecr.automation.OperationContext;
-import org.eclipse.ecr.automation.OperationDocumentation;
 import org.eclipse.ecr.automation.OperationType;
-import org.eclipse.ecr.automation.core.doc.JSONExporter;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -38,15 +33,17 @@ public class OperationResource extends ExecutableResource {
     @GET
     @Produces("application/json")
     public Object doGet() {
-        OperationDocumentation doc = type.getDocumentation();
-        JSONObject json = JSONExporter.toJSON(doc);
-        return Response.ok(json.toString(2)).type("application/json").build();
+        return type.getDocumentation();
     }
 
     @Override
     public Object execute(ExecutionRequest xreq) throws Exception {
         OperationContext ctx = xreq.createContext(request, getCoreSession());
         return service.run(ctx, xreq.createChain(type));
+    }
+
+    protected static String entityType(Class<?> clazz) {
+        return clazz.getSimpleName().toLowerCase();
     }
 
     @Override

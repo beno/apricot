@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -84,6 +84,8 @@ public class DialectHSQLDB extends Dialect {
             return jdbcInfo("TINYINT", Types.TINYINT);
         case INTEGER:
             return jdbcInfo("INTEGER", Types.INTEGER);
+        case AUTOINC:
+            return jdbcInfo("INTEGER IDENTITY", Types.INTEGER);
         case FTINDEXED:
             throw new AssertionError(type);
         case FTSTORED:
@@ -250,12 +252,12 @@ public class DialectHSQLDB extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/hsqldb.sql.txt"; // TODO VCS
+        return "nuxeovcs/hsqldb.sql.txt"; // TODO VCS
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/hsqldb.test.sql.txt"; // TODO VCS
+        return "nuxeovcs/hsqldb.test.sql.txt"; // TODO VCS
     }
 
     @Override

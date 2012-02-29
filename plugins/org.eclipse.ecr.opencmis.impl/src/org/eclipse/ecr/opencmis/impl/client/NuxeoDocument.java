@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -41,7 +41,7 @@ public class NuxeoDocument extends NuxeoFileableObject implements Document {
 
     @Override
     public TransientDocument getTransientDocument() {
-        return (TransientDocument) getAdapter(TransientDocument.class);
+        return getAdapter(TransientDocument.class);
     }
 
     @Override
@@ -234,7 +234,7 @@ public class NuxeoDocument extends NuxeoFileableObject implements Document {
     public Document setContentStream(ContentStream contentStream,
             boolean overwrite) {
         ObjectId objectId = setContentStream(contentStream, overwrite, true);
-        return (NuxeoDocument) session.getObject(objectId);
+        return (Document) session.getObject(objectId);
     }
 
     @Override

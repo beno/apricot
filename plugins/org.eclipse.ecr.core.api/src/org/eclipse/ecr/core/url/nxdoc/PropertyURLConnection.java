@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -28,9 +28,9 @@ import org.eclipse.ecr.core.api.CoreInstance;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.IdRef;
-import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
+import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
 import org.eclipse.ecr.core.api.repository.Repository;
 import org.eclipse.ecr.core.api.repository.RepositoryManager;
 import org.eclipse.ecr.runtime.api.Framework;
@@ -95,10 +95,13 @@ public class PropertyURLConnection extends URLConnection {
     public long getLastModified() {
         try {
             connect();
-            DocumentPart part = getDocument().getPart("dublincore");
-            if (part != null) {
-                Calendar cal = (Calendar)part.getValue("modified");
-                return cal.getTimeInMillis();
+            try {
+                Calendar cal = (Calendar) getDocument().getPropertyValue("dc:modified");
+                if (cal != null) {
+                    return cal.getTimeInMillis();
+                }
+            } catch (PropertyNotFoundException e) {
+                // ignore
             }
             return -1L;
         } catch (Exception e) {

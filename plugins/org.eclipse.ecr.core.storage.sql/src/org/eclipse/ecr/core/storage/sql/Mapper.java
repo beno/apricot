@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,6 +13,8 @@
 package org.eclipse.ecr.core.storage.sql;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Set;
 
 import javax.transaction.xa.XAResource;
 
@@ -105,29 +107,6 @@ public interface Mapper extends RowMapper, XAResource {
             throws StorageException;
 
     /*
-     * ----- Version/Proxy -----
-     */
-
-    /**
-     * Gets the id of a version given a version series id and a label.
-     *
-     * @param versionSeriesId the version series id
-     * @param label the label
-     * @return the id of the version, or {@code null} if not found
-     */
-    Serializable getVersionIdByLabel(Serializable versionSeriesId, String label)
-            throws StorageException;
-
-    /**
-     * Gets the id of the last version given a version series id.
-     *
-     * @param versionSeriesId the version series id
-     * @return the id of the last version, or {@code null} if not found
-     */
-    Serializable getLastVersionId(Serializable versionSeriesId)
-            throws StorageException;
-
-    /*
      * ----- Query -----
      */
 
@@ -135,13 +114,15 @@ public interface Mapper extends RowMapper, XAResource {
      * Makes a NXQL query to the database.
      *
      * @param query the query
+     * @param query the query type
      * @param queryFilter the query filter
      * @param countTotal if {@code true}, count the total size without
      *            limit/offset
      * @return the list of matching document ids
      */
-    PartialList<Serializable> query(String query, QueryFilter queryFilter,
-            boolean countTotal) throws StorageException;
+    PartialList<Serializable> query(String query, String queryType,
+            QueryFilter queryFilter, boolean countTotal)
+            throws StorageException;
 
     /**
      * Makes a query to the database and returns an iterable (which must be
@@ -156,6 +137,15 @@ public interface Mapper extends RowMapper, XAResource {
     // queryFilter used for principals and permissions
     IterableQueryResult queryAndFetch(String query, String queryType,
             QueryFilter queryFilter, Object... params) throws StorageException;
+
+    /**
+     * Gets the ids for all the ancestors of the given row ids.
+     *
+     * @param ids the ids
+     * @return the set of ancestor ids
+     */
+    Set<Serializable> getAncestorsIds(Collection<Serializable> ids)
+            throws StorageException;
 
     /*
      * ----- ACLs -----
@@ -236,6 +226,15 @@ public interface Mapper extends RowMapper, XAResource {
      * @return the previous lock
      */
     Lock removeLock(Serializable id, String owner, boolean force)
+            throws StorageException;
+
+    /**
+     * Marks the binaries referenced by this mapper with the referenced binary
+     * garbage collector.
+     *
+     * @param gc the binary garbage collector
+     */
+    void markReferencedBinaries(BinaryGarbageCollector gc)
             throws StorageException;
 
 }

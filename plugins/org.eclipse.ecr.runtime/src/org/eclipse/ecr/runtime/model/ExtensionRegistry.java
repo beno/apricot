@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -23,10 +23,10 @@ import org.apache.commons.logging.LogFactory;
  * still required to do the actual merge of two contributions when needed.
  *
  * @param <T> - the type of contribution managed by this registry
- *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
+ * @deprecated since 5.5: extend {@link ContributionFragmentRegistry} instead
  */
+@Deprecated
 public abstract class ExtensionRegistry<T> {
 
     private static final Log log = LogFactory.getLog(ExtensionRegistry.class);
@@ -72,8 +72,8 @@ public abstract class ExtensionRegistry<T> {
 
     /**
      * Remove all registered contributions. This method will be called by
-     * unregisterExtension to reset the registry so that remaining contributions
-     * are registered again
+     * unregisterExtension to reset the registry so that remaining
+     * contributions are registered again
      */
     public abstract void removeContributions();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,7 +27,7 @@ public class DocsQueryProviderDef implements Serializable {
     private static final long serialVersionUID = 6296251214655196508L;
 
     public enum DefType {
-        TYPE_CHILDREN, TYPE_CHILDREN_NON_FOLDER, TYPE_CHILDREN_FOLDERS, TYPE_QUERY, TYPE_QUERY_FTS
+        TYPE_CHILDREN, TYPE_CHILDREN_NON_FOLDER, TYPE_CHILDREN_FOLDERS, TYPE_QUERY
     }
 
     private final DefType type;

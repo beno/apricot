@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -25,8 +25,6 @@ import org.eclipse.ecr.core.api.model.impl.ScalarProperty;
 public interface PropertyVisitor {
 
     boolean acceptPhantoms();
-
-    Object visit(DocumentPart property, Object arg) throws PropertyException;
 
     Object visit(MapProperty property, Object arg) throws PropertyException;
 

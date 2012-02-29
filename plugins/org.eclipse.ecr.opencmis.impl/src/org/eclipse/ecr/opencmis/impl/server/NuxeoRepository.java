@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -40,9 +40,9 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.AclCapabilitiesDat
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryCapabilitiesImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl;
 import org.eclipse.ecr.core.api.security.SecurityConstants;
+import org.eclipse.ecr.opencmis.impl.util.TypeManagerImpl;
 import org.eclipse.ecr.core.schema.DocumentType;
 import org.eclipse.ecr.core.schema.SchemaManager;
-import org.eclipse.ecr.opencmis.impl.util.TypeManagerImpl;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
@@ -51,6 +51,8 @@ import org.eclipse.ecr.runtime.api.Framework;
 public class NuxeoRepository {
 
     public static final String NUXEO_VERSION_PROP = "org.nuxeo.distribution.version";
+
+    public static final String NUXEO_URL_PROP = "nuxeo.url";
 
     protected final String repositoryId;
 
@@ -61,7 +63,6 @@ public class NuxeoRepository {
     public NuxeoRepository(String repositoryId, String rootFolderId) {
         this.repositoryId = repositoryId;
         this.rootFolderId = rootFolderId;
-
     }
 
     public String getId() {
@@ -129,9 +130,16 @@ public class NuxeoRepository {
         DocumentType dt = schemaManager.getDocumentType(name);
         String parentTypeId = NuxeoTypeHelper.getParentTypeId(dt);
         if (parentTypeId != null) {
-            if (typeManager.getTypeById(parentTypeId) == null) {
+            TypeDefinitionContainer parentType = typeManager.getTypeById(parentTypeId);
+            if (parentType == null) {
                 // if parent was ignored, reparent under cmis:document
                 parentTypeId = BaseTypeId.CMIS_DOCUMENT.value();
+            } else {
+                if (parentType.getTypeDefinition().getBaseTypeId() != BaseTypeId.CMIS_FOLDER
+                        && dt.isFolder()) {
+                    // reparent Folderish but child of Document under cmis:folder
+                    parentTypeId = BaseTypeId.CMIS_FOLDER.value();
+                }
             }
             typeManager.addTypeDefinition(NuxeoTypeHelper.construct(dt,
                     parentTypeId));
@@ -159,14 +167,14 @@ public class NuxeoRepository {
         repositoryInfo.setCmisVersionSupported("1.0");
         repositoryInfo.setPrincipalAnonymous("Guest"); // TODO
         repositoryInfo.setPrincipalAnyone(SecurityConstants.EVERYONE);
-        repositoryInfo.setThinClientUri(null); // TODO
+        repositoryInfo.setThinClientUri(Framework.getProperty(NUXEO_URL_PROP));
         repositoryInfo.setChangesIncomplete(Boolean.FALSE);
         repositoryInfo.setChangesOnType(Arrays.asList(BaseTypeId.CMIS_DOCUMENT,
                 BaseTypeId.CMIS_FOLDER));
         repositoryInfo.setLatestChangeLogToken(latestChangeLogToken);
         repositoryInfo.setVendorName("Nuxeo");
         repositoryInfo.setProductName("Nuxeo OpenCMIS Connector");
-        String version = Framework.getProperty(NUXEO_VERSION_PROP, "5.4 dev");
+        String version = Framework.getProperty(NUXEO_VERSION_PROP, "5.5 dev");
         repositoryInfo.setProductVersion(version);
         repositoryInfo.setRootFolder(rootFolderId);
         RepositoryCapabilitiesImpl caps = new RepositoryCapabilitiesImpl();

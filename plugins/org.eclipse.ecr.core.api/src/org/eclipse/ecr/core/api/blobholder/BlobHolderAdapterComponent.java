@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -47,6 +47,9 @@ public class BlobHolderAdapterComponent extends DefaultComponent implements
     protected static final Map<String, BlobHolderFactory> factories
             = new HashMap<String, BlobHolderFactory>();
 
+    protected final Map<String, BlobHolderFactory> factoriesByFacets
+                = new HashMap<String, BlobHolderFactory>();
+
     protected static final Map<String, ExternalBlobAdapter> externalBlobAdapters
             = new HashMap<String, ExternalBlobAdapter>();
 
@@ -57,7 +60,14 @@ public class BlobHolderAdapterComponent extends DefaultComponent implements
 
         if (BLOBHOLDERFACTORY_EP.equals(extensionPoint)) {
             BlobHolderFactoryDescriptor desc = (BlobHolderFactoryDescriptor) contribution;
-            factories.put(desc.getDocType(), desc.getFactory());
+            String docType = desc.getDocType();
+            if (docType != null) {
+                factories.put(docType, desc.getFactory());
+            }
+            String facet = desc.getFacet();
+            if (facet != null) {
+                factoriesByFacets.put(facet, desc.getFactory());
+            }
         } else if (EXTERNALBLOB_ADAPTER_EP.equals(extensionPoint)) {
             ExternalBlobAdapterDescriptor desc = (ExternalBlobAdapterDescriptor) contribution;
             ExternalBlobAdapter adapter = desc.getAdapter();
@@ -122,6 +132,12 @@ public class BlobHolderAdapterComponent extends DefaultComponent implements
         if (factories.containsKey(doc.getType())) {
             BlobHolderFactory factory = factories.get(doc.getType());
             return factory.getBlobHolder(doc);
+        }
+
+        for (Map.Entry<String, BlobHolderFactory> entry : factoriesByFacets.entrySet()) {
+            if (doc.hasFacet(entry.getKey())) {
+                return entry.getValue().getBlobHolder(doc);
+            }
         }
 
         if (doc.hasSchema("file")) {

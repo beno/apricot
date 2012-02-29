@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -30,7 +30,7 @@ import org.osgi.framework.Bundle;
 
 /**
  * A composite JAX-RS application that can receive fragments from outside.
- * 
+ *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
@@ -156,7 +156,7 @@ public class ApplicationHost extends Application {
      * When a bundle is refreshing this method may throw
      * exceptions but it is not usual to refresh bundles at runtime
      * and making requests in same time.
-     * 
+     *
      * @param clazz
      * @return
      */

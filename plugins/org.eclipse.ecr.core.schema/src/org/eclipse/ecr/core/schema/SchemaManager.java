@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -20,7 +20,6 @@ import org.eclipse.ecr.core.schema.types.CompositeType;
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
-import org.eclipse.ecr.core.schema.types.TypeHelper;
 
 /**
  * A Type Manager manages ECM document types, schemas and field types.
@@ -102,11 +101,5 @@ public interface SchemaManager extends TypeProvider {
      */
     // XXX: This should be refactored to get a serializable InputStream.
     String getXmlSchemaDefinition(String name);
-
-    void registerHelper(String schema, String type, TypeHelper helper);
-
-    void unregisterHelper(String schema, String type);
-
-    TypeHelper getHelper(String schema, String type);
 
 }

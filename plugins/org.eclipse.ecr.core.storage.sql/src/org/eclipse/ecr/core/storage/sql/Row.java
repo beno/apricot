@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -26,7 +26,7 @@ import java.util.Map.Entry;
  * fragments corresponding to created data, the initial id is a temporary one,
  * and it will be changed after database insert.
  */
-public final class Row extends RowId implements Serializable {
+public final class Row extends RowId implements Serializable, Cloneable {
 
     private static final long serialVersionUID = 1L;
 

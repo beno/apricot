@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -21,6 +21,7 @@ import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.automation.core.annotations.Param;
+import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.runtime.api.Framework;
 
 /**
@@ -55,4 +56,12 @@ public class LoginAs {
         }
     }
 
+    @OperationMethod
+    public DocumentModel run(DocumentModel doc) throws Exception {
+        run();
+        // refetch the input document if any using the new session
+        // otherwise using document methods that are delegating the call to the
+        // session that created the document will call the old session.
+        return ctx.getCoreSession().getDocument(doc.getRef());
+    }
 }

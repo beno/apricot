@@ -1,5 +1,6 @@
 Export-Package: org.eclipse.ecr.common,
  org.eclipse.ecr.common.collections,
+ org.eclipse.ecr.common.file,
  org.eclipse.ecr.common.logging,
  org.eclipse.ecr.common.utils,
  org.eclipse.ecr.common.xmap,

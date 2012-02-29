@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,6 +11,7 @@
  */
 package org.eclipse.ecr.automation.core.operations.document;
 
+import org.eclipse.ecr.automation.ConflictOperationException;
 import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
@@ -39,8 +40,20 @@ public class UpdateDocument {
     @Param(name = "save", required = false, values = "true")
     protected boolean save = true;
 
+    @Param(name = "changeToken", required = false)
+    protected String changeToken = null;
+
     @OperationMethod(collector=DocumentModelCollector.class)
     public DocumentModel run(DocumentModel doc) throws Exception {
+
+        if (changeToken!=null) {
+            // Check for dirty update
+           String repoToken = doc.getChangeToken();
+           if (!changeToken.equals(repoToken)) {
+               throw new ConflictOperationException(doc);
+           }
+        }
+
         DocumentHelper.setProperties(session, doc, properties);
         if (save) {
             doc = session.saveDocument(doc);

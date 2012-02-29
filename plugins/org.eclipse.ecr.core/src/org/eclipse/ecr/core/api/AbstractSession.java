@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -55,44 +55,17 @@ import org.eclipse.ecr.common.collections.ScopedMap;
 import org.eclipse.ecr.common.utils.IdUtils;
 import org.eclipse.ecr.core.CoreService;
 import org.eclipse.ecr.core.NXCore;
-import org.eclipse.ecr.core.api.AlreadyConnectedException;
-import org.eclipse.ecr.core.api.ClientException;
-import org.eclipse.ecr.core.api.CoreInstance;
-import org.eclipse.ecr.core.api.CoreSession;
-import org.eclipse.ecr.core.api.DataModel;
-import org.eclipse.ecr.core.api.DetachedAdapter;
-import org.eclipse.ecr.core.api.DocumentException;
-import org.eclipse.ecr.core.api.DocumentModel;
-import org.eclipse.ecr.core.api.DocumentModelIterator;
-import org.eclipse.ecr.core.api.DocumentModelList;
-import org.eclipse.ecr.core.api.DocumentModelsChunk;
-import org.eclipse.ecr.core.api.DocumentRef;
-import org.eclipse.ecr.core.api.DocumentSecurityException;
-import org.eclipse.ecr.core.api.Filter;
-import org.eclipse.ecr.core.api.IdRef;
-import org.eclipse.ecr.core.api.IterableQueryResult;
-import org.eclipse.ecr.core.api.Lock;
-import org.eclipse.ecr.core.api.NuxeoPrincipal;
-import org.eclipse.ecr.core.api.PathRef;
-import org.eclipse.ecr.core.api.SerializableInputStream;
-import org.eclipse.ecr.core.api.SimplePrincipal;
-import org.eclipse.ecr.core.api.Sorter;
-import org.eclipse.ecr.core.api.VersionModel;
-import org.eclipse.ecr.core.api.VersioningChangeNotifier;
-import org.eclipse.ecr.core.api.VersioningOption;
 import org.eclipse.ecr.core.api.DocumentModel.DocumentModelRefresh;
 import org.eclipse.ecr.core.api.event.CoreEventConstants;
 import org.eclipse.ecr.core.api.event.DocumentEventCategories;
 import org.eclipse.ecr.core.api.event.DocumentEventTypes;
 import org.eclipse.ecr.core.api.facet.VersioningDocument;
 import org.eclipse.ecr.core.api.impl.DocsQueryProviderDef;
-import org.eclipse.ecr.core.api.impl.DocumentModelImpl;
 import org.eclipse.ecr.core.api.impl.DocumentModelIteratorImpl;
 import org.eclipse.ecr.core.api.impl.DocumentModelListImpl;
 import org.eclipse.ecr.core.api.impl.FacetFilter;
 import org.eclipse.ecr.core.api.impl.UserPrincipal;
 import org.eclipse.ecr.core.api.impl.VersionModelImpl;
-import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.operation.Operation;
 import org.eclipse.ecr.core.api.operation.OperationHandler;
 import org.eclipse.ecr.core.api.operation.ProgressMonitor;
@@ -107,7 +80,6 @@ import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventService;
 import org.eclipse.ecr.core.event.impl.DocumentEventContext;
 import org.eclipse.ecr.core.event.impl.EventContextImpl;
-import org.eclipse.ecr.core.lifecycle.LifeCycleConstants;
 import org.eclipse.ecr.core.lifecycle.LifeCycleException;
 import org.eclipse.ecr.core.lifecycle.LifeCycleService;
 import org.eclipse.ecr.core.model.Document;
@@ -121,9 +93,10 @@ import org.eclipse.ecr.core.query.Query;
 import org.eclipse.ecr.core.query.QueryFilter;
 import org.eclipse.ecr.core.query.QueryParseException;
 import org.eclipse.ecr.core.query.QueryResult;
+import org.eclipse.ecr.core.query.sql.NXQL;
 import org.eclipse.ecr.core.query.sql.model.SQLQuery.Transformer;
-import org.eclipse.ecr.core.repository.RepositoryInitializationHandler;
 import org.eclipse.ecr.core.schema.DocumentType;
+import org.eclipse.ecr.core.schema.FacetNames;
 import org.eclipse.ecr.core.schema.NXSchema;
 import org.eclipse.ecr.core.schema.SchemaManager;
 import org.eclipse.ecr.core.schema.types.CompositeType;
@@ -138,8 +111,8 @@ import org.eclipse.ecr.runtime.services.streaming.StreamManager;
 /**
  * Abstract implementation of the client interface.
  * <p>
- * This handles all the aspects that are independent on the final implementation
- * (like running inside a J2EE platform or not).
+ * This handles all the aspects that are independent on the final
+ * implementation (like running inside a J2EE platform or not).
  * <p>
  * The only aspect not implemented is the session management that should be
  * handled by subclasses.
@@ -203,7 +176,8 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     private String sessionId;
 
     /**
-     * Internal method: Gets the current session based on the client session id.
+     * Internal method: Gets the current session based on the client session
+     * id.
      *
      * @return the repository session
      */
@@ -228,54 +202,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         // retrieve their session on the server side
         CoreInstance.getInstance().registerSession(sessionId, this);
 
-        // <------------ begin repository initialization
-        // we need to initialize the repository if this is the first time it is
-        // accessed in this JVM session.
-        // For this we get the session and test if the
-        // "REPOSITORY_FIRST_ACCESS" is set after the session is created. We
-        // need to synchronize the call to be sure we initialize it only once.
-        synchronized (AbstractSession.class) {
-            Session session = getSession(); // force the creation of the
-            // underlying session
-            if (sessionContext.remove("REPOSITORY_FIRST_ACCESS") != null) {
-                // this is the first time we access the repository in this JVM
-                // notify the InitializationHandler if any.
-                RepositoryInitializationHandler handler = RepositoryInitializationHandler.getInstance();
-                if (handler != null) {
-                    // change principal to give all rights
-                    Principal ctxPrincipal = (Principal) sessionContext.get("principal");
-                    try {
-                        // change current principal to give all right to the
-                        // handler
-                        // FIXME: this should be fixed by using
-                        // SystemPrincipal => we must synchronize this with
-                        // SecurityService check
-                        sessionContext.put("principal", new SimplePrincipal(
-                                SYSTEM_USERNAME));
-                        try {
-                            handler.initializeRepository(this);
-                            session.save();
-                        } catch (ClientException e) {
-                            // shouldn't remove the root? ... to restart with
-                            // an empty repository
-                            log.error(
-                                    "Failed to initialize repository content",
-                                    e);
-                        } catch (DocumentException e) {
-                            log.error("Unable to save session after repository init : "
-                                    + e.getMessage());
-                        }
-                    } finally {
-                        sessionContext.remove("principal");
-                        if (ctxPrincipal != null) { // restore principal
-                            sessionContext.put("principal",
-                                    (Serializable) ctxPrincipal);
-                        }
-                    }
-                }
-            }
-        }
-        // <------------- end repository initialization
+        getSession();
 
         return sessionId;
     }
@@ -285,12 +212,12 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
      * <p>
      * The ID has the following format:
      * &lt;repository-name&gt;-&lt;JVM-Unique-ID&gt; where the JVM-Unique-ID is
-     * an unique ID on a running JVM and repository-name is a used to avoid name
-     * clashes with sessions on different machines (the repository name should
-     * be unique in the system)
+     * an unique ID on a running JVM and repository-name is a used to avoid
+     * name clashes with sessions on different machines (the repository name
+     * should be unique in the system)
      * <ul>
-     * <li>A is the repository name (which uniquely identifies the repository in
-     * the system)
+     * <li>A is the repository name (which uniquely identifies the repository
+     * in the system)
      * <li>B is the time of the session creation in milliseconds
      * </ul>
      */
@@ -301,28 +228,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     @Override
     public DocumentType getDocumentType(String type) {
         return NXSchema.getSchemaManager().getDocumentType(type);
-    }
-
-    /**
-     * Utility method to generate VersionModel labels.
-     *
-     * @return the String representation of an auto-incremented counter that not
-     *         used in any label of docRef
-     */
-    @Override
-    public String generateVersionLabelFor(DocumentRef docRef)
-            throws ClientException {
-        // find the biggest label that is castable to an int
-        int max = 0;
-        for (VersionModel version : getVersionsForDocument(docRef)) {
-            try {
-                int current = Integer.parseInt(version.getLabel());
-                max = current > max ? current : max;
-            } catch (NumberFormatException e) {
-                // ignore labels that are not parsable as int
-            }
-        }
-        return Integer.toString(max + 1);
     }
 
     @Override
@@ -555,7 +460,8 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     }
 
     /**
-     * Gets the document model for the given core document, preserving the contextData.
+     * Gets the document model for the given core document, preserving the
+     * contextData.
      *
      * @param doc the document
      * @return the document model
@@ -696,10 +602,17 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             throws ClientException {
         try {
             Document srcDoc = resolveReference(src);
-            Document dstDoc = resolveReference(dst);
-            checkPermission(dstDoc, ADD_CHILDREN);
-            checkPermission(srcDoc.getParent(), REMOVE_CHILDREN);
-            checkPermission(srcDoc, REMOVE);
+            Document dstDoc;
+            if (dst == null) {
+                // rename
+                dstDoc = srcDoc.getParent();
+                checkPermission(dstDoc, WRITE_PROPERTIES);
+            } else {
+                dstDoc = resolveReference(dst);
+                checkPermission(dstDoc, ADD_CHILDREN);
+                checkPermission(srcDoc.getParent(), REMOVE_CHILDREN);
+                checkPermission(srcDoc, REMOVE);
+            }
 
             DocumentModel srcDocModel = readModel(srcDoc);
             notifyEvent(DocumentEventTypes.ABOUT_TO_MOVE, srcDocModel, null,
@@ -1224,22 +1137,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         }
     }
 
-    /**
-     * @deprecated unused
-     */
-    @Override
-    @Deprecated
-    public DocumentModel getDocument(DocumentRef docRef, String[] schemas)
-            throws ClientException {
-        try {
-            Document doc = resolveReference(docRef);
-            checkPermission(doc, READ);
-            return readModel(doc, schemas);
-        } catch (DocumentException e) {
-            throw new ClientException("Failed to get document " + docRef, e);
-        }
-    }
-
     @Override
     public DocumentModelList getDocuments(DocumentRef[] docRefs)
             throws ClientException {
@@ -1482,14 +1379,19 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     }
 
     @Override
-    @SuppressWarnings("null")
     public DocumentModelList query(String query, Filter filter, long limit,
             long offset, boolean countTotal) throws ClientException {
+        return query(query, NXQL.NXQL, filter, limit, offset, countTotal);
+    }
+
+    @Override
+    public DocumentModelList query(String query, String queryType,
+            Filter filter, long limit, long offset, boolean countTotal)
+            throws ClientException {
         SecurityService securityService = getSecurityService();
         Principal principal = getPrincipal();
         try {
-            Query compiledQuery = getSession().createQuery(query,
-                    Query.Type.NXQL);
+            Query compiledQuery = getSession().createQuery(query, queryType);
             QueryResult results;
             boolean postFilterPermission;
             boolean postFilterFilter;
@@ -1589,7 +1491,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             String permission = BROWSE;
             String[] permissions = securityService.getPermissionsToCheck(permission);
             Collection<Transformer> transformers;
-            if ("NXQL".equals(queryType)) {
+            if (NXQL.NXQL.equals(queryType)) {
                 String repoName = getRepositoryName();
                 if (!securityService.arePoliciesExpressibleInQuery(repoName)) {
                     log.warn("Security policy cannot be expressed in query");
@@ -1626,66 +1528,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             return tryToExtractMeaningfulErrMsg(t.getCause());
         }
         return t.getMessage();
-    }
-
-    @Override
-    @Deprecated
-    public DocumentModelList querySimpleFts(String keywords)
-            throws ClientException {
-        return querySimpleFts(keywords, null);
-    }
-
-    @Override
-    @Deprecated
-    public DocumentModelList querySimpleFts(String keywords, Filter filter)
-            throws ClientException {
-        try {
-            // TODO this is hardcoded query : need to add support for CONTAINS
-            // in NXQL
-            // TODO check (repair) for keywords sanity to avoid xpath injection
-            final String xpathQ = "//element(*, ecmnt:document)[jcr:contains(.,'*"
-                    + keywords + "*')]";
-            final Query compiledQuery = getSession().createQuery(xpathQ,
-                    Query.Type.XPATH);
-            final QueryResult qr = compiledQuery.execute();
-
-            final DocumentModelList retrievedDocs = qr.getDocumentModels();
-
-            final DocumentModelList docs = new DocumentModelListImpl();
-            for (DocumentModel model : retrievedDocs) {
-                if (hasPermission(model.getRef(), READ)) {
-                    if (filter == null || filter.accept(model)) {
-                        docs.add(model);
-                    }
-                }
-            }
-
-            return docs;
-
-        } catch (Exception e) {
-            log.error("failed to execute query", e);
-            throw new ClientException("Failed to get the root document", e);
-        }
-    }
-
-    @Override
-    @Deprecated
-    public DocumentModelIterator querySimpleFtsIt(String query, Filter filter,
-            int pageSize) throws ClientException {
-        return querySimpleFtsIt(query, null, filter, pageSize);
-    }
-
-    @Override
-    @Deprecated
-    public DocumentModelIterator querySimpleFtsIt(String query,
-            String startingPath, Filter filter, int pageSize)
-            throws ClientException {
-        DocsQueryProviderDef def = new DocsQueryProviderDef(
-                DocsQueryProviderDef.DefType.TYPE_QUERY_FTS);
-        def.setQuery(query);
-        def.setStartingPath(startingPath);
-        return new DocumentModelIteratorImpl(this, pageSize, def, null, BROWSE,
-                filter);
     }
 
     @Override
@@ -1811,7 +1653,8 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             if (sourceDoc != null) {
                 DocumentModel sourceDocModel = readModel(sourceDoc);
                 if (sourceDocModel != null) {
-                    options.put("comment", versionLabel); // to be used by audit
+                    options.put("comment", versionLabel); // to be used by
+                                                          // audit
                     // service
                     notifyEvent(DocumentEventTypes.VERSION_REMOVED,
                             sourceDocModel, options, null, null, false, false);
@@ -1889,11 +1732,19 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             checkPermission(doc, WRITE_PROPERTIES);
 
             Map<String, Serializable> options = getContextMapEventInfo(docModel);
+            options.put(CoreEventConstants.PREVIOUS_DOCUMENT_MODEL,
+                    readModel(doc));
 
             if (!docModel.isImmutable()) {
                 // regular event, last chance to modify docModel
+                String name = docModel.getName();
                 notifyEvent(DocumentEventTypes.BEFORE_DOC_UPDATE, docModel,
                         options, null, null, true, true);
+                // did the event change the name?
+                if (!name.equals(docModel.getName())) {
+                    doc = getSession().move(doc, doc.getParent(),
+                            docModel.getName());
+                }
             }
 
             VersioningOption versioningOption = (VersioningOption) docModel.getContextData(VersioningService.VERSIONING_OPTION);
@@ -1906,7 +1757,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
                     VersioningDocument.CREATE_SNAPSHOT_ON_SAVE_KEY));
             docModel.putContextData(ScopeType.REQUEST,
                     VersioningDocument.CREATE_SNAPSHOT_ON_SAVE_KEY, null);
-            boolean dirty = isDirty(docModel);
+            boolean dirty = docModel.isDirty();
             if (versioningOption == null && snapshot && dirty) {
                 String key = String.valueOf(docModel.getContextData(
                         ScopeType.REQUEST,
@@ -1958,21 +1809,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         } catch (DocumentException e) {
             throw new ClientException(e);
         }
-    }
-
-    /**
-     * Checks if the document has actual data to write (dirty parts).
-     * <p>
-     * Used to avoid doing an auto-checkout if there's nothing to update.
-     */
-    protected boolean isDirty(DocumentModel doc) throws ClientException {
-        // get loaded data models
-        for (DocumentPart part : doc.getParts()) {
-            if (part.isDirty()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
@@ -2290,16 +2126,24 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             DocumentRef checkedInVersionRef, Map<String, Serializable> options,
             String checkinComment) throws ClientException {
         String label = getVersioningService().getVersionLabel(docModel);
-        if (options == null) {
-            options = new HashMap<String, Serializable>();
+        Map<String, Serializable> props = new HashMap<String, Serializable>();
+        if (options != null) {
+            props.putAll(options);
         }
-        options.put("versionLabel", label);
-        options.put("checkInComment", checkinComment);
-        options.put("checkedInVersionRef", checkedInVersionRef);
+        props.put("versionLabel", label);
+        props.put("checkInComment", checkinComment);
+        props.put("checkedInVersionRef", checkedInVersionRef);
+        if (checkinComment == null) {
+            // check if there's a comment already in options
+            Object optionsComment = options.get("comment");
+            if (optionsComment instanceof String) {
+                checkinComment = (String) optionsComment;
+            }
+        }
         String comment = checkinComment == null ? label : label + ' '
                 + checkinComment;
-        options.put("comment", comment); // compat, used in audit
-        notifyEvent(DocumentEventTypes.DOCUMENT_CHECKEDIN, docModel, options,
+        props.put("comment", comment); // compat, used in audit
+        notifyEvent(DocumentEventTypes.DOCUMENT_CHECKEDIN, docModel, props,
                 null, null, true, false);
     }
 
@@ -2466,71 +2310,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         }
     }
 
-    @Override
-    @Deprecated
-    public DocumentModel createProxy(DocumentRef parentRef, DocumentRef docRef,
-            VersionModel version, boolean overwriteExistingProxy)
-            throws ClientException {
-        try {
-            Document doc = resolveReference(docRef);
-            Document sec = resolveReference(parentRef);
-            checkPermission(doc, READ);
-            checkPermission(sec, ADD_CHILDREN);
-
-            DocumentModel proxyModel = null;
-            Map<String, Serializable> options = new HashMap<String, Serializable>();
-            String vlabel = version.getLabel();
-
-            if (overwriteExistingProxy) {
-                Document target = getSession().getVersion(doc.getUUID(),
-                        version);
-                if (target == null) {
-                    throw new ClientException("Document " + docRef
-                            + " has no version " + vlabel);
-                }
-                proxyModel = updateExistingProxies(doc, sec, target);
-                // proxyModel is null is update fails
-                if (proxyModel != null) {
-                    // notify for proxy updates
-                    notifyEvent(DocumentEventTypes.DOCUMENT_PROXY_UPDATED,
-                            proxyModel, options, null, null, true, false);
-                } else {
-                    List<String> removedProxyIds = Collections.emptyList();
-                    removedProxyIds = removeExistingProxies(doc, sec);
-                    options.put(CoreEventConstants.REPLACED_PROXY_IDS,
-                            (Serializable) removedProxyIds);
-                }
-            }
-
-            if (proxyModel == null) {
-                // create the new proxy
-                Document proxy = getSession().createProxyForVersion(sec, doc,
-                        vlabel);
-                log.debug("Created proxy for version " + vlabel
-                        + " of the document " + doc.getPath());
-                // notify for reindexing
-                proxyModel = readModel(proxy);
-
-                // notify for document creation (proxy)
-                notifyEvent(DocumentEventTypes.DOCUMENT_CREATED, proxyModel,
-                        options, null, null, true, false);
-            }
-
-            notifyEvent(DocumentEventTypes.DOCUMENT_PROXY_PUBLISHED,
-                    proxyModel, options, null, null, true, false);
-
-            DocumentModel sectionModel = readModel(sec);
-            notifyEvent(DocumentEventTypes.SECTION_CONTENT_PUBLISHED,
-                    sectionModel, options, null, null, true, false);
-
-            return proxyModel;
-
-        } catch (DocumentException e) {
-            throw new ClientException("Failed to create proxy for doc "
-                    + docRef + " , version: " + version.getLabel(), e);
-        }
-    }
-
     /**
      * Remove proxies for the same base document in the folder. doc may be a
      * normal document or a proxy.
@@ -2548,8 +2327,8 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     }
 
     /**
-     * Update the proxy for doc in the given section to point to the new target.
-     * Do nothing if there are several proxies.
+     * Update the proxy for doc in the given section to point to the new
+     * target. Do nothing if there are several proxies.
      *
      * @return the proxy if it was updated, or {@code null} if none or several
      *         were found
@@ -2635,21 +2414,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     }
 
     @Override
-    @Deprecated
-    public DataModel getDataModel(DocumentRef docRef, String schema)
-            throws ClientException {
-        try {
-            Document doc = resolveReference(docRef);
-            checkPermission(doc, READ);
-            Schema docSchema = doc.getType().getSchema(schema);
-            return DocumentModelFactory.createDataModel(doc, docSchema);
-        } catch (DocumentException e) {
-            throw new ClientException("Failed to get data model for " + docRef
-                    + ':' + schema, e);
-        }
-    }
-
-    @Override
     public DataModel getDataModel(DocumentRef docRef, Schema schema)
             throws ClientException {
         try {
@@ -2662,9 +2426,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         }
     }
 
-    @Override
-    @Deprecated
-    public Object getDataModelField(DocumentRef docRef, String schema,
+    protected Object getDataModelField(DocumentRef docRef, String schema,
             String field) throws ClientException {
         try {
             Document doc = resolveReference(docRef);
@@ -2687,35 +2449,6 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         } catch (DocumentException e) {
             throw new ClientException("Failed to get data model field "
                     + schema + ':' + field, e);
-        }
-    }
-
-    @Override
-    @Deprecated
-    public Object[] getDataModelFields(DocumentRef docRef, String schema,
-            String[] fields) throws ClientException {
-        try {
-            Document doc = resolveReference(docRef);
-            checkPermission(doc, READ);
-            Schema docSchema = doc.getType().getSchema(schema);
-            String prefix = docSchema.getNamespace().prefix;
-            if (prefix != null && prefix.length() > 0) {
-                prefix += ':';
-            }
-            // prefix is not used for the moment
-            // else {
-            // prefix = null;
-            // }
-            Object[] values = new Object[fields.length];
-            for (int i = 0; i < fields.length; i++) {
-                if (prefix != null) {
-                    values[i] = doc.getPropertyValue(fields[i]);
-                }
-            }
-            return values;
-        } catch (DocumentException e) {
-            throw new ClientException("Failed to check out document " + docRef,
-                    e);
         }
     }
 
@@ -2851,6 +2584,21 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
     }
 
     @Override
+    public void reinitLifeCycleState(DocumentRef docRef) throws ClientException {
+        try {
+            Document doc = resolveReference(docRef);
+            checkPermission(doc, WRITE_LIFE_CYCLE);
+            LifeCycleService service = NXCore.getLifeCycleService();
+            service.reinitLifeCycle(doc);
+        } catch (DocumentException e) {
+            throw new ClientException("Failed to get content data " + docRef, e);
+        } catch (LifeCycleException e) {
+            throw new ClientException("Failed to reinit life cycle " + docRef,
+                    e);
+        }
+    }
+
+    @Override
     public Object[] getDataModelsField(DocumentRef[] docRefs, String schema,
             String field) throws ClientException {
 
@@ -2909,10 +2657,10 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             return null;
         }
         // return deprecated format, like "someuser:Nov 29, 2010"
-        return lock.getOwner()
-                + ':'
-                + DateFormat.getDateInstance(DateFormat.MEDIUM).format(
+        String lockCreationDate = (lock.getCreated() == null) ? null
+                : DateFormat.getDateInstance(DateFormat.MEDIUM).format(
                         new Date(lock.getCreated().getTimeInMillis()));
+        return lock.getOwner() + ':' + lockCreationDate;
     }
 
     @Override
@@ -3071,7 +2819,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
             Map<String, Serializable> options = new HashMap<String, Serializable>();
             DocumentModel proxy = null;
             Document target;
-            if (docModel.isProxy()) {
+            if (docModel.isProxy() || docModel.isVersion()) {
                 if (overwriteExistingProxy) {
                     // remove previous
                     List<String> removedProxyIds = removeExistingProxies(doc,
@@ -3139,7 +2887,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         if (doc == null) {
             throw new ClientException("getSuperSpace: document is null");
         }
-        if (doc.hasFacet("SuperSpace")) {
+        if (doc.hasFacet(FacetNames.SUPER_SPACE)) {
             return doc;
         } else {
 
@@ -3385,8 +3133,7 @@ public abstract class AbstractSession implements CoreSession, OperationHandler,
         if (doc != null) {
             DocumentModel docModel = readModel(doc);
             loadDataModelsForFacet(docModel, doc, facet);
-            // detach the DocumentModel
-            ((DocumentModelImpl) docModel).detach(false);
+            docModel.detach(false);
             return docModel.getAdapter(adapterClass);
         }
         return null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -20,7 +20,6 @@ import java.util.List;
 
 import javax.mail.BodyPart;
 import javax.mail.internet.MimeMultipart;
-import javax.mail.util.SharedFileInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.WebApplicationException;
@@ -32,10 +31,10 @@ import javax.ws.rs.ext.Provider;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.automation.core.util.BlobList;
 import org.eclipse.ecr.automation.server.jaxrs.ExceptionHandler;
 import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
-import org.eclipse.ecr.common.utils.FileUtils;
 import org.eclipse.ecr.core.api.Blob;
 import org.eclipse.ecr.core.api.impl.blob.FileBlob;
 import org.eclipse.ecr.web.jaxrs.context.RequestCleanupHandler;

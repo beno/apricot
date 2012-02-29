@@ -8,7 +8,6 @@ Export-Package: org.eclipse.ecr.opencmis.impl.client,
  org.eclipse.ecr.opencmis.impl.server,
  org.eclipse.ecr.opencmis.impl.util
 Bundle-ActivationPolicy: lazy
-Eclipse-ExtensibleAPI: true
 Nuxeo-Component: OSGI-INF/opencmis-contrib.xml,
  OSGI-INF/cmis-querymaker-contrib.xml
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
@@ -34,8 +33,9 @@ Import-Package: javax.resource,
  org.apache.chemistry.opencmis.commons.spi,
  org.apache.chemistry.opencmis.server.support,
  org.apache.chemistry.opencmis.server.support.query,
+ org.apache.commons.io;version="2.0.1",
+ org.apache.commons.lang;version="2.4.0",
  org.apache.commons.logging,
- org.eclipse.ecr.audit.api,
  org.eclipse.ecr.common.utils,
  org.eclipse.ecr.core,
  org.eclipse.ecr.core.api,
@@ -54,8 +54,10 @@ Import-Package: javax.resource,
  org.eclipse.ecr.core.schema.types.primitives,
  org.eclipse.ecr.core.storage,
  org.eclipse.ecr.core.storage.sql,
+ org.eclipse.ecr.core.storage.sql.coremodel,
  org.eclipse.ecr.core.storage.sql.jdbc,
  org.eclipse.ecr.core.storage.sql.jdbc.db,
  org.eclipse.ecr.core.storage.sql.jdbc.dialect,
+ org.eclipse.ecr.platform.audit.api,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.model

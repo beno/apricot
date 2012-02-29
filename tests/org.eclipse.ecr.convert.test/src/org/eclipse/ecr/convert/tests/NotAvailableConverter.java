@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,10 +18,10 @@ import java.io.Serializable;
 import java.util.Map;
 
 import org.eclipse.ecr.core.api.blobholder.BlobHolder;
-import org.eclipse.ecr.convert.api.ConversionException;
-import org.eclipse.ecr.convert.api.ConverterCheckResult;
-import org.eclipse.ecr.convert.extension.ConverterDescriptor;
-import org.eclipse.ecr.convert.extension.ExternalConverter;
+import org.eclipse.ecr.core.convert.api.ConversionException;
+import org.eclipse.ecr.core.convert.api.ConverterCheckResult;
+import org.eclipse.ecr.core.convert.extension.ConverterDescriptor;
+import org.eclipse.ecr.core.convert.extension.ExternalConverter;
 
 public class NotAvailableConverter implements ExternalConverter {
 

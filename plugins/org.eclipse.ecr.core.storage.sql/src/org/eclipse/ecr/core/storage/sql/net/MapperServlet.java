@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -36,9 +36,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.storage.sql.InvalidationsQueue;
 import org.eclipse.ecr.core.storage.sql.Mapper;
+import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
 import org.eclipse.ecr.core.storage.sql.Repository;
 import org.eclipse.ecr.core.storage.sql.RepositoryResolver;
-import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
 
 /**
  * Servlet receiving remote {@link MapperClient} requests and sending them to an

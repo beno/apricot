@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,6 +11,8 @@
  */
 package org.eclipse.ecr.opencmis.impl.client;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,17 +28,22 @@ import org.apache.chemistry.opencmis.client.api.ObjectType;
 import org.apache.chemistry.opencmis.client.api.OperationContext;
 import org.apache.chemistry.opencmis.client.api.Policy;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
+import org.apache.chemistry.opencmis.client.api.QueryStatement;
 import org.apache.chemistry.opencmis.client.api.Relationship;
 import org.apache.chemistry.opencmis.client.api.Session;
 import org.apache.chemistry.opencmis.client.api.Tree;
 import org.apache.chemistry.opencmis.client.runtime.ObjectIdImpl;
 import org.apache.chemistry.opencmis.client.runtime.OperationContextImpl;
-import org.apache.chemistry.opencmis.client.runtime.util.EmptyItemIterable;
+import org.apache.chemistry.opencmis.client.runtime.QueryResultImpl;
+import org.apache.chemistry.opencmis.client.runtime.QueryStatementImpl;
+import org.apache.chemistry.opencmis.client.runtime.util.AbstractPageFetcher;
+import org.apache.chemistry.opencmis.client.runtime.util.CollectionIterable;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.data.Ace;
 import org.apache.chemistry.opencmis.commons.data.Acl;
 import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
+import org.apache.chemistry.opencmis.commons.data.ObjectList;
 import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
@@ -60,6 +67,8 @@ import org.eclipse.ecr.opencmis.impl.server.NuxeoRepository;
  * {@link CoreSession}.
  */
 public class NuxeoSession implements Session {
+
+    private static final long serialVersionUID = 1L;
 
     public static final OperationContext DEFAULT_CONTEXT = new OperationContextImpl(
             null, false, true, false, IncludeRelationships.NONE, null, true,
@@ -194,8 +203,7 @@ public class NuxeoSession implements Session {
 
     @Override
     public OperationContext createOperationContext() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException();
+        return new OperationContextImpl();
     }
 
     @Override
@@ -291,6 +299,11 @@ public class NuxeoSession implements Session {
         return getObject(objectId, getDefaultContext());
     }
 
+    @Override
+    public CmisObject getObject(String objectId) {
+        return getObject(objectId, getDefaultContext());
+    }
+
     /** Gets a CMIS object given a Nuxeo {@link DocumentModel}. */
     public CmisObject getObject(DocumentModel doc, OperationContext context) {
         ObjectData data = new NuxeoObjectData(service, doc, context);
@@ -299,14 +312,22 @@ public class NuxeoSession implements Session {
 
     @Override
     public CmisObject getObject(ObjectId objectId, OperationContext context) {
-        if (objectId == null || objectId.getId() == null) {
-            throw new CmisInvalidArgumentException("Missing object or ID");
+        if (objectId == null) {
+            throw new CmisInvalidArgumentException("Missing object ID");
+        }
+        return getObject(objectId.getId(), context);
+    }
+
+    @Override
+    public CmisObject getObject(String objectId, OperationContext context) {
+        if (objectId == null) {
+            throw new CmisInvalidArgumentException("Missing object ID");
         }
         if (context == null) {
             throw new CmisInvalidArgumentException("Missing operation context");
         }
-        NuxeoObjectData data = service.getObject(repositoryId,
-                objectId.getId(), context.getFilterString(),
+        NuxeoObjectData data = service.getObject(repositoryId, objectId,
+                context.getFilterString(),
                 Boolean.valueOf(context.isIncludeAllowableActions()),
                 context.getIncludeRelationships(),
                 context.getRenditionFilterString(),
@@ -388,18 +409,82 @@ public class NuxeoSession implements Session {
     }
 
     @Override
-    public ItemIterable<QueryResult> query(String statement,
+    public ItemIterable<QueryResult> query(final String statement,
+            final boolean searchAllVersions, final OperationContext context) {
+        AbstractPageFetcher<QueryResult> pageFetcher = new AbstractPageFetcher<QueryResult>(
+                context.getMaxItemsPerPage()) {
+            @Override
+            protected Page<QueryResult> fetchPage(long skipCount) {
+                ObjectList results = service.query(repositoryId, statement,
+                        Boolean.valueOf(searchAllVersions),
+                        Boolean.valueOf(context.isIncludeAllowableActions()),
+                        context.getIncludeRelationships(),
+                        context.getRenditionFilterString(),
+                        BigInteger.valueOf(this.maxNumItems),
+                        BigInteger.valueOf(skipCount), null);
+                // convert objects
+                List<QueryResult> page = new ArrayList<QueryResult>();
+                if (results.getObjects() != null) {
+                    for (ObjectData data : results.getObjects()) {
+                        page.add(new QueryResultImpl(NuxeoSession.this, data));
+                    }
+                }
+                return new Page<QueryResult>(page, results.getNumItems(),
+                        results.hasMoreItems());
+            }
+        };
+        return new CollectionIterable<QueryResult>(pageFetcher);
+    }
+
+    public ItemIterable<CmisObject> queryObjects(String typeId, String where,
             boolean searchAllVersions, OperationContext context) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ItemIterable<Relationship> getRelationships(ObjectId objectId,
-            boolean includeSubRelationshipTypes,
-            RelationshipDirection relationshipDirection, ObjectType type,
-            OperationContext context) {
-        return EmptyItemIterable.instance();
+    public QueryStatement createQueryStatement(String statement) {
+        return new QueryStatementImpl(this, statement);
+    }
+
+    @Override
+    public ItemIterable<Relationship> getRelationships(final ObjectId objectId,
+            final boolean includeSubRelationshipTypes,
+            final RelationshipDirection relationshipDirection,
+            final ObjectType type, final OperationContext context) {
+        final String typeId = type == null ? null : type.getId();
+        AbstractPageFetcher<Relationship> pageFetcher = new AbstractPageFetcher<Relationship>(
+                context.getMaxItemsPerPage()) {
+            @Override
+            protected Page<Relationship> fetchPage(long skipCount) {
+                ObjectList relations = service.getObjectRelationships(
+                        repositoryId, objectId.getId(),
+                        Boolean.valueOf(includeSubRelationshipTypes),
+                        relationshipDirection, typeId, null, null,
+                        BigInteger.valueOf(this.maxNumItems),
+                        BigInteger.valueOf(skipCount), null);
+                // convert objects
+                List<Relationship> page = new ArrayList<Relationship>();
+                if (relations.getObjects() != null) {
+                    for (ObjectData data : relations.getObjects()) {
+                        CmisObject ob;
+                        if (data instanceof NuxeoObjectData) {
+                            ob = objectFactory.convertObject(data, context);
+                        } else {
+                            ob = getObject(data.getId(), context);
+                        }
+                        if (!(ob instanceof Relationship)) {
+                            // should not happen...
+                            continue;
+                        }
+                        page.add((Relationship) ob);
+                    }
+                }
+                return new Page<Relationship>(page, relations.getNumItems(),
+                        relations.hasMoreItems());
+            }
+        };
+        return new CollectionIterable<Relationship>(pageFetcher);
     }
 
     @Override
@@ -421,6 +506,14 @@ public class NuxeoSession implements Session {
     @Override
     public void removePolicy(ObjectId objectId, ObjectId... policyIds) {
         throw new CmisNotSupportedException();
+    }
+
+    @Override
+    public void removeObjectFromCache(ObjectId objectId) {
+    }
+
+    @Override
+    public void removeObjectFromCache(String objectId) {
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -51,6 +51,13 @@ public final class CoreEventConstants {
     public static final String REORDERED_CHILD = "reorderedChild";
 
     public static final String REPLACED_PROXY_IDS = "replacedProxyRefs";
+
+    /**
+     * Passed with beforeDocumentModification and documentModified events to
+     * hold the state that is about to be / has been overwritten by the
+     * saveDocument.
+     */
+    public static final String PREVIOUS_DOCUMENT_MODEL = "previousDocumentModel";
 
     // Constant utility class
     private CoreEventConstants() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -23,11 +23,11 @@ import javax.servlet.http.HttpSessionBindingListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.api.CoreSession;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.session.CoreSessionProvider;
 import org.eclipse.ecr.web.jaxrs.session.SessionFactory;
 import org.eclipse.ecr.web.jaxrs.session.SessionRef;
 import org.eclipse.ecr.web.jaxrs.session.impl.PerSessionCoreProvider.Ref;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>

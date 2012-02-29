@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,13 +46,14 @@ import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.FieldDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.FulltextIndexDescriptor;
 import org.eclipse.ecr.core.storage.sql.RowMapper.IdWithTypes;
+import org.eclipse.ecr.core.storage.sql.jdbc.SQLInfo;
 
 /**
  * The {@link Model} is the link between high-level types and SQL-level objects
  * (entity tables, collections). It defines all policies relating to the choice
- * of structure (what schema are grouped together in for optimization) and names
- * in the SQL database (table names, column names), and to what entity names
- * (type name, field name) they correspond.
+ * of structure (what schema are grouped together in for optimization) and
+ * names in the SQL database (table names, column names), and to what entity
+ * names (type name, field name) they correspond.
  * <p>
  * A Nuxeo schema or type is mapped to a SQL-level table. Several types can be
  * aggregated in the same table. In theory, a type could even be split into
@@ -62,6 +64,9 @@ import org.eclipse.ecr.core.storage.sql.RowMapper.IdWithTypes;
 public class Model {
 
     private static final Log log = LogFactory.getLog(Model.class);
+
+    // change to have deterministic pseudo-UUID generation for debugging
+    private static final boolean DEBUG_UUIDS = false;
 
     public static final String ROOT_TYPE = "Root";
 
@@ -213,7 +218,8 @@ public class Model {
 
     public static final String LOCK_CREATED_KEY = "created";
 
-    public static final String FULLTEXT_DEFAULT_INDEX = "default"; // not config
+    public static final String FULLTEXT_DEFAULT_INDEX = "default"; // not
+                                                                   // config
 
     public static final String FULLTEXT_TABLE_NAME = "fulltext";
 
@@ -246,7 +252,8 @@ public class Model {
      * Special (non-schema-based) simple fragments present in all types.
      * {@link #FULLTEXT_TABLE_NAME} is added to it if not disabled.
      */
-    public static final List<String> COMMON_SIMPLE_FRAGMENTS = Collections.singletonList(MISC_TABLE_NAME);
+    public static final List<String> COMMON_SIMPLE_FRAGMENTS = Arrays.asList(
+            VERSION_TABLE_NAME, MISC_TABLE_NAME);
 
     /** Special (non-schema-based) collection fragments present in all types. */
     public static final String[] COMMON_COLLECTION_FRAGMENTS = { ACL_TABLE_NAME };
@@ -257,7 +264,7 @@ public class Model {
 
     protected final RepositoryDescriptor repositoryDescriptor;
 
-    // private final AtomicLong temporaryIdCounter;
+    private final AtomicLong temporaryIdCounter = new AtomicLong(0);
 
     /** Per-doctype list of schemas. */
     private final Map<String, Set<String>> documentTypesSchemas;
@@ -292,11 +299,17 @@ public class Model {
     /** Per-schema set of path to simple fulltext properties. */
     private final Map<String, Set<String>> schemaSimpleTextPaths;
 
-    /** Map of path (from all doc types) to property info. */
+    /**
+     * Map of path (from all doc types) to property info. Value is NONE for
+     * valid complex property path prefixes.
+     */
     private final Map<String, ModelProperty> allPathPropertyInfos;
 
     /** Per-table info about fragments keys type. */
     private final Map<String, Map<String, ColumnType>> fragmentsKeys;
+
+    /** All binary columns, fragment name -> keys. */
+    private final Map<String, List<String>> binaryPropertyInfos;
 
     /** Maps collection table names to their type. */
     private final Map<String, PropertyType> collectionTables;
@@ -309,9 +322,6 @@ public class Model {
      * a fragment.
      */
     private final Map<String, String> schemaFragment;
-
-    /** Maps document type or schema to simple fragments. */
-    protected final Map<String, Set<String>> typeSimpleFragments;
 
     /** Maps schema to collection fragments. */
     protected final Map<String, Set<String>> typeCollectionFragments;
@@ -344,7 +354,6 @@ public class Model {
     public Model(ModelSetup modelSetup) throws StorageException {
         repositoryDescriptor = modelSetup.repositoryDescriptor;
         materializeFulltextSyntheticColumn = modelSetup.materializeFulltextSyntheticColumn;
-        // temporaryIdCounter = new AtomicLong(0);
 
         documentTypesSchemas = new HashMap<String, Set<String>>();
         mixinsDocumentTypes = new HashMap<String, Set<String>>();
@@ -360,6 +369,7 @@ public class Model {
         allPathPropertyInfos = new HashMap<String, ModelProperty>();
         fulltextInfo = new ModelFulltext();
         fragmentsKeys = new HashMap<String, Map<String, ColumnType>>();
+        binaryPropertyInfos = new HashMap<String, List<String>>();
 
         collectionTables = new HashMap<String, PropertyType>();
         collectionOrderBy = new HashMap<String, String>();
@@ -367,7 +377,6 @@ public class Model {
         schemaFragment = new HashMap<String, String>();
         typeFragments = new HashMap<String, Set<String>>();
         mixinFragments = new HashMap<String, Set<String>>();
-        typeSimpleFragments = new HashMap<String, Set<String>>();
         typeCollectionFragments = new HashMap<String, Set<String>>();
         typePrefetchedFragments = new HashMap<String, Set<String>>();
         fieldFragments = new HashMap<String, Set<String>>();
@@ -408,13 +417,16 @@ public class Model {
      * @return a new id, which may be temporary
      */
     public Serializable generateNewId() {
-        return UUID.randomUUID().toString();
-        // return "UUID_" + temporaryIdCounter.incrementAndGet();
-        // return "T" + temporaryIdCounter.incrementAndGet();
+        if (DEBUG_UUIDS) {
+            return "UUID_" + temporaryIdCounter.incrementAndGet();
+        } else {
+            return UUID.randomUUID().toString();
+        }
     }
 
     /**
-     * Fixup an id that has been turned into a string for high-level Nuxeo APIs.
+     * Fixup an id that has been turned into a string for high-level Nuxeo
+     * APIs.
      *
      * @param id the id to fixup
      * @return the fixed up id
@@ -472,6 +484,16 @@ public class Model {
                         fragmentKeys = new LinkedHashMap<String, ColumnType>());
             }
             fragmentKeys.put(fragmentKey, type);
+
+            // record binary columns for the GC
+            if (type.spec == ColumnSpec.BLOBID) {
+                List<String> keys = binaryPropertyInfos.get(fragmentName);
+                if (keys == null) {
+                    binaryPropertyInfos.put(fragmentName,
+                            keys = new ArrayList<String>(1));
+                }
+                keys.add(fragmentKey);
+            }
         }
 
         // system properties
@@ -567,11 +589,25 @@ public class Model {
         Map<String, ModelProperty> propertyInfoByPath = new HashMap<String, ModelProperty>();
         inferTypePropertyPaths(schema, "", propertyInfoByPath, null);
         schemaPathPropertyInfos.put(schemaName, propertyInfoByPath);
-        allPathPropertyInfos.putAll(propertyInfoByPath);
+        // allow schema-as-prefix if schemas has no prefix, if non-complex
+        Map<String, ModelProperty> alsoWithPrefixes = new HashMap<String, ModelProperty>(
+                propertyInfoByPath);
+        if (schema.getNamespace().prefix.isEmpty()) {
+            for (Entry<String, ModelProperty> e : propertyInfoByPath.entrySet()) {
+                String key = e.getKey();
+                if (!key.contains("/")) {
+                    alsoWithPrefixes.put(schemaName + ':' + key, e.getValue());
+                }
+            }
+        }
+        allPathPropertyInfos.putAll(alsoWithPrefixes);
         // those for simpletext properties
         Set<String> simplePaths = new HashSet<String>();
         for (Entry<String, ModelProperty> entry : propertyInfoByPath.entrySet()) {
             ModelProperty pi = entry.getValue();
+            if (pi == ModelProperty.NONE) {
+                continue;
+            }
             if (pi.propertyType != PropertyType.STRING
                     && pi.propertyType != PropertyType.ARRAY_STRING) {
                 continue;
@@ -597,11 +633,12 @@ public class Model {
         done.add(typeName);
 
         for (Field field : complexType.getFields()) {
-            String propertyName = field.getName().getPrefixedName(); // TODO-prefixed?
+            String propertyName = field.getName().getPrefixedName();
             String path = prefix + propertyName;
             Type fieldType = field.getType();
             if (fieldType.isComplexType()) {
                 // complex type
+                propertyInfoByPath.put(path, ModelProperty.NONE);
                 inferTypePropertyPaths((ComplexType) fieldType, path + '/',
                         propertyInfoByPath, done);
                 continue;
@@ -609,17 +646,21 @@ public class Model {
                 Type listFieldType = ((ListType) fieldType).getFieldType();
                 if (!listFieldType.isSimpleType()) {
                     // complex list
+                    propertyInfoByPath.put(path + "/*", ModelProperty.NONE);
                     inferTypePropertyPaths((ComplexType) listFieldType, path
                             + "/*/", propertyInfoByPath, done);
                     continue;
                 }
                 // else array
-            } else {
-                // else primitive type
             }
+            // else primitive type
             ModelProperty pi = schemaPropertyInfos.get(typeName).get(
                     propertyName);
             propertyInfoByPath.put(path, pi);
+            if (pi.propertyType.isArray()) {
+                // also add the propname/* path for array elements
+                propertyInfoByPath.put(path + "/*", pi);
+            }
         }
         done.remove(typeName);
     }
@@ -673,6 +714,13 @@ public class Model {
                 // no fields specified and no field type -> all of them
                 fulltextInfo.indexesAllSimple.add(name);
                 fulltextInfo.indexesAllBinary.add(name);
+            }
+
+            if (repositoryDescriptor.fulltextExcludedTypes != null) {
+                fulltextInfo.excludedTypes.addAll(repositoryDescriptor.fulltextExcludedTypes);
+            }
+            if (repositoryDescriptor.fulltextIncludedTypes != null) {
+                fulltextInfo.includedTypes.addAll(repositoryDescriptor.fulltextIncludedTypes);
             }
 
             for (Set<String> fields : Arrays.asList(desc.fields,
@@ -747,6 +795,11 @@ public class Model {
 
     public ModelProperty getPropertyInfo(String propertyName) {
         return mergedPropertyInfos.get(propertyName);
+    }
+
+    /** returns {@link ModelProperty#NONE} if legal prefix */
+    public ModelProperty getPathPropertyInfo(String xpath) {
+        return allPathPropertyInfos.get(xpath);
     }
 
     public Set<String> getPropertyInfoNames() {
@@ -866,17 +919,8 @@ public class Model {
         return fragmentsKeys.get(fragmentName);
     }
 
-    protected void addTypeSimpleFragment(String typeName, String fragmentName) {
-        Set<String> fragments = typeSimpleFragments.get(typeName);
-        if (fragments == null) {
-            fragments = new HashSet<String>();
-            typeSimpleFragments.put(typeName, fragments);
-        }
-        // fragmentName may be null, to just create the entry
-        if (fragmentName != null) {
-            fragments.add(fragmentName);
-        }
-        addTypeFragment(typeName, fragmentName);
+    public Map<String, List<String>> getBinaryPropertyInfos() {
+        return binaryPropertyInfos;
     }
 
     protected void addTypeCollectionFragment(String typeName,
@@ -928,10 +972,6 @@ public class Model {
         fragments.add(fragmentName);
     }
 
-    public Set<String> getTypeSimpleFragments(String typeName) {
-        return typeSimpleFragments.get(typeName);
-    }
-
     public Set<String> getTypeFragments(String typeName) {
         return typeFragments.get(typeName);
     }
@@ -940,8 +980,8 @@ public class Model {
         return mixinFragments.get(mixin);
     }
 
-    protected Set<String> getFieldFragments(Field field) {
-        return fieldFragments.get(field.getName().toString());
+    protected Set<String> getFieldFragments(String fieldName) {
+        return fieldFragments.get(fieldName);
     }
 
     public Set<String> getTypePrefetchedFragments(String typeName) {
@@ -987,22 +1027,7 @@ public class Model {
         for (Entry<Serializable, IdWithTypes> e : idToTypes.entrySet()) {
             Serializable id = e.getKey();
             IdWithTypes typeInfo = e.getValue();
-            Set<String> fragmentNames = new HashSet<String>();
-            Set<String> tf = getTypeFragments(typeInfo.primaryType);
-            if (tf != null) {
-                // null if unknown type left in the database
-                fragmentNames.addAll(tf);
-            }
-            String[] mixins = typeInfo.mixinTypes;
-            if (mixins != null) {
-                for (String mixin : mixins) {
-                    Set<String> mf = getMixinFragments(mixin);
-                    if (mf != null) {
-                        fragmentNames.addAll(mf);
-                    }
-                }
-            }
-            for (String fragmentName : fragmentNames) {
+            for (String fragmentName : getTypeFragments(typeInfo)) {
                 Set<Serializable> fragmentIds = allFragmentIds.get(fragmentName);
                 if (fragmentIds == null) {
                     allFragmentIds.put(fragmentName,
@@ -1012,6 +1037,30 @@ public class Model {
             }
         }
         return allFragmentIds;
+    }
+
+    /**
+     * Gets the type fragments for a primary type and mixin types. Hierarchy is
+     * included.
+     */
+    public Set<String> getTypeFragments(IdWithTypes typeInfo) {
+        Set<String> fragmentNames = new HashSet<String>();
+        fragmentNames.add(HIER_TABLE_NAME);
+        Set<String> tf = getTypeFragments(typeInfo.primaryType);
+        if (tf != null) {
+            // null if unknown type left in the database
+            fragmentNames.addAll(tf);
+        }
+        String[] mixins = typeInfo.mixinTypes;
+        if (mixins != null) {
+            for (String mixin : mixins) {
+                Set<String> mf = getMixinFragments(mixin);
+                if (mf != null) {
+                    fragmentNames.addAll(mf);
+                }
+            }
+        }
+        return fragmentNames;
     }
 
     private PropertyType mainIdType() {
@@ -1028,7 +1077,7 @@ public class Model {
                 + repositoryDescriptor.schemaFields);
         for (DocumentType documentType : schemaManager.getDocumentTypes()) {
             String typeName = documentType.getName();
-            addTypeSimpleFragment(typeName, null); // create entry
+            addTypeFragment(typeName, null); // create entry
 
             Set<String> docTypeSchemas = new HashSet<String>();
             for (Schema schema : documentType.getSchemas()) {
@@ -1037,23 +1086,37 @@ public class Model {
                     // TODO log and avoid nulls earlier
                     continue;
                 }
-                docTypeSchemas.add(schema.getName());
-                String fragmentName = initTypeModel(schema);
-                addTypeSimpleFragment(typeName, fragmentName); // may be null
-                // collection fragments too for this schema
-                Set<String> cols = typeCollectionFragments.get(schema.getName());
-                if (cols != null) {
-                    for (String colFrag : cols) {
-                        addTypeCollectionFragment(typeName, colFrag);
+                try {
+                    docTypeSchemas.add(schema.getName());
+                    String fragmentName = initTypeModel(schema);
+                    addTypeFragment(typeName, fragmentName); // may be null
+                    // collection fragments too for this schema
+                    Set<String> cols = typeCollectionFragments.get(schema.getName());
+                    if (cols != null) {
+                        for (String colFrag : cols) {
+                            addTypeCollectionFragment(typeName, colFrag);
+                        }
                     }
+                } catch (Exception e) {
+                    throw new StorageException(String.format(
+                            "Error initializing schema '%s' "
+                                    + "for document type '%s'",
+                            schema.getName(), typeName), e);
                 }
             }
-            documentTypesSchemas.put(typeName, docTypeSchemas);
-            inferTypePropertyInfos(typeName, documentType.getSchemaNames());
-            inferTypePropertyPaths(documentType);
 
-            for (String fragmentName : getCommonSimpleFragments()) {
-                addTypeSimpleFragment(typeName, fragmentName);
+            try {
+                documentTypesSchemas.put(typeName, docTypeSchemas);
+                inferTypePropertyInfos(typeName, documentType.getSchemaNames());
+                inferTypePropertyPaths(documentType);
+            } catch (Exception e) {
+                throw new StorageException(String.format(
+                        "Error initializing schemas for document type '%s'",
+                        typeName), e);
+            }
+
+            for (String fragmentName : getCommonSimpleFragments(typeName)) {
+                addTypeFragment(typeName, fragmentName);
             }
             for (String fragmentName : COMMON_COLLECTION_FRAGMENTS) {
                 addTypeCollectionFragment(typeName, fragmentName);
@@ -1063,9 +1126,10 @@ public class Model {
             PrefetchInfo prefetch = documentType.getPrefetchInfo();
             if (prefetch != null) {
                 Set<String> typeFragments = getTypeFragments(typeName);
-                for (Field field : prefetch.getFields()) {
+                for (String fieldName : prefetch.getFields()) {
                     // prefetch all the relevant fragments
-                    Set<String> fragments = getFieldFragments(field);
+                    // TODO deal with full xpath
+                    Set<String> fragments = getFieldFragments(fieldName);
                     if (fragments != null) {
                         for (String fragment : fragments) {
                             if (typeFragments.contains(fragment)) {
@@ -1074,8 +1138,8 @@ public class Model {
                         }
                     }
                 }
-                for (Schema schema : prefetch.getSchemas()) {
-                    String fragment = schemaFragment.get(schema.getName());
+                for (String schemaName : prefetch.getSchemas()) {
+                    String fragment = schemaFragment.get(schemaName);
                     if (fragment != null) {
                         addTypePrefetchedFragment(typeName, fragment);
                     }
@@ -1148,6 +1212,13 @@ public class Model {
                 mixinSchemas.add(schema.getName());
                 String fragmentName = initTypeModel(schema);
                 addMixinFragment(mixin, fragmentName);
+                // collection fragments too
+                Set<String> cols = typeCollectionFragments.get(schema.getName());
+                if (cols != null) {
+                    for (String colFrag : cols) {
+                        addMixinFragment(mixin, colFrag);
+                    }
+                }
                 inferSchemaPropertyPaths(schema);
             }
             mixinsSchemas.put(mixin, mixinSchemas);
@@ -1157,9 +1228,10 @@ public class Model {
         }
     }
 
-    protected List<String> getCommonSimpleFragments() {
+    protected List<String> getCommonSimpleFragments(String typeName) {
         List<String> fragments = COMMON_SIMPLE_FRAGMENTS;
-        if (!repositoryDescriptor.fulltextDisabled) {
+        if (!repositoryDescriptor.fulltextDisabled
+                && fulltextInfo.isFulltextIndexable(typeName)) {
             fragments = new ArrayList<String>(fragments);
             fragments.add(FULLTEXT_TABLE_NAME);
         }
@@ -1245,7 +1317,7 @@ public class Model {
         addPropertyInfo(PROXY_TYPE, PROXY_VERSIONABLE_PROP, mainIdType(),
                 PROXY_TABLE_NAME, PROXY_VERSIONABLE_KEY, false,
                 StringType.INSTANCE, ColumnType.NODEVAL);
-        addTypeSimpleFragment(PROXY_TYPE, PROXY_TABLE_NAME);
+        addTypeFragment(PROXY_TYPE, PROXY_TABLE_NAME);
     }
 
     /**
@@ -1335,7 +1407,7 @@ public class Model {
                 ComplexType fieldComplexType = (ComplexType) fieldType;
                 String subTypeName = fieldComplexType.getName();
                 String subFragmentName = initTypeModel(fieldComplexType);
-                addTypeSimpleFragment(subTypeName, subFragmentName);
+                addTypeFragment(subTypeName, subFragmentName);
             } else {
                 String propertyName = field.getName().getPrefixedName();
                 if (fieldType.isListType()) {
@@ -1360,7 +1432,8 @@ public class Model {
                                     + "' using column type " + type);
                         }
                         addPropertyInfo(typeName, propertyName, propertyType,
-                                fragmentName, null, false, null, null);
+                                fragmentName, COLL_TABLE_VALUE_KEY, false,
+                                null, type);
 
                         Map<String, ColumnType> keysType = new LinkedHashMap<String, ColumnType>();
                         keysType.put(COLL_TABLE_POS_KEY, ColumnType.INTEGER);
@@ -1375,7 +1448,7 @@ public class Model {
                          * Complex list.
                          */
                         String subFragmentName = initTypeModel((ComplexType) listFieldType);
-                        addTypeSimpleFragment(listFieldType.getName(),
+                        addTypeFragment(listFieldType.getName(),
                                 subFragmentName);
                     }
                 } else {

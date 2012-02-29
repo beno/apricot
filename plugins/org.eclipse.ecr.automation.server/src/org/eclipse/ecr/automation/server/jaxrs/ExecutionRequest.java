@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -22,8 +22,6 @@ import org.eclipse.ecr.automation.OperationParameters;
 import org.eclipse.ecr.automation.OperationType;
 import org.eclipse.ecr.automation.core.scripting.Scripting;
 import org.eclipse.ecr.core.api.CoreSession;
-import org.eclipse.ecr.core.api.IdRef;
-import org.eclipse.ecr.core.api.PathRef;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -35,6 +33,10 @@ public class ExecutionRequest {
     protected RestOperationContext ctx;
 
     protected Map<String, Object> params;
+
+    public ExecutionRequest() {
+        this (null);
+    }
 
     public ExecutionRequest(Object input) {
         ctx = new RestOperationContext();
@@ -50,8 +52,16 @@ public class ExecutionRequest {
         return input;
     }
 
+    public void setContextParam(String key, Object value) {
+        ctx.put(key, value);
+    }
+
     public void setContextParam(String key, String value) {
         ctx.put(key, value);
+    }
+
+    public void setParam(String key, Object jsonObject) {
+        params.put(key, jsonObject);
     }
 
     public void setParam(String key, String value) {
@@ -75,7 +85,8 @@ public class ExecutionRequest {
             CoreSession session) throws Exception {
         ctx.addRequestCleanupHandler(request);
         ctx.setCoreSession(session);
-        ctx.setInput(decodeInput(session, input));
+        ctx.setInput(input);
+        ctx.put("request", request);
         return ctx;
     }
 
@@ -85,23 +96,5 @@ public class ExecutionRequest {
                 params);
         chain.add(oparams);
         return chain;
-    }
-
-    public static Object decodeInput(CoreSession session, Object input)
-            throws Exception {
-        if (input == null) {
-            return null;
-        }
-        if (input instanceof String) {
-            String inputS = input.toString();
-            if (inputS.startsWith("/")) {
-                return session.getDocument(new PathRef(inputS));
-            } else {
-                return session.getDocument(new IdRef(inputS));
-            }
-            // TODO decode documents
-        } else {
-            return input;
-        }
     }
 }

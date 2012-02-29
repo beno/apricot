@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -17,13 +17,13 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.eclipse.ecr.automation.OperationException;
-import org.eclipse.ecr.common.utils.FileUtils;
-import org.eclipse.ecr.runtime.api.Framework;
-import org.eclipse.ecr.runtime.services.resource.ResourceService;
 import org.mvel2.templates.CompiledTemplate;
 import org.mvel2.templates.TemplateCompiler;
 import org.mvel2.templates.TemplateRuntime;
+import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.automation.OperationException;
+import org.eclipse.ecr.runtime.api.Framework;
+import org.eclipse.ecr.runtime.services.resource.ResourceService;
 
 /**
  * MVEL rendering using a simple cache of compiled template.

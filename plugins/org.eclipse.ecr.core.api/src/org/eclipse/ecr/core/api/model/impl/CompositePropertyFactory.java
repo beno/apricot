@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -20,6 +20,7 @@ import java.util.Map;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyFactory;
 import org.eclipse.ecr.core.schema.types.Field;
+import org.eclipse.ecr.core.schema.types.SimpleTypeImpl;
 import org.eclipse.ecr.core.schema.types.Type;
 
 /**
@@ -70,7 +71,9 @@ public class CompositePropertyFactory implements PropertyFactory {
         PropertyFactory factory = factories.get(key);
         if (factory == null) {
             factory = factories.get(type);
-            factories.put(key, factory);
+            if (factory != null) {
+                factories.put(key, factory);
+            }
         }
         return factory;
     }
@@ -78,6 +81,10 @@ public class CompositePropertyFactory implements PropertyFactory {
     @Override
     public Property createProperty(Property parent, Field field, int flags) {
         Type type = field.getType();
+        if (type instanceof SimpleTypeImpl) {
+            // type with constraint
+            type = type.getSuperType();
+        }
         PropertyFactory factory = getFactory(type.getSchemaName(), type.getName());
         if (factory != null ) {
             return factory.createProperty(parent, field, flags);

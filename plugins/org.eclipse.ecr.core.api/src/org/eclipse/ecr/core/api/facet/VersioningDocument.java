@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -36,9 +36,6 @@ public interface VersioningDocument {
     @Deprecated
     String KEY_FOR_INC_OPTION = "VersioningOption";
 
-    @Deprecated
-    String DOCUMENT_WAS_SNAPSHOTTED = "DOCUMENT_WAS_SNAPSHOTTED";
-
     /**
      * Key used in options map to send current versions to versioning listener
      * so it will know what version the document had before restoring.
@@ -71,48 +68,5 @@ public interface VersioningDocument {
      * @return a string, like {@code "2.1"}
      */
     String getVersionLabel();
-
-    /**
-     * @deprecated let {@link VersioningService} do its work
-     */
-    @Deprecated
-    void setMinorVersion(Long value);
-
-    /**
-     * @deprecated let {@link VersioningService} do its work
-     */
-    @Deprecated
-    void setMajorVersion(Long value);
-
-    /**
-     * @deprecated let {@link VersioningService} do its work
-     */
-    @Deprecated
-    void incrementMajor() throws DocumentException;
-
-    /**
-     * @deprecated let {@link VersioningService} do its work
-     */
-    @Deprecated
-    void incrementMinor() throws DocumentException;
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    void refetchDoc() throws DocumentException;
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    void incrementVersions();
-
-    /**
-     * @deprecated unused
-     */
-    @Deprecated
-    String getVersionAsString(int majorDigits, int minorDigits, char sep)
-            throws DocumentException;
 
 }

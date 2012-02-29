@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -223,10 +223,18 @@ public class StandardVersioningService implements ExtendableVersioningService {
             VersioningRuleDescriptor saveOption = versioningRules.get(type);
             if (saveOption != null) {
                 option = saveOption.getOptions().get(lifecycleState);
+                if (option == null) {
+                    // try on any life cycle state
+                    option = saveOption.getOptions().get("*");
+                }
             }
         }
         if (option == null && defaultVersioningRule != null) {
             option = defaultVersioningRule.getOptions().get(lifecycleState);
+            if (option == null) {
+                // try on any life cycle state
+                option = defaultVersioningRule.getOptions().get("*");
+            }
         }
         if (option != null) {
             return option.getVersioningOptionList();
@@ -257,7 +265,7 @@ public class StandardVersioningService implements ExtendableVersioningService {
             Map<String, Serializable> options) throws DocumentException {
         option = validateOption(doc, option);
         if (!doc.isCheckedOut() && isDirty) {
-            doc.checkOut();
+            doCheckOut(doc);
             followTransitionByOption(doc, option);
         }
         // transition follow shouldn't change what postSave options will be

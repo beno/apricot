@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -49,8 +49,8 @@ import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.opencmis.impl.server.NuxeoCmisService;
 import org.eclipse.ecr.opencmis.impl.server.NuxeoObjectData;
-import org.eclipse.ecr.opencmis.impl.server.NuxeoPropertyDataBase;
 import org.eclipse.ecr.opencmis.impl.server.NuxeoPropertyData.NuxeoPropertyDataName;
+import org.eclipse.ecr.opencmis.impl.server.NuxeoPropertyDataBase;
 
 /**
  * Base abstract live local CMIS Object, wrapping a {@link NuxeoSession} and a

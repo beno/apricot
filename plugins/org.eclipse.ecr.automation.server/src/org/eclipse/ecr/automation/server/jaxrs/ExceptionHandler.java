@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -17,6 +17,7 @@ import java.io.StringWriter;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
+import org.eclipse.ecr.automation.ConflictOperationException;
 import org.eclipse.ecr.automation.OperationNotFoundException;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.DocumentSecurityException;
@@ -67,11 +68,16 @@ public class ExceptionHandler {
         return getStatus(cause, 8);
     }
 
+    public static boolean isSecurityError(Throwable t) {
+        return getStatus(t) == 401;
+    }
+
     public static int getStatus(Throwable cause, int depth) {
         if (depth == 0) {
             return 500;
         }
-        if (cause instanceof DocumentSecurityException
+        if ((cause instanceof DocumentSecurityException)
+                || (cause instanceof SecurityException)
                 || "javax.ejb.EJBAccessException".equals(cause.getClass().getName())) {
             return 401;
         } else if (cause instanceof ClientException) {
@@ -84,6 +90,8 @@ public class ExceptionHandler {
             }
         } else if (cause instanceof OperationNotFoundException) {
             return 404;
+        } else if (cause instanceof ConflictOperationException) {
+            return 409;
         }
         Throwable parent = cause.getCause();
         if (parent != null) {
@@ -125,6 +133,11 @@ public class ExceptionHandler {
         cause.printStackTrace(pw);
         pw.flush();
         return writer.toString();
+    }
+
+
+    public Throwable getCause() {
+        return cause;
     }
 
 }

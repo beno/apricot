@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -88,8 +88,6 @@ public class MapperInvoker extends Thread {
         this.eventQueue = eventQueue;
         this.methodCalls = new SynchronousQueue<MethodCall>();
         this.clientInfo = info;
-        start();
-        init();
     }
 
     // called in the main thread
@@ -139,13 +137,13 @@ public class MapperInvoker extends Thread {
 
     protected Object localCall(String methodName, Object[] args)
             throws Exception {
-        if (methodName == INVOKER_INIT) { // == is ok
+        if (INVOKER_INIT.equals(methodName)) {
             session = repository.getConnection();
             mapper = session.getMapper();
             // replace event queue with the client-repo specific one
             ((CachingRowMapper) mapper).setEventQueue(eventQueue);
             return null;
-        } else if (methodName == INVOKER_CLOSE) { // == is ok
+        } else if (INVOKER_CLOSE.equals(methodName)) {
             session.close();
             mapper = null;
             return null;

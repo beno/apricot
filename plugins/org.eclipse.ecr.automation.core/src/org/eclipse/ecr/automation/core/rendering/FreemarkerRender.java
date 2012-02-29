@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,10 +18,10 @@ import java.io.Writer;
 import java.net.URL;
 import java.util.Map;
 
-import org.eclipse.ecr.runtime.api.Framework;
-import org.eclipse.ecr.runtime.services.resource.ResourceService;
 import org.eclipse.ecr.web.rendering.api.ResourceLocator;
 import org.eclipse.ecr.web.rendering.fm.FreemarkerEngine;
+import org.eclipse.ecr.runtime.api.Framework;
+import org.eclipse.ecr.runtime.services.resource.ResourceService;
 
 import freemarker.core.Environment;
 import freemarker.template.Template;

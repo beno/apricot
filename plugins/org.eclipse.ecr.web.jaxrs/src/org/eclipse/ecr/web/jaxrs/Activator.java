@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,8 +12,6 @@
 package org.eclipse.ecr.web.jaxrs;
 
 
-import javax.ws.rs.ext.RuntimeDelegate;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.web.jaxrs.servlet.config.ServletRegistry;
@@ -25,8 +23,6 @@ import org.osgi.service.http.HttpService;
 import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
-
-import com.sun.jersey.server.impl.provider.RuntimeDelegateImpl;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
@@ -50,17 +46,6 @@ public class Activator implements BundleActivator, ServiceTrackerCustomizer {
 
     @Override
     public void start(BundleContext context) throws Exception {
-        // we need to set by hand the runtime delegate to avoid letting ServiceFinder discover the implementation
-        // which is not working in an OSGi environment
-//    	Thread th = Thread.currentThread();
-//    	ClassLoader cl = th.getContextClassLoader();
-//    	th.setContextClassLoader(getClass().getClassLoader());
-//    	try {
-//    		RuntimeDelegate.setInstance(new RuntimeDelegateImpl());
-//    	} finally {
-//    		th.setContextClassLoader(cl);
-//    	}
-
         instance = this;
         this.context = context;
         pkgAdm = context.getServiceReference(PackageAdmin.class.getName());

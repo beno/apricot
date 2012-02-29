@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,10 +27,10 @@ import org.eclipse.ecr.common.utils.XidImpl;
 import org.eclipse.ecr.core.storage.Credentials;
 import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.Mapper;
-import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
-import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 import org.eclipse.ecr.core.storage.sql.Mapper.Identification;
+import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor.ServerDescriptor;
+import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
 
 /**
  * Mapper sending calls to a remote {@link NetServer}.

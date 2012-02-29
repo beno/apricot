@@ -12,7 +12,6 @@ Bundle-Version: 0.5.4.qualifier
 Nuxeo-Component: OSGI-INF/nxdublincore-service.xml
 Bundle-ManifestVersion: 2
 Import-Package: org.apache.commons.logging,
- org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.event,
  org.eclipse.ecr.core.api.impl,

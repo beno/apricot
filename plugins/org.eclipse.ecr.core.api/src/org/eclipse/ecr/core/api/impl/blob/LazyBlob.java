@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -178,6 +178,7 @@ public class LazyBlob extends DefaultStreamBlob implements Serializable {
                 file = new File(TMP_DIR, Long.toHexString(RANDOM.nextLong()));
                 file.deleteOnExit();
                 src.copyTo(file); // persist the content
+                Framework.trackFile(file, this);
                 in = new FileInputStream(file);
             } catch (IOException e) {
                 throw e;

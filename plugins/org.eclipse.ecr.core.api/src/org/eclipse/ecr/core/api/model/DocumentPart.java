@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,9 +13,6 @@
  */
 
 package org.eclipse.ecr.core.api.model;
-
-import java.io.Serializable;
-import java.util.Map;
 
 import org.eclipse.ecr.core.schema.types.Field;
 import org.eclipse.ecr.core.schema.types.Schema;
@@ -38,15 +35,6 @@ public interface DocumentPart extends Property {
     Property createProperty(Property parent, Field field);
 
     Property createProperty(Property parent, Field field, int flags);
-
-    /**
-     * Exports as a map the document values. Only the non phantom properties are exported.
-     *
-     * @return
-     */
-    Map<String, Serializable> exportValues() throws PropertyException;
-
-    void importValues(Map<String, Serializable> values)  throws PropertyException;
 
     PropertyDiff exportDiff() throws PropertyException;
 

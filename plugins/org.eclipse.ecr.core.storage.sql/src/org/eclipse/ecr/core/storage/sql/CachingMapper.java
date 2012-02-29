@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,6 +12,8 @@
 package org.eclipse.ecr.core.storage.sql;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.Set;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
@@ -32,13 +34,14 @@ public class CachingMapper extends CachingRowMapper implements Mapper {
     /**
      * The {@link Mapper} to which operations are delegated.
      */
-    private final Mapper mapper;
+    public final Mapper mapper;
 
-    public CachingMapper(Mapper mapper,
+    public CachingMapper(Model model, Mapper mapper,
             InvalidationsPropagator cachePropagator,
             InvalidationsPropagator eventPropagator,
             InvalidationsQueue repositoryEventQueue) {
-        super(mapper, cachePropagator, eventPropagator, repositoryEventQueue);
+        super(model, mapper, cachePropagator, eventPropagator,
+                repositoryEventQueue);
         this.mapper = mapper;
     }
 
@@ -49,6 +52,7 @@ public class CachingMapper extends CachingRowMapper implements Mapper {
 
     @Override
     public void close() throws StorageException {
+        super.close();
         mapper.close();
     }
 
@@ -75,28 +79,22 @@ public class CachingMapper extends CachingRowMapper implements Mapper {
     }
 
     @Override
-    public Serializable getVersionIdByLabel(Serializable versionSeriesId,
-            String label) throws StorageException {
-        return mapper.getVersionIdByLabel(versionSeriesId, label);
-    }
-
-    @Override
-    public Serializable getLastVersionId(Serializable versionSeriesId)
-            throws StorageException {
-        return mapper.getLastVersionId(versionSeriesId);
-    }
-
-    @Override
-    public PartialList<Serializable> query(String query,
+    public PartialList<Serializable> query(String query, String queryType,
             QueryFilter queryFilter, boolean countTotal)
             throws StorageException {
-        return mapper.query(query, queryFilter, countTotal);
+        return mapper.query(query, queryType, queryFilter, countTotal);
     }
 
     @Override
     public IterableQueryResult queryAndFetch(String query, String queryType,
             QueryFilter queryFilter, Object... params) throws StorageException {
         return mapper.queryAndFetch(query, queryType, queryFilter, params);
+    }
+
+    @Override
+    public Set<Serializable> getAncestorsIds(Collection<Serializable> ids)
+            throws StorageException {
+        return mapper.getAncestorsIds(ids);
     }
 
     @Override
@@ -144,6 +142,11 @@ public class CachingMapper extends CachingRowMapper implements Mapper {
     public Lock removeLock(Serializable id, String owner, boolean force)
             throws StorageException {
         return mapper.removeLock(id, owner, force);
+    }
+
+    @Override
+    public void markReferencedBinaries(BinaryGarbageCollector gc) throws StorageException {
+        mapper.markReferencedBinaries(gc);
     }
 
     @Override

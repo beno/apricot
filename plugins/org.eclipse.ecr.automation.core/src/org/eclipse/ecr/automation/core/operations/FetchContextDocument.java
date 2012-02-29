@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,13 +12,12 @@
 package org.eclipse.ecr.automation.core.operations;
 
 import org.eclipse.ecr.automation.OperationContext;
-import org.eclipse.ecr.automation.OperationException;
 import org.eclipse.ecr.automation.core.Constants;
 import org.eclipse.ecr.automation.core.annotations.Context;
 import org.eclipse.ecr.automation.core.annotations.Operation;
 import org.eclipse.ecr.automation.core.annotations.OperationMethod;
 import org.eclipse.ecr.core.api.DocumentModel;
-import org.eclipse.ecr.core.api.DocumentRef;
+import org.eclipse.ecr.core.api.DocumentModelList;
 
 /**
  * Generic fetch document operation that can be used on any context that has a
@@ -28,7 +27,7 @@ import org.eclipse.ecr.core.api.DocumentRef;
  *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@Operation(id = FetchContextDocument.ID, category = Constants.CAT_FETCH, label = "Context Document", description = "Fetch the input of the context as a document. The document will become the input for the next operation.")
+@Operation(id = FetchContextDocument.ID, category = Constants.CAT_FETCH, label = "Context Document(s)", description = "Fetch the input of the context as a document or list of documents. The document will become the input for the next operation.")
 public class FetchContextDocument {
 
     public static final String ID = "Context.FetchDocument";
@@ -37,15 +36,13 @@ public class FetchContextDocument {
     protected OperationContext ctx;
 
     @OperationMethod
-    public DocumentModel run() throws Exception {
-        Object input = ctx.getInput();
-        if (input instanceof DocumentModel) {
-            return (DocumentModel) input;
-        } else if (input instanceof DocumentRef) {
-            return ctx.getCoreSession().getDocument((DocumentRef) input);
-        }
-        throw new OperationException(
-                "Unsupported context for FetchDocument operation. No document available as input in the context");
+    public DocumentModel run(DocumentModel doc) throws Exception {
+        return doc;
+    }
+
+    @OperationMethod
+    public DocumentModelList run(DocumentModelList docs) throws Exception {
+        return docs;
     }
 
 }

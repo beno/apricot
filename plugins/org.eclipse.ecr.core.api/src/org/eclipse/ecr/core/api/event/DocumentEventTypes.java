@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -40,12 +40,6 @@ public final class DocumentEventTypes {
     public static final String DOCUMENT_CREATED = "documentCreated";
 
     public static final String DOCUMENT_IMPORTED = "documentImported";
-
-    @Deprecated
-    public static final String ABOUT_TO_INITIALIZE = "aboutToInitialize";
-
-    @Deprecated
-    public static final String DOCUMENT_INITIALIZED = "documentInitialized";
 
     public static final String ABOUT_TO_REMOVE = "aboutToRemove";
 

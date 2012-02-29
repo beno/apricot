@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -351,30 +351,10 @@ public class SQLSession implements Session {
     }
 
     @Override
-    public Document createProxyForVersion(Document parent, Document document,
-            String label) throws DocumentException {
-        try {
-            Serializable versionableId = ((SQLDocument) document).getNode().getId();
-            Node versionNode = session.getVersionByLabel(versionableId, label);
-            if (versionNode == null) {
-                throw new DocumentException("Unknown version: " + label);
-            }
-            Node parentNode = ((SQLDocument) parent).getNode();
-            String name = findFreeName(parentNode, document.getName());
-            Node proxy = session.addProxy(versionNode.getId(), versionableId,
-                    parentNode, name, null);
-            return newDocument(proxy);
-        } catch (StorageException e) {
-            throw new DocumentException(e);
-        }
-    }
-
-    @Override
     public Collection<Document> getProxies(Document document, Document parent)
             throws DocumentException {
         Collection<Node> proxyNodes;
         try {
-
             proxyNodes = session.getProxies(((SQLDocument) document).getNode(),
                     parent == null ? null : ((SQLDocument) parent).getNode());
         } catch (StorageException e) {
@@ -385,6 +365,18 @@ public class SQLSession implements Session {
             proxies.add(newDocument(proxyNode));
         }
         return proxies;
+    }
+
+    @Override
+    public void setProxyTarget(Document proxy, Document target)
+            throws DocumentException {
+        Node proxyNode = ((SQLDocument) proxy).getNode();
+        String targetId = target.getUUID();
+        try {
+            session.setProxyTarget(proxyNode, targetId);
+        } catch (StorageException e) {
+            throw new DocumentException(e);
+        }
     }
 
     @Override
@@ -426,10 +418,16 @@ public class SQLSession implements Session {
                     props.put(Model.LOCK_CREATED_PROP, created);
                 }
             }
-            props.put(Model.LOCK_OWNER_PROP,
-                    properties.get(CoreSession.IMPORT_LOCK_OWNER));
-            props.put(Model.LOCK_CREATED_PROP,
-                    properties.get(CoreSession.IMPORT_LOCK_CREATED));
+
+            Serializable importLockOwnerProp = properties.get(CoreSession.IMPORT_LOCK_OWNER);
+            if (importLockOwnerProp != null) {
+                props.put(Model.LOCK_OWNER_PROP, importLockOwnerProp);
+            }
+            Serializable importLockCreatedProp = properties.get(CoreSession.IMPORT_LOCK_CREATED);
+            if (importLockCreatedProp != null) {
+                props.put(Model.LOCK_CREATED_PROP, importLockCreatedProp);
+            }
+
             props.put(Model.MAIN_MAJOR_VERSION_PROP,
                     properties.get(CoreSession.IMPORT_VERSION_MAJOR));
             props.put(Model.MAIN_MINOR_VERSION_PROP,
@@ -473,6 +471,19 @@ public class SQLSession implements Session {
     }
 
     @Override
+    public Query createQuery(String query, String queryType, String... params)
+            throws QueryException {
+        if (params != null && params.length != 0) {
+            throw new QueryException("Parameters not supported");
+        }
+        try {
+            return new SQLSessionQuery(query, queryType);
+        } catch (QueryParseException e) {
+            throw new QueryException(e.getMessage() + ": " + query, e);
+        }
+    }
+
+    @Override
     public Query createQuery(String query, Query.Type qType, String... params)
             throws QueryException {
         if (qType != Query.Type.NXQL) {
@@ -511,7 +522,7 @@ public class SQLSession implements Session {
 
         public SQLSessionQuery(String query) {
             this.query = query;
-            queryType = "NXQL";
+            queryType = NXQL.NXQL;
         }
 
         public SQLSessionQuery(String query, String queryType) {
@@ -534,8 +545,8 @@ public class SQLSession implements Session {
                 throws QueryException {
             try {
                 String query = this.query;
-                // do ORDER BY ecm:path by hand in SQLQueryResult as we can't do
-                // it in SQL (and has to do limit/offset as well)
+                // do ORDER BY ecm:path by hand in SQLQueryResult as we can't
+                // do it in SQL (and has to do limit/offset as well)
                 Boolean orderByPath;
                 Matcher matcher = ORDER_BY_PATH_ASC.matcher(query);
                 if (matcher.matches()) {
@@ -557,7 +568,7 @@ public class SQLSession implements Session {
                     queryFilter = QueryFilter.withoutLimitOffset(queryFilter);
                 }
                 PartialList<Serializable> list = session.query(query,
-                        queryFilter, countTotal);
+                        queryType, queryFilter, countTotal);
                 return new SQLQueryResult(SQLSession.this, list, orderByPath,
                         limit, offset);
             } catch (StorageException e) {
@@ -729,7 +740,12 @@ public class SQLSession implements Session {
         }
         List<Document> children = new ArrayList<Document>(nodes.size());
         for (Node n : nodes) {
-            children.add(newDocument(n));
+            try {
+                children.add(newDocument(n));
+            } catch (DocumentException e) {
+                // ignore error retrieving one of the children
+                continue;
+            }
         }
         return children;
     }
@@ -790,6 +806,14 @@ public class SQLSession implements Session {
     protected void remove(Node node) throws DocumentException {
         try {
             session.removeNode(node);
+        } catch (StorageException e) {
+            throw new DocumentException(e);
+        }
+    }
+
+    protected void removeProperty(Node node) throws DocumentException {
+        try {
+            session.removePropertyNode(node);
         } catch (StorageException e) {
             throw new DocumentException(e);
         }
@@ -1010,19 +1034,11 @@ public class SQLSession implements Session {
             } catch (StorageException e) {
                 throw new DocumentException(e);
             }
-            ComplexType complexType = (ComplexType) type;
             List<Property> properties = new ArrayList<Property>(
                     childNodes.size());
             for (Node childNode : childNodes) {
-                Property property;
-                // TODO use a better switch
-                if (TypeConstants.isContentType(type)) {
-                    property = new SQLContentProperty(childNode, complexType,
-                            this, readonly);
-                } else {
-                    property = new SQLComplexProperty(childNode, complexType,
-                            this, readonly);
-                }
+                Property property = newSQLComplexProperty(childNode,
+                        (ComplexType) type, readonly);
                 properties.add(property);
             }
             return properties;
@@ -1030,9 +1046,39 @@ public class SQLSession implements Session {
     }
 
     /**
+     * Makes a property from a complex list element.
+     *
+     * @since 5.5
+     */
+    protected Property makeProperty(Node node, String name, Type parentType,
+            boolean readonly, int pos) throws DocumentException {
+        Type type = ((ListType) parentType).getField().getType();
+        List<Node> childNodes;
+        try {
+            childNodes = session.getChildren(node, name, true);
+        } catch (StorageException e) {
+            throw new DocumentException(e);
+        }
+        if (pos < 0 || pos >= childNodes.size()) {
+            throw new NoSuchPropertyException(name + '/' + pos);
+        }
+        Node childNode = childNodes.get(pos);
+        return newSQLComplexProperty(childNode, (ComplexType) type, readonly);
+    }
+
+    protected Property newSQLComplexProperty(Node childNode, ComplexType type,
+            boolean readonly) {
+        // TODO use a better switch
+        if (TypeConstants.isContentType(type)) {
+            return new SQLContentProperty(childNode, type, this, readonly);
+        } else {
+            return new SQLComplexProperty(childNode, type, this, readonly);
+        }
+    }
+
+    /**
      * This method flag the current session, the read ACLs update will be done
      * automatically at save time.
-     *
      */
     public void requireReadAclsUpdate() {
         session.requireReadAclsUpdate();

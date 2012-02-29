@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -78,6 +78,13 @@ public interface RegistrationInfo extends Serializable {
      * @return the component properties
      */
     Map<String, Property> getProperties();
+
+    /**
+     * Gets the list of aliases.
+     *
+     * @return the aliases
+     */
+    Set<ComponentName> getAliases();
 
     /**
      * Gets the list of the required components.
@@ -189,6 +196,15 @@ public interface RegistrationInfo extends Serializable {
      * @return the XML file URL
      */
     URL getXmlFileUrl();
+
+    /**
+     * The component notification order for {@link #notifyApplicationStarted}.
+     *
+     * @return the order, 1000 by default
+     *
+     * @since 5.6
+     */
+    int getApplicationStartedOrder();
 
     /**
      * Notify the component instance that the Nuxeo application started

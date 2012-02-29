@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -98,6 +98,61 @@ public class DocumentLocationImpl implements DocumentLocation {
         return String.format(
                 "DocumentLocationImpl [docIdRef=%s, docPathRef=%s, docRef=%s, serverName=%s]",
                 docIdRef, docPathRef, docRef, serverName);
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see java.lang.Object#hashCode()
+     *
+     * Overrides the default to use the docRef and serverName fields for hash
+     * value tests.
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((docRef == null) ? 0 : docRef.hashCode());
+        result = prime * result
+                + ((serverName == null) ? 0 : serverName.hashCode());
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see java.lang.Object#equals(java.lang.Object)
+     *
+     * Overrides the default to use the docRef and serverName fields for
+     * equality tests.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        DocumentLocation other = (DocumentLocation) obj;
+        if (docRef == null) {
+            if (other.getDocRef() != null) {
+                return false;
+            }
+        } else if (!docRef.equals(other.getDocRef())) {
+            return false;
+        }
+        if (serverName == null) {
+            if (other.getServerName() != null) {
+                return false;
+            }
+        } else if (!serverName.equals(other.getServerName())) {
+            return false;
+        }
+        return true;
     }
 
 }

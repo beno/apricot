@@ -11,12 +11,12 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Version: 0.5.4.qualifier
 Bundle-ManifestVersion: 2
 Import-Package: javax.security.auth.login,
+ org.apache.commons.lang;version="2.4.0",
  org.apache.commons.logging,
  org.dom4j,
  org.dom4j.io,
  org.eclipse.ecr.common.collections,
  org.eclipse.ecr.common.utils,
- org.eclipse.ecr.core;api=split,
  org.eclipse.ecr.core.api;api=split,
  org.eclipse.ecr.core.api.impl,
  org.eclipse.ecr.core.api.impl.blob,
@@ -25,6 +25,8 @@ Import-Package: javax.security.auth.login,
  org.eclipse.ecr.core.api.security.impl,
  org.eclipse.ecr.core.schema,
  org.eclipse.ecr.core.schema.types,
+ org.eclipse.ecr.core.schema.types.primitives,
+ org.eclipse.ecr.core.versioning,
  org.eclipse.ecr.runtime.api,
  org.eclipse.ecr.runtime.services.streaming
 Bundle-SymbolicName: org.eclipse.ecr.core.io

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,8 +12,6 @@
  */
 
 package org.eclipse.ecr.core.versioning;
-
-import java.text.NumberFormat;
 
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.ClientRuntimeException;
@@ -55,41 +53,6 @@ public class VersioningDocumentAdapter implements VersioningDocument {
         return service.getVersionLabel(doc);
     }
 
-    @Override
-    @Deprecated
-    public void incrementMajor() throws DocumentException {
-        long major = getValidVersionNumber(VersioningService.MAJOR_VERSION_PROP);
-        setMajorVersion(Long.valueOf(major + 1));
-        setMinorVersion(Long.valueOf(0));
-    }
-
-    @Override
-    @Deprecated
-    public void incrementMinor() throws DocumentException {
-        long minor = getValidVersionNumber(VersioningService.MINOR_VERSION_PROP);
-        setMinorVersion(Long.valueOf(minor + 1));
-    }
-
-    @Override
-    @Deprecated
-    public void setMajorVersion(Long value) {
-        try {
-            doc.setPropertyValue(VersioningService.MAJOR_VERSION_PROP, value);
-        } catch (ClientException e) {
-            throw new ClientRuntimeException(e);
-        }
-    }
-
-    @Override
-    @Deprecated
-    public void setMinorVersion(Long value) {
-        try {
-            doc.setPropertyValue(VersioningService.MINOR_VERSION_PROP, value);
-        } catch (ClientException e) {
-            throw new ClientRuntimeException(e);
-        }
-    }
-
     private long getValidVersionNumber(String propName) {
         Object propVal;
         try {
@@ -99,43 +62,6 @@ public class VersioningDocumentAdapter implements VersioningDocument {
         }
         return (propVal == null || !(propVal instanceof Long)) ? 0
                 : ((Long) propVal).longValue();
-    }
-
-    @Override
-    @Deprecated
-    public void refetchDoc() throws DocumentException {
-        try {
-            doc.refresh();
-        } catch (ClientException e) {
-            throw new DocumentException(e);
-        }
-    }
-
-    @Override
-    @Deprecated
-    public void incrementVersions() {
-        // does nothing
-    }
-
-    @Override
-    @Deprecated
-    public String getVersionAsString(int majorDigits, int minorDigits, char sep)
-            throws DocumentException {
-        StringBuilder buf = new StringBuilder();
-        NumberFormat fmt = getFmt(majorDigits);
-        buf.append(fmt.format(getMajorVersion()));
-        buf.append(sep);
-        NumberFormat fmt2 = getFmt(minorDigits);
-        buf.append(fmt2.format(getMinorVersion()));
-        return buf.toString();
-    }
-
-    private static NumberFormat getFmt(int digits) {
-        NumberFormat fmt = NumberFormat.getInstance();
-        fmt.setMaximumIntegerDigits(digits);
-        fmt.setMinimumIntegerDigits(digits);
-        fmt.setMaximumFractionDigits(0);
-        return fmt;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -82,5 +82,19 @@ public interface NuxeoGroup extends Serializable {
      * @param name the new name of the group
      */
     void setName(String name);
+
+    /**
+     * Gets the label of the group
+     *
+     * @return the label of the group
+     */
+    String getLabel();
+
+    /**
+     * Sets the label of this group.
+     *
+     * @param label the label of the group
+     */
+    void setLabel(String label);
 
 }

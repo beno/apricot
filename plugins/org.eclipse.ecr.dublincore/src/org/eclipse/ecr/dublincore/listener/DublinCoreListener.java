@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -19,6 +19,7 @@ import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_CREATED
 import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_PUBLISHED;
 import static org.eclipse.ecr.core.api.event.DocumentEventTypes.DOCUMENT_UPDATED;
 
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -27,6 +28,8 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.api.ClientException;
 import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DocumentModel;
+import org.eclipse.ecr.core.api.DocumentRef;
+import org.eclipse.ecr.core.api.UnrestrictedSessionRunner;
 import org.eclipse.ecr.core.event.Event;
 import org.eclipse.ecr.core.event.EventListener;
 import org.eclipse.ecr.core.event.impl.DocumentEventContext;
@@ -42,6 +45,8 @@ import org.eclipse.ecr.dublincore.service.DublinCoreStorageService;
 public class DublinCoreListener implements EventListener {
 
     private static final Log log = LogFactory.getLog(DublinCoreListener.class);
+
+    public static final String DISABLE_DUBLINCORE_LISTENER = "disableDublinCoreListener";
 
     /**
      * Core event notification.
@@ -73,10 +78,16 @@ public class DublinCoreListener implements EventListener {
             return;
         }
 
+        Boolean block = (Boolean) event.getContext().getProperty(DISABLE_DUBLINCORE_LISTENER);
+        if (block != null && block) {
+            // ignore the event - we are blocked by the caller
+            return;
+        }
+
         DocumentModel doc = docCtx.getSourceDocument();
 
         if (doc.isVersion()) {
-            log.debug("No DublinCore update on versions execpt for the issued date");
+            log.debug("No DublinCore update on versions except for the issued date");
             return;
         }
 
@@ -87,12 +98,9 @@ public class DublinCoreListener implements EventListener {
         if (doc.isProxy()) {
             if (eventId.equals(DOCUMENT_PUBLISHED)) {
                 CoreSession session = event.getContext().getCoreSession();
-                DocumentModel version = session.getSourceDocument(
-                        doc.getRef());
-                if (version != null) {
-                    service.setIssuedDate(version, cEventDate);
-                    session.saveDocument(version);
-                }
+                UnrestrictedPropertySetter setter = new UnrestrictedPropertySetter(
+                        session, doc.getRef(), "dc:issued", cEventDate);
+                setter.runUnrestricted();
             }
         }
 
@@ -104,6 +112,34 @@ public class DublinCoreListener implements EventListener {
             service.setModificationDate(doc, cEventDate, event);
             service.addContributor(doc, event);
         }
+    }
+
+    protected class UnrestrictedPropertySetter extends
+            UnrestrictedSessionRunner {
+
+        DocumentRef docRef;
+
+        String xpath;
+
+        Serializable value;
+
+        protected UnrestrictedPropertySetter(CoreSession session,
+                DocumentRef docRef, String xpath, Serializable value) {
+            super(session);
+            this.docRef = docRef;
+            this.xpath = xpath;
+            this.value = value;
+        }
+
+        public void run() throws ClientException {
+            DocumentModel doc = session.getSourceDocument(docRef);
+            if (doc != null) {
+                doc.setPropertyValue(xpath, value);
+                session.saveDocument(doc);
+            }
+
+        }
+
     }
 
 }

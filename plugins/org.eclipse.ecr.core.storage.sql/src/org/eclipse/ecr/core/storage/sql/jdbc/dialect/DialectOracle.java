@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,6 +8,7 @@
  *
  * Contributors:
  *     Florent Guillaume
+ *     Benoit Delbosc
  */
 
 package org.eclipse.ecr.core.storage.sql.jdbc.dialect;
@@ -27,11 +28,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,6 +63,8 @@ public class DialectOracle extends Dialect {
 
     protected final String fulltextParameters;
 
+    protected boolean pathOptimizationsEnabled;
+
     public DialectOracle(DatabaseMetaData metadata,
             BinaryManager binaryManager,
             RepositoryDescriptor repositoryDescriptor) throws StorageException {
@@ -67,6 +72,8 @@ public class DialectOracle extends Dialect {
         fulltextParameters = repositoryDescriptor == null ? null
                 : repositoryDescriptor.fulltextAnalyzer == null ? ""
                         : repositoryDescriptor.fulltextAnalyzer;
+        pathOptimizationsEnabled = repositoryDescriptor == null ? false
+                : repositoryDescriptor.pathOptimizationsEnabled;
     }
 
     @Override
@@ -129,6 +136,8 @@ public class DialectOracle extends Dialect {
         case TINYINT:
             return jdbcInfo("NUMBER(3,0)", Types.TINYINT);
         case INTEGER:
+            return jdbcInfo("NUMBER(10,0)", Types.INTEGER);
+        case AUTOINC:
             return jdbcInfo("NUMBER(10,0)", Types.INTEGER);
         case FTINDEXED:
             return jdbcInfo("CLOB", Types.CLOB);
@@ -279,20 +288,23 @@ public class DialectOracle extends Dialect {
                 columns.get(0).getQuotedName(), fulltextParameters);
     }
 
+    protected static Set<Character> CHARS_RESERVED = Collections.singleton(Character.valueOf('%'));
+
     @Override
     public String getDialectFulltextQuery(String query) {
-        query = query.replace("*", "%");
+        query = query.replace("*", "%"); // reserved, words with it not quoted
         FulltextQuery ft = analyzeFulltextQuery(query);
         if (ft == null) {
             return "DONTMATCHANYTHINGFOREMPTYQUERY";
         }
-        return translateFulltext(ft, "OR", "AND", "NOT", "");
+        return translateFulltext(ft, "OR", "AND", "NOT", "{", "}",
+                CHARS_RESERVED, "", "", true);
     }
 
-    // SELECT ..., SCORE(1) / 100
+    // SELECT ..., (SCORE(1) / 100) AS "_nxscore"
     // FROM ... LEFT JOIN fulltext ON fulltext.id = hierarchy.id
     // WHERE ... AND CONTAINS(fulltext.fulltext, ?, 1) > 0
-    // ORDER BY SCORE(1) DESC
+    // ORDER BY "_nxscore" DESC
     @Override
     public FulltextMatchInfo getFulltextScoredMatchInfo(String fulltextQuery,
             String indexName, int nthMatch, Column mainColumn, Model model,
@@ -303,6 +315,7 @@ public class DialectOracle extends Dialect {
         Column ftColumn = ft.getColumn(model.FULLTEXT_FULLTEXT_KEY
                 + indexSuffix);
         String score = String.format("SCORE(%d)", nthMatch);
+        String nthSuffix = nthMatch == 1 ? "" : String.valueOf(nthMatch);
         FulltextMatchInfo info = new FulltextMatchInfo();
         if (nthMatch == 1) {
             // Need only one JOIN involving the fulltext table
@@ -313,8 +326,8 @@ public class DialectOracle extends Dialect {
         info.whereExpr = String.format("CONTAINS(%s, ?, %d) > 0",
                 ftColumn.getFullQuotedName(), nthMatch);
         info.whereExprParam = fulltextQuery;
-        info.scoreExpr = String.format("%s / 100", score);
-        info.scoreAlias = score;
+        info.scoreExpr = String.format("(%s / 100)", score);
+        info.scoreAlias = openQuote() + "_nxscore" + nthSuffix + closeQuote();
         info.scoreCol = new Column(mainColumn.getTable(), null,
                 ColumnType.DOUBLE, null);
         return info;
@@ -387,7 +400,13 @@ public class DialectOracle extends Dialect {
 
     @Override
     public String getInTreeSql(String idColumnName) {
-        return String.format("NX_IN_TREE(%s, ?) = 1", idColumnName);
+        if (pathOptimizationsEnabled) {
+            return String.format(
+                    "EXISTS(SELECT 1 FROM ancestors WHERE hierarchy_id = %s AND ? MEMBER OF ancestors)",
+                    idColumnName);
+        } else {
+            return String.format("NX_IN_TREE(%s, ?) = 1", idColumnName);
+        }
     }
 
     @Override
@@ -424,11 +443,15 @@ public class DialectOracle extends Dialect {
     @Override
     public boolean supportsWith() {
         return false;
-        // return !aclOptimizationsEnabled;
     }
 
     @Override
     public boolean supportsArrays() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsArraysReturnInsteadOfRows() {
         return true;
     }
 
@@ -479,12 +502,12 @@ public class DialectOracle extends Dialect {
 
     @Override
     public String getSQLStatementsFilename() {
-        return "resources/nuxeovcs/oracle.sql.txt";
+        return "nuxeovcs/oracle.sql.txt";
     }
 
     @Override
     public String getTestSQLStatementsFilename() {
-        return "resources/nuxeovcs/oracle.test.sql.txt";
+        return "nuxeovcs/oracle.test.sql.txt";
     }
 
     @Override
@@ -495,6 +518,8 @@ public class DialectOracle extends Dialect {
         properties.put("argIdType", "VARCHAR2"); // in function args
         properties.put("aclOptimizationsEnabled",
                 Boolean.valueOf(aclOptimizationsEnabled));
+        properties.put("pathOptimizationsEnabled",
+                Boolean.valueOf(pathOptimizationsEnabled));
         properties.put("fulltextEnabled", Boolean.valueOf(!fulltextDisabled));
         if (!fulltextDisabled) {
             Table ft = database.getTable(model.FULLTEXT_TABLE_NAME);
@@ -509,7 +534,7 @@ public class DialectOracle extends Dialect {
                 Column ftbt = ft.getColumn(model.FULLTEXT_BINARYTEXT_KEY
                         + suffix);
                 String line = String.format(
-                        "  :NEW.%s := :NEW.%s || :NEW.%s; ",
+                        "  :NEW.%s := :NEW.%s || ' ' || :NEW.%s; ",
                         ftft.getQuotedName(), ftst.getQuotedName(),
                         ftbt.getQuotedName());
                 lines.add(line);
@@ -521,8 +546,8 @@ public class DialectOracle extends Dialect {
                 SecurityConstants.BROWSE);
         List<String> permsList = new LinkedList<String>();
         for (String perm : permissions) {
-            permsList.add(String.format(
-                    "  INTO READ_ACL_PERMISSIONS VALUES ('%s')", perm));
+            permsList.add(String.format("  INTO ACLR_PERMISSION VALUES ('%s')",
+                    perm));
         }
         properties.put("readPermissions", StringUtils.join(permsList, "\n"));
         return properties;
@@ -545,13 +570,16 @@ public class DialectOracle extends Dialect {
         } catch (Exception e) {
             // ignore
         }
+        if (Integer.valueOf(0).equals(err)) {
+            try {
+                err = ((SQLException) t).getErrorCode();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
         switch (err.intValue()) {
         case 17002: // ORA-17002 IO Exception
-            return true;
-        }
-        // java.sql.SQLRecoverableException: No more data to read from socket
-        String message = t.getMessage();
-        if (message.contains("No more data to read from socket")) {
+        case 17410: // ORA-17410 No more data to read from socket
             return true;
         }
         return false;
@@ -560,6 +588,57 @@ public class DialectOracle extends Dialect {
     @Override
     public String getValidationQuery() {
         return "SELECT 1 FROM DUAL";
+    }
+
+    @Override
+    public String getBlobLengthFunction() {
+        return "LENGTHB";
+    }
+
+    @Override
+    public List<String> getPostCreateIdentityColumnSql(Column column) {
+        String table = column.getTable().getPhysicalName();
+        String col = column.getPhysicalName();
+        String seq = table + "_IDSEQ";
+        String trig = table + "_IDTRIG";
+        String createSeq = String.format("CREATE SEQUENCE \"%s\"", seq);
+        String createTrig = String.format("CREATE TRIGGER \"%s\"\n" //
+                + "  BEFORE INSERT ON \"%s\"\n" //
+                + "  FOR EACH ROW WHEN (NEW.\"%s\" IS NULL)\n" //
+                + "BEGIN\n" //
+                + "  SELECT \"%s\".NEXTVAL INTO :NEW.\"%s\" FROM DUAL;\n" //
+                + "END;", trig, table, col, seq, col);
+        return Arrays.asList(createSeq, createTrig);
+    }
+
+    @Override
+    public boolean hasIdentityGeneratedKey() {
+        return false;
+    }
+
+    @Override
+    public String getIdentityGeneratedKeySql(Column column) {
+        String table = column.getTable().getPhysicalName();
+        String seq = table + "_IDSEQ";
+        return String.format("SELECT \"%s\".CURRVAL FROM DUAL", seq);
+    }
+
+    @Override
+    public String getAncestorsIdsSql() {
+        return "SELECT NX_ANCESTORS(?) FROM DUAL";
+    }
+
+    @Override
+    public String getDescending() {
+        return " DESC NULLS LAST";
+    }
+
+    @Override
+    public String getDateCast() {
+        // CAST(%s AS DATE) doesn't work, it doesn't compare exactly to DATE
+        // literals because the internal representation seems to be a float and
+        // CAST AS DATE does not truncate it
+        return "TRUNC(%s)";
     }
 
 }

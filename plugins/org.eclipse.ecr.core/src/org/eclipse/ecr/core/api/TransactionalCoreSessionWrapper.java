@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -25,8 +25,7 @@ import javax.transaction.Transaction;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.eclipse.ecr.core.api.CoreSession;
-import org.eclipse.ecr.core.api.NoRollbackOnException;
+import org.eclipse.ecr.runtime.api.J2EEContainerDescriptor;
 import org.eclipse.ecr.runtime.transaction.TransactionHelper;
 
 /**
@@ -54,7 +53,7 @@ public class TransactionalCoreSessionWrapper implements InvocationHandler,
      * <li>{@code TRUE}: in a transaction</li>
      * </ul>
      */
-    private final ThreadLocal<Boolean> threadBound = new ThreadLocal<Boolean>();
+    private final ThreadLocal<Transaction> threadBound = new ThreadLocal<Transaction>();
 
     protected TransactionalCoreSessionWrapper(CoreSession session) {
         this.session = session;
@@ -72,25 +71,56 @@ public class TransactionalCoreSessionWrapper implements InvocationHandler,
                 new TransactionalCoreSessionWrapper(session));
     }
 
+    protected void checkTxActiveRequired(Method m) {
+        if (threadBound.get() != null) {
+            return; // tx is active, no ckeck needed
+        }
+        if (J2EEContainerDescriptor.getSelected() == null) {
+            return; // not in container
+        }
+        // TODO add annotation on core session api for marking non transactional API
+        final String name = m.getName();
+        if ("getSessionId".equals(name)) {
+            return;
+        }
+        if ("connect".equals(name)) {
+            return;
+        }
+        if ("disconnect".equals(name)) {
+            return;
+        }
+        if ("close".equals(name)) {
+            return;
+        }
+       if ("destroy".equals(name)) {
+            return;
+        }
+        log.warn("Session invoked in a container without a transaction active",
+                new Throwable());
+    }
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args)
             throws Throwable {
-        Boolean b = threadBound.get();
-        if (b == null) {
+        Transaction main = threadBound.get();
+        if (main == null) {
             // first call in thread
             try {
-                Transaction tx = TransactionHelper.lookupTransactionManager().getTransaction();
-                if (tx != null
-                        && tx.getStatus() != Status.STATUS_MARKED_ROLLBACK) {
-                    tx.registerSynchronization(this);
-                    session.afterBegin();
-                    threadBound.set(Boolean.TRUE);
+                main = TransactionHelper.lookupTransactionManager().getTransaction();
+
+                if (main != null) {
+                    if (main.getStatus() != Status.STATUS_MARKED_ROLLBACK) {
+                        main.registerSynchronization(this);
+                        session.afterBegin();
+                        threadBound.set(main);
+                    }
                 }
             } catch (NamingException e) {
                 // no transaction manager, ignore
             } catch (Exception e) {
                 log.error("Error on transaction synchronizer registration", e);
             }
+            checkTxActiveRequired(method);
         }
         try {
             return method.invoke(session, args);
@@ -125,7 +155,16 @@ public class TransactionalCoreSessionWrapper implements InvocationHandler,
 
     @Override
     public void afterCompletion(int status) {
-        threadBound.remove();
+        Transaction current = null;
+        try {
+            current = TransactionHelper.lookupTransactionManager().getTransaction();
+        } catch (Exception e) {
+            throw new Error("no tx", e);
+        }
+        Transaction main = threadBound.get();
+        if (main.equals(current)) {
+            threadBound.remove();
+        }
         boolean committed;
         if (status == Status.STATUS_COMMITTED) {
             committed = true;

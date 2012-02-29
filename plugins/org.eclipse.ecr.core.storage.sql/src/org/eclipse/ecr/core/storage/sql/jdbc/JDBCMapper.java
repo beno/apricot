@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,10 +11,10 @@
  */
 package org.eclipse.ecr.core.storage.sql.jdbc;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.sql.Array;
+import java.sql.CallableStatement;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,8 +46,10 @@ import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.IterableQueryResult;
 import org.eclipse.ecr.core.api.Lock;
 import org.eclipse.ecr.core.query.QueryFilter;
+import org.eclipse.ecr.core.storage.ConnectionResetException;
 import org.eclipse.ecr.core.storage.PartialList;
 import org.eclipse.ecr.core.storage.StorageException;
+import org.eclipse.ecr.core.storage.sql.BinaryGarbageCollector;
 import org.eclipse.ecr.core.storage.sql.Invalidations;
 import org.eclipse.ecr.core.storage.sql.LockManager;
 import org.eclipse.ecr.core.storage.sql.Mapper;
@@ -84,6 +86,8 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     public static final String TEST_UPGRADE_LAST_CONTRIBUTOR = "testUpgradeLastContributor";
 
     public static final String TEST_UPGRADE_LOCKS = "testUpgradeLocks";
+
+    public static final String TEST_UPGRADE_FULLTEXT = "testUpgradeFulltext";
 
     protected TableUpgrader tableUpgrader;
 
@@ -135,11 +139,6 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
 
     @Override
     public void createDatabase() throws StorageException {
-        try {
-            sqlInfo.initSQLStatements(testProps);
-        } catch (IOException e) {
-            throw new StorageException(e);
-        }
         try {
             createTables();
         } catch (Exception e) {
@@ -212,6 +211,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                 logger.log(sql);
                 try {
                     st.execute(sql);
+                    countExecute();
                 } catch (SQLException e) {
                     throw new SQLException("Error creating table: " + sql
                             + " : " + e.getMessage(), e);
@@ -220,6 +220,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     logger.log(s);
                     try {
                         st.execute(s);
+                        countExecute();
                     } catch (SQLException e) {
                         throw new SQLException("Error post creating table: "
                                 + s + " : " + e.getMessage(), e);
@@ -230,6 +231,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     logger.log(s);
                     try {
                         st.execute(s);
+                        countExecute();
                     } catch (SQLException e) {
                         throw new SQLException("Error post creating table: "
                                 + s + " : " + e.getMessage(), e);
@@ -277,6 +279,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     logger.log(sql);
                     try {
                         st.execute(sql);
+                        countExecute();
                     } catch (SQLException e) {
                         throw new SQLException("Error adding column: " + sql
                                 + " : " + e.getMessage(), e);
@@ -285,6 +288,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                         logger.log(s);
                         try {
                             st.execute(s);
+                            countExecute();
                         } catch (SQLException e) {
                             throw new SQLException("Error post adding column: "
                                     + s + " : " + e.getMessage(), e);
@@ -419,6 +423,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     columns.get(2).setToPreparedStatement(ps, 3,
                             Long.valueOf(kind));
                     ps.execute();
+                    countExecute();
                 }
                 if (kind == Invalidations.MODIFIED) {
                     kind = Invalidations.DELETED;
@@ -474,6 +479,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                 logger.log(sql);
             }
             ResultSet rs = st.executeQuery(sql);
+            countExecute();
             int n = 0;
             while (rs.next()) {
                 n++;
@@ -498,13 +504,14 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     logger.log(sqldel);
                 }
                 n = st.executeUpdate(sqldel);
+                countExecute();
                 if (logger.isLogEnabled()) {
                     logger.logCount(n);
                 }
             }
             return invalidations;
         } catch (Exception e) {
-            checkConnectionReset(e);
+            checkConnectionReset(e, true);
             throw new StorageException("Could not invalidate", e);
         } finally {
             if (st != null) {
@@ -529,6 +536,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             try {
                 ps.setObject(1, repositoryId);
                 ResultSet rs = ps.executeQuery();
+                countExecute();
                 if (!rs.next()) {
                     if (logger.isLogEnabled()) {
                         logger.log("  -> (none)");
@@ -589,6 +597,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     debugValues.clear();
                 }
                 ps.execute();
+                countExecute();
             } finally {
                 closeStatement(ps);
             }
@@ -598,34 +607,8 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
         }
     }
 
-    // uses JDBCRowMapper
-    @Override
-    public Serializable getVersionIdByLabel(Serializable versionSeriesId,
-            String label) throws StorageException {
-        SQLInfoSelect select = sqlInfo.selectVersionBySeriesAndLabel;
-        Map<String, Serializable> criteriaMap = new HashMap<String, Serializable>();
-        criteriaMap.put(model.MAIN_IS_VERSION_KEY, Boolean.TRUE);
-        criteriaMap.put(model.VERSION_VERSIONABLE_KEY, versionSeriesId);
-        criteriaMap.put(model.VERSION_LABEL_KEY, label);
-        List<Row> rows = getSelectRows(model.VERSION_TABLE_NAME, select,
-                criteriaMap, null, true);
-        return rows == null ? null : rows.get(0).id;
-    }
-
-    // uses JDBCRowMapper
-    @Override
-    public Serializable getLastVersionId(Serializable versionSeriesId)
+    protected QueryMaker findQueryMaker(String queryType)
             throws StorageException {
-        SQLInfoSelect select = sqlInfo.selectVersionsBySeriesDesc;
-        Map<String, Serializable> criteriaMap = new HashMap<String, Serializable>();
-        criteriaMap.put(model.MAIN_IS_VERSION_KEY, Boolean.TRUE);
-        criteriaMap.put(model.VERSION_VERSIONABLE_KEY, versionSeriesId);
-        List<Row> maps = getSelectRows(model.VERSION_TABLE_NAME, select,
-                criteriaMap, null, true);
-        return maps == null ? null : maps.get(0).id;
-    }
-
-    protected QueryMaker findQueryMaker(String query) throws StorageException {
         for (Class<? extends QueryMaker> klass : queryMakerService.getQueryMakers()) {
             QueryMaker queryMaker;
             try {
@@ -633,20 +616,56 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             } catch (Exception e) {
                 throw new StorageException(e);
             }
-            if (queryMaker.accepts(query)) {
+            if (queryMaker.accepts(queryType)) {
                 return queryMaker;
             }
         }
         return null;
     }
 
+    protected void prepareUserReadAcls(QueryFilter queryFilter)
+            throws StorageException {
+        String sql = sqlInfo.dialect.getPrepareUserReadAclsSql();
+        String principals = StringUtils.join(queryFilter.getPrincipals(),
+                Dialect.ARRAY_SEP);
+        if (sql == null || principals == null) {
+            return;
+        }
+        CallableStatement cs = null;
+        try {
+            cs = connection.prepareCall(sql);
+            if (logger.isLogEnabled()) {
+                logger.log(sql + " " + principals);
+            }
+            cs.setString(1, principals);
+            cs.executeUpdate();
+            countExecute();
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new StorageException("Failed to prepare user read acl cache",
+                    e);
+        } finally {
+            if (cs != null) {
+                try {
+                    closeStatement(cs);
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+        }
+    }
+
     @Override
-    public PartialList<Serializable> query(String query,
+    public PartialList<Serializable> query(String query, String queryType,
             QueryFilter queryFilter, boolean countTotal)
             throws StorageException {
-        QueryMaker queryMaker = findQueryMaker(query);
+        if (sqlInfo.dialect.needsPrepareUserReadAcls()) {
+            prepareUserReadAcls(queryFilter);
+        }
+        QueryMaker queryMaker = findQueryMaker(queryType);
         if (queryMaker == null) {
-            throw new StorageException("No QueryMaker accepts query: " + query);
+            throw new StorageException("No QueryMaker accepts query: "
+                    + queryType + ": " + query);
         }
         QueryMaker.Query q = queryMaker.buildQuery(sqlInfo, model,
                 pathResolver, query, queryFilter);
@@ -691,6 +710,8 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                     Calendar cal = (Calendar) object;
                     Timestamp ts = new Timestamp(cal.getTimeInMillis());
                     ps.setTimestamp(i++, ts, cal); // cal passed for timezone
+                } else if (object instanceof java.sql.Date) {
+                    ps.setDate(i++, (java.sql.Date) object);
                 } else if (object instanceof String[]) {
                     Array array = sqlInfo.dialect.createArrayOf(Types.VARCHAR,
                             (Object[]) object, connection);
@@ -700,6 +721,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
                 }
             }
             ResultSet rs = ps.executeQuery();
+            countExecute();
 
             // limit/offset
             long totalSize = -1;
@@ -763,6 +785,9 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     @Override
     public IterableQueryResult queryAndFetch(String query, String queryType,
             QueryFilter queryFilter, Object... params) throws StorageException {
+        if (sqlInfo.dialect.needsPrepareUserReadAcls()) {
+            prepareUserReadAcls(queryFilter);
+        }
         QueryMaker queryMaker = findQueryMaker(queryType);
         if (queryMaker == null) {
             throw new StorageException("No QueryMaker accepts query: "
@@ -779,6 +804,148 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     }
 
     @Override
+    public Set<Serializable> getAncestorsIds(Collection<Serializable> ids)
+            throws StorageException {
+        SQLInfoSelect select = sqlInfo.getSelectAncestorsIds();
+        if (select == null) {
+            return getAncestorsIdsIterative(ids);
+        }
+        Serializable whereIds;
+        List<String> idsa = new ArrayList<String>(ids.size());
+        for (Serializable id : ids) {
+            idsa.add((String) id);
+        }
+        if (sqlInfo.dialect.supportsArrays()) {
+            whereIds = idsa.toArray(new String[0]);
+        } else {
+            // join with '|'
+            whereIds = join(idsa, '|');
+        }
+        Set<Serializable> res = new HashSet<Serializable>();
+        PreparedStatement ps = null;
+        try {
+            if (logger.isLogEnabled()) {
+                logger.logSQL(select.sql, Collections.singleton(whereIds));
+            }
+            Column what = select.whatColumns.get(0);
+            ps = connection.prepareStatement(select.sql);
+            if (whereIds instanceof String[]) {
+                Array array = sqlInfo.dialect.createArrayOf(Types.VARCHAR,
+                        (Object[]) whereIds, connection);
+                ps.setArray(1, array);
+            } else {
+                ps.setString(1, (String) whereIds);
+            }
+            ResultSet rs = ps.executeQuery();
+            countExecute();
+            List<Serializable> debugIds = null;
+            if (logger.isLogEnabled()) {
+                debugIds = new LinkedList<Serializable>();
+            }
+            while (rs.next()) {
+                if (sqlInfo.dialect.supportsArraysReturnInsteadOfRows()) {
+                    String[] resultIds = (String[]) rs.getArray(1).getArray();
+                    for (String id : resultIds) {
+                        if (id != null) {
+                            res.add(id);
+                            if (logger.isLogEnabled()) {
+                                debugIds.add(id);
+                            }
+                        }
+                    }
+                    break;
+                }
+                Serializable id = (Serializable) what.getFromResultSet(rs, 1);
+                if (id != null) {
+                    res.add(id);
+                    if (logger.isLogEnabled()) {
+                        debugIds.add(id);
+                    }
+                }
+            }
+            if (logger.isLogEnabled()) {
+                logger.logIds(debugIds, false, 0);
+            }
+            return res;
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new StorageException("Failed to get ancestors ids", e);
+        } finally {
+            if (ps != null) {
+                try {
+                    closeStatement(ps);
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Uses iterative parentid selection.
+     */
+    protected Set<Serializable> getAncestorsIdsIterative(
+            Collection<Serializable> ids) throws StorageException {
+        PreparedStatement ps = null;
+        try {
+            LinkedList<Serializable> todo = new LinkedList<Serializable>(ids);
+            Set<Serializable> done = new HashSet<Serializable>();
+            Set<Serializable> res = new HashSet<Serializable>();
+            while (!todo.isEmpty()) {
+                done.addAll(todo);
+                SQLInfoSelect select = sqlInfo.getSelectParentIds(todo.size());
+                if (logger.isLogEnabled()) {
+                    logger.logSQL(select.sql, todo);
+                }
+                Column what = select.whatColumns.get(0);
+                Column where = select.whereColumns.get(0);
+                ps = connection.prepareStatement(select.sql);
+                int i = 1;
+                for (Serializable id : todo) {
+                    where.setToPreparedStatement(ps, i++, id);
+                }
+                ResultSet rs = ps.executeQuery();
+                countExecute();
+                todo = new LinkedList<Serializable>();
+                List<Serializable> debugIds = null;
+                if (logger.isLogEnabled()) {
+                    debugIds = new LinkedList<Serializable>();
+                }
+                while (rs.next()) {
+                    Serializable id = (Serializable) what.getFromResultSet(rs,
+                            1);
+                    if (id != null) {
+                        res.add(id);
+                        if (!done.contains(id)) {
+                            todo.add(id);
+                        }
+                        if (logger.isLogEnabled()) {
+                            debugIds.add(id);
+                        }
+                    }
+                }
+                if (logger.isLogEnabled()) {
+                    logger.logIds(debugIds, false, 0);
+                }
+                ps.close();
+                ps = null;
+            }
+            return res;
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new StorageException("Failed to get ancestors ids", e);
+        } finally {
+            if (ps != null) {
+                try {
+                    closeStatement(ps);
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    @Override
     public void updateReadAcls() throws StorageException {
         if (!sqlInfo.dialect.supportsReadAcl()) {
             return;
@@ -790,6 +957,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             String sql = sqlInfo.dialect.getUpdateReadAclsSql();
             logger.log(sql);
             st.execute(sql);
+            countExecute();
         } catch (Exception e) {
             checkConnectionReset(e);
             throw new StorageException("Failed to update read acls", e);
@@ -817,6 +985,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             String sql = sqlInfo.dialect.getRebuildReadAclsSql();
             logger.log(sql);
             st.execute(sql);
+            countExecute();
         } catch (Exception e) {
             checkConnectionReset(e);
             throw new StorageException("Failed to rebuild read acls", e);
@@ -839,7 +1008,14 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     @Override
     public Lock getLock(Serializable id) throws StorageException {
         checkConnectionValid();
-        Row row = readSimpleRow(new RowId(Model.LOCK_TABLE_NAME, id));
+        RowId rowId = new RowId(Model.LOCK_TABLE_NAME, id);
+        Row row;
+        try {
+            row = readSimpleRow(rowId);
+        } catch (ConnectionResetException e) {
+            // retry once
+            row = readSimpleRow(rowId);
+        }
         return row == null ? null : new Lock(
                 (String) row.get(Model.LOCK_OWNER_KEY),
                 (Calendar) row.get(Model.LOCK_CREATED_KEY));
@@ -852,7 +1028,8 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             Row row = new Row(Model.LOCK_TABLE_NAME, id);
             row.put(Model.LOCK_OWNER_KEY, lock.getOwner());
             row.put(Model.LOCK_CREATED_KEY, lock.getCreated());
-            insertSimpleRow(row);
+            insertSimpleRows(Model.LOCK_TABLE_NAME,
+                    Collections.singletonList(row));
         }
         return oldLock;
     }
@@ -872,28 +1049,76 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
             }
         }
         if (force || oldLock != null) {
-            deleteRows(Model.LOCK_TABLE_NAME, id);
+            deleteRows(Model.LOCK_TABLE_NAME, Collections.singleton(id));
         }
         return oldLock;
+    }
+
+    @Override
+    public void markReferencedBinaries(BinaryGarbageCollector gc)
+            throws StorageException {
+        log.debug("Starting binaries GC mark");
+        Statement st = null;
+        try {
+            st = connection.createStatement();
+            int i = -1;
+            for (String sql : sqlInfo.getBinariesSql) {
+                i++;
+                Column col = sqlInfo.getBinariesColumns.get(i);
+                if (logger.isLogEnabled()) {
+                    logger.log(sql);
+                }
+                ResultSet rs = st.executeQuery(sql);
+                countExecute();
+                int n = 0;
+                while (rs.next()) {
+                    n++;
+                    String digest = (String) col.getFromResultSet(rs, 1);
+                    if (digest != null) {
+                        gc.mark(digest);
+                    }
+                }
+                if (logger.isLogEnabled()) {
+                    logger.logCount(n);
+                }
+            }
+        } catch (Exception e) {
+            checkConnectionReset(e);
+            throw new RuntimeException("Failed to mark binaries for gC", e);
+        } finally {
+            if (st != null) {
+                try {
+                    closeStatement(st);
+                } catch (SQLException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+        }
+        log.debug("End of binaries GC mark");
     }
 
     /*
      * ----- XAResource -----
      */
 
+    protected static String systemToString(Object o) {
+        return o.getClass().getName() + "@"
+                + Integer.toHexString(System.identityHashCode(o));
+    }
+
     @Override
     public void start(Xid xid, int flags) throws XAException {
         try {
             checkConnectionValid();
             xaresource.start(xid, flags);
-            if (log.isDebugEnabled()) {
-                log.debug("XA start on " + xid.getFormatId());
+            if (logger.isLogEnabled()) {
+                logger.log("XA start on " + systemToString(xid));
             }
         } catch (StorageException e) {
             throw (XAException) new XAException(XAException.XAER_RMERR).initCause(e);
         } catch (XAException e) {
             checkConnectionReset(e);
-            log.error("XA start error on " + xid.getFormatId(), e);
+            logger.error("XA start error on " + systemToString(xid), e);
             throw e;
         }
     }
@@ -902,15 +1127,15 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     public void end(Xid xid, int flags) throws XAException {
         try {
             xaresource.end(xid, flags);
-            if (log.isDebugEnabled()) {
-                log.debug("XA end on " + xid.getFormatId());
+            if (logger.isLogEnabled()) {
+                logger.log("XA end on " + systemToString(xid));
             }
         } catch (NullPointerException e) {
             // H2 when no active transaction
-            log.error("XA end error on " + xid, e);
+            logger.error("XA end error on " + systemToString(xid), e);
             throw (XAException) new XAException(XAException.XAER_RMERR).initCause(e);
         } catch (XAException e) {
-            log.error("XA end error on " + xid, e);
+            logger.error("XA end error on " + systemToString(xid), e);
             throw e;
         }
     }
@@ -920,7 +1145,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
         try {
             return xaresource.prepare(xid);
         } catch (XAException e) {
-            log.error("XA prepare error on  " + xid, e);
+            logger.error("XA prepare error on  " + systemToString(xid), e);
             throw e;
         }
     }
@@ -930,7 +1155,7 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
         try {
             xaresource.commit(xid, onePhase);
         } catch (XAException e) {
-            log.error("XA commit error on  " + xid, e);
+            logger.error("XA commit error on  " + systemToString(xid), e);
             throw e;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -91,7 +91,7 @@ public class TestSQLBinariesIndexing extends TXSQLRepositoryTestCase {
     @Override
     protected void deployRepositoryContrib() throws Exception {
         super.deployRepositoryContrib();
-        deployBundle("org.eclipse.ecr.convert.api");
+        deployBundle("org.eclipse.ecr.core.convert.api");
         deployBundle("org.eclipse.ecr.convert");
         deployContrib(TEST_BUNDLE,
                 "OSGI-INF/test-asynch-binaries-indexing-contrib.xml");

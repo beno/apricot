@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -39,6 +39,7 @@ import org.eclipse.ecr.core.api.model.DocumentPart;
 import org.eclipse.ecr.core.api.model.Property;
 import org.eclipse.ecr.core.api.model.PropertyException;
 import org.eclipse.ecr.core.api.model.PropertyNotFoundException;
+import org.eclipse.ecr.core.api.model.PropertyVisitor;
 import org.eclipse.ecr.core.api.model.impl.DefaultPropertyFactory;
 import org.eclipse.ecr.core.api.security.ACP;
 import org.eclipse.ecr.core.schema.DocumentType;
@@ -302,6 +303,14 @@ public class SimpleDocumentModel implements DocumentModel {
     }
 
     @Override
+    public void detach(boolean loadAll) {
+    }
+
+    @Override
+    public void attach(String sid) {
+    }
+
+    @Override
     public DocumentRef getRef() {
         throw new UnsupportedOperationException();
     }
@@ -477,6 +486,17 @@ public class SimpleDocumentModel implements DocumentModel {
     }
 
     @Override
+    public boolean isDirty() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void accept(PropertyVisitor visitor, Object arg)
+            throws ClientException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public <T> T getAdapter(Class<T> itf) {
         throw new UnsupportedOperationException();
     }
@@ -538,13 +558,13 @@ public class SimpleDocumentModel implements DocumentModel {
     }
 
     @Override
-    public Map<String, Serializable> getPrefetch() {
-        throw new UnsupportedOperationException();
+    public boolean isPrefetched(String xpath) {
+        return false;
     }
 
     @Override
-    public void prefetchProperty(String id, Object value) {
-        throw new UnsupportedOperationException();
+    public boolean isPrefetched(String schemaName, String name) {
+        return false;
     }
 
     @Override
@@ -575,11 +595,6 @@ public class SimpleDocumentModel implements DocumentModel {
 
     @Override
     public DocumentPart[] getParts() throws ClientException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long getFlags() {
         throw new UnsupportedOperationException();
     }
 
@@ -645,4 +660,8 @@ public class SimpleDocumentModel implements DocumentModel {
         return true;
     }
 
+    @Override
+    public String getChangeToken() {
+        return null;
+    }
 }

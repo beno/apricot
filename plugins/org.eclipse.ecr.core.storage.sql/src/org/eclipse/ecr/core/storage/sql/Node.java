@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -39,7 +39,13 @@ public class Node {
     protected final SimpleFragment hierFragment;
 
     /** Fragment information for each additional mixin or inherited fragment. */
-    private final FragmentsMap fragments;
+    protected final FragmentsMap fragments;
+
+    /**
+     * Path, only for immediate consumption after construction (will be reset to
+     * null afterwards).
+     */
+    protected String path;
 
     /**
      * Cache of property objects already retrieved. They are dumb objects, just
@@ -54,10 +60,11 @@ public class Node {
      *
      * @param context the persistence context
      * @param fragmentGroup the group of fragments for the node
+     * @param path the path, if known at construction time
      */
     @SuppressWarnings("unchecked")
-    protected Node(PersistenceContext context, FragmentGroup fragmentGroup)
-            throws StorageException {
+    protected Node(PersistenceContext context, FragmentGroup fragmentGroup,
+            String path) throws StorageException {
         this.context = context;
         model = context.model;
         hierFragment = fragmentGroup.hier;
@@ -66,6 +73,7 @@ public class Node {
         } else {
             fragments = fragmentGroup.fragments;
         }
+        this.path = path;
         // memory-sensitive
         propertyCache = new ReferenceMap(ReferenceMap.HARD, ReferenceMap.SOFT);
     }
@@ -110,6 +118,20 @@ public class Node {
             // do not propagate this unlikely exception as a checked one
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Gets the path that was assigned at {@link Node} construction time. Then
+     * it's reset to {@code null}. Should only be used once.
+     *
+     * @return the path, or {@code null} for unknown
+     */
+    public String getPath() {
+        String p = path;
+        if (p != null) {
+            path = null;
+        }
+        return p;
     }
 
     protected SimpleFragment getHierFragment() {

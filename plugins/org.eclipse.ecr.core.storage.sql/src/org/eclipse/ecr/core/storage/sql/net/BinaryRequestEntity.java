@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -15,9 +15,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import org.apache.commons.httpclient.methods.RequestEntity;
+import org.eclipse.ecr.core.storage.sql.Binary;
 
 import org.apache.commons.io.IOUtils;
-import org.eclipse.ecr.core.storage.sql.Binary;
 
 /**
  * Class defining a {@link RequestEntity} that writes from a {@link Binary}.

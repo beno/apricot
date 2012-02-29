@@ -19,8 +19,8 @@
       Extension Point for registering new document adapters
       XML extensions may contain any number of 'adapter' elements of the form:
       <adapter facet="Versionable"
-        class="org.eclipse.ecr.adapter.Versionable"
-        factory="org.eclipse.ecr.adapter.VersionableFactory"/>
+        class="org.eclipse.ecr.sample.adapter.Versionable"
+        factory="org.eclipse.ecr.sample.adapter.VersionableFactory"/>
       This means any document having the facet 'facet' can be adapted to a 'class' object using the factory 'factory'
       <p/>
       The facet attribute is optional and serve to restrict the aplicability of the adapter.

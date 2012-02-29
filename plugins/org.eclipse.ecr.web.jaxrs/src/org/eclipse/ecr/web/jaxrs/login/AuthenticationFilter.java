@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -27,8 +27,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.ecr.common.utils.Base64;
 import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.core.api.local.ClientLoginModule;
-import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.web.jaxrs.HttpFilter;
+import org.eclipse.ecr.runtime.api.Framework;
 
 /**
  * Filter using the {@link SimpleLoginModule} to authenticate a request.

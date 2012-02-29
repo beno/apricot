@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -48,11 +48,6 @@ public abstract class AbstractType implements Type {
 
     protected int flags;
 
-    protected ValueConverter converter;
-
-    protected TypeHelper helper;
-
-
     protected AbstractType(TypeRef<? extends Type> superType, String schema, String name) {
         assert schema != null;
         assert name != null;
@@ -66,19 +61,6 @@ public abstract class AbstractType implements Type {
     @Override
     public TypeRef<? extends Type> getRef() {
         return new TypeRef<Type>(schema, name, this);
-    }
-
-    @Override
-    public TypeHelper getHelper() {
-        if (helper == null) {
-            try {
-                SchemaManager sm = Framework.getService(SchemaManager.class);
-                helper = sm.getHelper(schema, name);
-            } catch (Exception e) {
-                log.error(e, e);
-            }
-        }
-        return helper;
     }
 
     @Override

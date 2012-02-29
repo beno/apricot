@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -57,6 +57,10 @@ public class DateLiteral extends Literal {
 
     public Calendar toCalendar() {
         return value.toGregorianCalendar();
+    }
+
+    public java.sql.Date toSqlDate() {
+        return new java.sql.Date(value.toDate().getTime());
     }
 
     @Override

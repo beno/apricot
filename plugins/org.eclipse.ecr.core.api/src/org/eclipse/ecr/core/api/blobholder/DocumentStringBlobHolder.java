@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -52,6 +52,8 @@ public class DocumentStringBlobHolder extends DocumentBlobHolder {
             ext = ".html";
         } else if ("text/xml".equals(mt)) {
             ext = ".xml";
+        } else if ("text/x-web-markdown".equals(mt)) {
+            ext = ".md";
         }
         String title = doc.getTitle();
         if (!title.endsWith(ext)) {

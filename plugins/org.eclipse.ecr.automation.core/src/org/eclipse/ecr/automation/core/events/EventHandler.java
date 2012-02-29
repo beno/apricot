@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -17,13 +17,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.ecr.automation.OperationContext;
-import org.eclipse.ecr.automation.core.scripting.Expression;
-import org.eclipse.ecr.automation.core.scripting.Scripting;
 import org.eclipse.ecr.common.utils.StringUtils;
 import org.eclipse.ecr.common.xmap.annotation.XNode;
 import org.eclipse.ecr.common.xmap.annotation.XNodeList;
 import org.eclipse.ecr.common.xmap.annotation.XObject;
+import org.eclipse.ecr.automation.OperationContext;
+import org.eclipse.ecr.automation.core.scripting.Expression;
+import org.eclipse.ecr.automation.core.scripting.Scripting;
 import org.eclipse.ecr.core.api.DocumentModel;
 import org.eclipse.ecr.core.api.Filter;
 import org.eclipse.ecr.core.api.NuxeoPrincipal;

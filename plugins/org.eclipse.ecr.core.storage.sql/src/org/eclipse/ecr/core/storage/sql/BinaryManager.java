@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -48,7 +48,17 @@ public interface BinaryManager {
      * @param digest the digest, or {@code null}
      * @return the corresponding binary
      */
-
     Binary getBinary(String digest);
+
+    /**
+     * Returns the Binary Garbage Collector that can be used for this binary
+     * manager.
+     * <p>
+     * Several calls to this method will return the same GC, so that its status
+     * can be monitored using {@link BinaryGarbageCollector#isInProgress}.
+     *
+     * @return the binary GC
+     */
+    BinaryGarbageCollector getGarbageCollector();
 
 }

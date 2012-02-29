@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -155,6 +155,8 @@ public class LockManager {
      */
     public Lock setLock(Serializable id, Lock lock) throws StorageException {
         int RETRIES = 10;
+        long sleepDelay = 1; // 1 ms
+        long INCREMENT = 50; // additional 50 ms each time
         for (int i = 0; i < RETRIES; i++) {
             if (i > 0) {
                 log.debug("Retrying lock on " + id + ": try " + (i + 1));
@@ -167,6 +169,12 @@ public class LockManager {
                         && isDuplicateKeyException((SQLException) c)) {
                     // cluster: two simultaneous inserts
                     // retry
+                    try {
+                        Thread.sleep(sleepDelay);
+                    } catch (InterruptedException ie) {
+                        throw new RuntimeException(ie);
+                    }
+                    sleepDelay += INCREMENT;
                     continue;
                 }
                 throw e;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -29,11 +29,11 @@ import org.eclipse.ecr.core.io.impl.ExportedDocumentImpl;
  */
 public class SingleDocumentReader extends DocumentModelReader {
 
-    private DocumentModel doc;
+    protected DocumentModel doc;
 
-    private boolean enableRepeatedReads = false;
+    protected boolean enableRepeatedReads = false;
 
-    private boolean readDone = false;
+    protected boolean readDone = false;
 
     public SingleDocumentReader(CoreSession session, DocumentModel root) {
         super(session);

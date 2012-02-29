@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<component name="org.eclipse.ecr.automation.core.impl.ReloadListener">
+
+    <extension target="org.eclipse.ecr.runtime.EventService" point="listeners">
+        <listener class="org.eclipse.ecr.automation.core.impl.ReloadListener">
+            <topic>org.eclipse.ecr.runtime.reload</topic>
+        </listener>
+    </extension>
+
+</component>

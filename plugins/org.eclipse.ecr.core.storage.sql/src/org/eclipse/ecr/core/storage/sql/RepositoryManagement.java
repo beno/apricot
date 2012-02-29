@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -69,5 +69,25 @@ public interface RepositoryManagement {
      * Get info about current VCS server clients
      */
     Collection<MapperClientInfo> getClientInfos();
+
+    /**
+     * Gets the binary GC for this repository.
+     *
+     * @return the binary garbage collector
+     */
+    BinaryGarbageCollector getBinaryGarbageCollector();
+
+    /**
+     * Marks the binaries actually in use with the GC so that they won't be
+     * deleted.
+     * <p>
+     * The passed GC may or may not be the one returned by
+     * {@link #getBinaryGarbageCollector} in case it's been determined that
+     * another repository's GC is pointing to the same binary data.
+     *
+     * @param gc the binary garbage collector to use for this repository's
+     *            binaries
+     */
+    void markReferencedBinaries(BinaryGarbageCollector gc);
 
 }

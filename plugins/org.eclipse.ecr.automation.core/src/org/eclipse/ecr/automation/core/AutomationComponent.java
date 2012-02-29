@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -16,6 +16,7 @@ import org.eclipse.ecr.automation.core.events.EventHandler;
 import org.eclipse.ecr.automation.core.events.EventHandlerRegistry;
 import org.eclipse.ecr.automation.core.events.operations.FireEvent;
 import org.eclipse.ecr.automation.core.impl.OperationServiceImpl;
+import org.eclipse.ecr.automation.core.operations.FetchContextBlob;
 import org.eclipse.ecr.automation.core.operations.FetchContextDocument;
 import org.eclipse.ecr.automation.core.operations.RestoreBlobInput;
 import org.eclipse.ecr.automation.core.operations.RestoreBlobsInput;
@@ -63,7 +64,10 @@ import org.eclipse.ecr.automation.core.operations.document.SetDocumentProperty;
 import org.eclipse.ecr.automation.core.operations.document.UnlockDocument;
 import org.eclipse.ecr.automation.core.operations.document.UpdateDocument;
 import org.eclipse.ecr.automation.core.operations.execution.RunDocumentChain;
+import org.eclipse.ecr.automation.core.operations.execution.RunFileChain;
+import org.eclipse.ecr.automation.core.operations.execution.RunInNewTransaction;
 import org.eclipse.ecr.automation.core.operations.execution.RunOperation;
+import org.eclipse.ecr.automation.core.operations.execution.RunOperationOnList;
 import org.eclipse.ecr.automation.core.operations.execution.SaveSession;
 import org.eclipse.ecr.automation.core.operations.login.LoginAs;
 import org.eclipse.ecr.automation.core.operations.login.Logout;
@@ -88,7 +92,7 @@ import org.eclipse.ecr.runtime.model.DefaultComponent;
 /**
  * Nuxeo component that provide an implementation of the
  * {@link AutomationService} and handle extensions registrations.
- *
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class AutomationComponent extends DefaultComponent {
@@ -110,6 +114,7 @@ public class AutomationComponent extends DefaultComponent {
         service = new OperationServiceImpl();
         // register built-in operations
         service.putOperation(FetchContextDocument.class);
+        service.putOperation(FetchContextBlob.class);
         service.putOperation(SetVar.class);
         service.putOperation(PushDocument.class);
         service.putOperation(PushDocumentList.class);
@@ -122,7 +127,10 @@ public class AutomationComponent extends DefaultComponent {
         service.putOperation(RestoreBlobsInput.class);
         service.putOperation(RunScript.class);
         service.putOperation(RunOperation.class);
+        service.putOperation(RunOperationOnList.class);
+        service.putOperation(RunInNewTransaction.class);
         service.putOperation(RunDocumentChain.class);
+        service.putOperation(RunFileChain.class);
         service.putOperation(CopyDocument.class);
         service.putOperation(CreateDocument.class);
         service.putOperation(CreateVersion.class);
@@ -198,7 +206,7 @@ public class AutomationComponent extends DefaultComponent {
             throws Exception {
         if (XP_OPERATIONS.equals(extensionPoint)) {
             OperationContribution opc = (OperationContribution) contribution;
-            service.putOperation(opc.type, opc.replace);
+            service.putOperation(opc.type, opc.replace, contributor.getName().toString());
         } else if (XP_CHAINS.equals(extensionPoint)) {
             OperationChainContribution occ = (OperationChainContribution) contribution;
             service.putOperationChain(

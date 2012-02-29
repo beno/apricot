@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,6 +12,8 @@
 
 package org.eclipse.ecr.core.api.localconfiguration;
 
+import org.eclipse.ecr.core.api.ClientException;
+import org.eclipse.ecr.core.api.CoreSession;
 import org.eclipse.ecr.core.api.DetachedAdapter;
 import org.eclipse.ecr.core.api.DocumentRef;
 
@@ -39,5 +41,12 @@ public interface LocalConfiguration<T> extends DetachedAdapter {
      * Merge this {@code LocalConfiguration} with another one.
      */
     T merge(T other);
+
+    /**
+     * Save this LocalConfiguration.
+     *
+     * @since 5.5
+     */
+    void save(CoreSession session) throws ClientException;
 
 }

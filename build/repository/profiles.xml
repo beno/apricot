@@ -39,13 +39,12 @@
     <artifact name="org.eclipse.ecr.core.storage.sql" />
     <artifact name="org.eclipse.ecr.core.storage.sql.extensions" />
     <artifact name="org.eclipse.ecr.core.storage.sql.ra" />
-    <artifact name="org.eclipse.ecr.convert.api" />
-    <artifact name="org.eclipse.ecr.convert" />
+    <artifact name="org.eclipse.ecr.core.convert.api" />
+    <artifact name="org.eclipse.ecr.core.convert" />
 
     <artifact name="org.eclipse.ecr.auth" />
     <artifact name="org.eclipse.ecr.dublincore" />
     <artifact name="org.eclipse.ecr.automation.core" />
-    <artifact name="org.eclipse.ecr.audit.api" />
   </profile>
 
   <profile name="web">
@@ -75,6 +74,9 @@
     <artifact name="org.eclipse.ecr.configuration.cmis" />
     <artifact name="org.eclipse.ecr.opencmis.bindings" />
     <artifact name="org.eclipse.ecr.opencmis.impl" />
+    <artifact name="org.eclipse.ecr.platform.audit.api" />
+    <artifact name="org.eclipse.ecr.platform.query.api" />
+    <artifact name="org.eclipse.ecr.platform.search.api" />
   </profile>
 
   <profile name="h2">

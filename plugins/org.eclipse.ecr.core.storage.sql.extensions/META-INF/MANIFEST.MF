@@ -1,4 +1,4 @@
-Export-Package: org.eclipse.ecr.core.storage.sql.extensions
+Export-Package: org.eclipse.ecr.core.storage.sql.db
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .
 Manifest-Version: 1.0

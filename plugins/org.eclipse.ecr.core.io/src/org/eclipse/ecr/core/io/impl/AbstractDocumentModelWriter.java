@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.eclipse.ecr.common.collections.PrimitiveArrays;
+import org.eclipse.ecr.common.collections.ScopeType;
 import org.eclipse.ecr.common.utils.Base64;
 import org.eclipse.ecr.common.utils.Path;
 import org.eclipse.ecr.core.api.Blob;
@@ -50,6 +51,7 @@ import org.eclipse.ecr.core.schema.types.JavaTypes;
 import org.eclipse.ecr.core.schema.types.ListType;
 import org.eclipse.ecr.core.schema.types.Schema;
 import org.eclipse.ecr.core.schema.types.Type;
+import org.eclipse.ecr.core.versioning.VersioningService;
 import org.eclipse.ecr.runtime.api.Framework;
 import org.eclipse.ecr.runtime.services.streaming.ByteArraySource;
 
@@ -143,6 +145,11 @@ public abstract class AbstractDocumentModelWriter extends
         doc.putContextData("initialLifecycleState", lifeCycleState);
         // then load schemas data
         loadSchemas(xdoc, doc, xdoc.getDocument());
+
+        if (doc.hasSchema("uid")) {
+            doc.putContextData(ScopeType.REQUEST,
+                    VersioningService.SKIP_VERSIONING, true);
+        }
 
         doc = session.createDocument(doc);
 

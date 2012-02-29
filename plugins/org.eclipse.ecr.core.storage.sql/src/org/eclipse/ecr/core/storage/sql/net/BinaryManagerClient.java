@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -22,6 +22,7 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.ecr.core.storage.sql.Binary;
+import org.eclipse.ecr.core.storage.sql.BinaryGarbageCollector;
 import org.eclipse.ecr.core.storage.sql.BinaryManager;
 import org.eclipse.ecr.core.storage.sql.RepositoryDescriptor;
 import org.eclipse.ecr.core.storage.sql.RepositoryImpl;
@@ -52,6 +53,12 @@ public class BinaryManagerClient implements BinaryManager {
     public void initialize(RepositoryDescriptor repositoryDescriptor)
             throws IOException {
         url = getUrl(repositoryDescriptor);
+    }
+
+    @Override
+    public BinaryGarbageCollector getGarbageCollector() {
+        // cannot GC for a remote repository
+        return null;
     }
 
     protected static String getUrl(RepositoryDescriptor repositoryDescriptor) {

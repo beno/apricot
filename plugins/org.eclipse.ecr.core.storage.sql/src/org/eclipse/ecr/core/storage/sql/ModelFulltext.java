@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -65,5 +65,17 @@ public class ModelFulltext {
     public final Map<String, Set<String>> propPathsExcludedByIndexSimple = new HashMap<String, Set<String>>();
 
     public final Map<String, Set<String>> propPathsExcludedByIndexBinary = new HashMap<String, Set<String>>();
+
+    public final Set<String> excludedTypes = new HashSet<String>();
+
+    public final Set<String> includedTypes = new HashSet<String>();
+
+    public boolean isFulltextIndexable(String typeName) {
+        if (includedTypes.contains(typeName)
+                || (includedTypes.isEmpty() && !excludedTypes.contains(typeName))) {
+            return true;
+        }
+        return false;
+    }
 
 }

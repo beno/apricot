@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -32,7 +32,6 @@ import org.eclipse.ecr.core.model.Property;
 import org.eclipse.ecr.core.model.Repository;
 import org.eclipse.ecr.core.model.Session;
 import org.eclipse.ecr.core.schema.DocumentType;
-import org.eclipse.ecr.core.storage.StorageException;
 import org.eclipse.ecr.core.storage.sql.Model;
 import org.eclipse.ecr.core.storage.sql.Node;
 
@@ -422,12 +421,11 @@ public class SQLDocumentProxy implements SQLDocument, DocumentProxy {
     @Override
     public void setTargetDocument(Document target) throws DocumentException {
         ((SQLDocument) proxy).checkWritable();
-        try {
-            ((SQLDocument) proxy).getNode().setSimpleProperty(
-                    Model.PROXY_TARGET_PROP, target.getUUID());
-        } catch (StorageException e) {
-            throw new DocumentException(e);
+        if (!target.getVersionSeriesId().equals(getVersionSeriesId())) {
+            throw new DocumentException(
+                    "Cannot set proxy target to different version series");
         }
+        getSession().setProxyTarget(proxy, target);
         this.target = target;
     }
 

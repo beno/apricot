@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.eclipse.ecr.core.storage.sql.Model;
+import org.eclipse.ecr.core.storage.sql.Row;
 import org.eclipse.ecr.core.storage.sql.jdbc.db.Column;
 
 /**
@@ -36,11 +37,10 @@ public interface CollectionIO {
 
     /**
      * Sets the values of a fragment to a SQL prepared statement, and executes
-     * the statement for each value.
+     * the statement for each value. Uses batching if possible.
      */
-    void setToPreparedStatement(Serializable id, Serializable[] array,
-            List<Column> columns, PreparedStatement ps, Model model,
-            List<Serializable> debugValues, String sql, JDBCLogger logger)
-            throws SQLException;
+    void executeInserts(PreparedStatement ps, List<Row> rows,
+            List<Column> columns, boolean supportsBatchUpdates, String sql,
+            JDBCConnection connection) throws SQLException;
 
 }

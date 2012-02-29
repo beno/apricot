@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -62,8 +62,8 @@ public class ResourceTemplateLoader implements TemplateLoader {
     }
 
     public Object findTemplateSource(String name) throws IOException {
-        if (name.startsWith("fs://")) { 
-            // workaround for absolute paths - see FreemarkerEngine#render()
+        if (name.startsWith("fs://")) { // workaround for absolute paths - see
+                                        // FreemarkerEngine#render()
             name = name.substring(5);
         } else if (name.contains(":/")) {
             return urlLoader.findTemplateSource(name);
@@ -119,9 +119,13 @@ public class ResourceTemplateLoader implements TemplateLoader {
                     return file.getCanonicalFile();
                 }
             }
-            File file = new File(name).getCanonicalFile();
-            if (file.isFile()) {
-                return file;
+            try {
+                File file = new File(name).getCanonicalFile();
+                if (file.isFile()) {
+                    return file;
+                }
+            } catch (IOException e) {
+                return null;
             }
             return null;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -24,8 +24,8 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyReader;
 import javax.ws.rs.ext.Provider;
 
-import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
 import org.eclipse.ecr.common.utils.FileUtils;
+import org.eclipse.ecr.automation.server.jaxrs.ExecutionRequest;
 import org.eclipse.ecr.web.jaxrs.context.RequestContext;
 
 /**

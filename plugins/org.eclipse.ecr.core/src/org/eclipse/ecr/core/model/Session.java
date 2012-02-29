@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -75,6 +75,15 @@ public interface Session {
      * @return the session context
      */
     Map<String, Serializable> getSessionContext();
+
+    /**
+     * Creates a query object given a SQL like query string.
+     *
+     * @param query the SQL like query
+     * @return the query
+     */
+    Query createQuery(String query, String queryType, String... params)
+            throws QueryException;
 
     /**
      * Creates a query object given a SQL like query string.
@@ -234,21 +243,6 @@ public interface Session {
             throws DocumentException;
 
     /**
-     * Creates a proxy to the given version of the given document inside the
-     * given parent.
-     *
-     * @param parent the parent
-     * @param doc the document
-     * @param versionLabel the version
-     * @return the proxy
-     * @throws DocumentException if any error occurs
-     * @deprecated
-     */
-    @Deprecated
-    Document createProxyForVersion(Document parent, Document doc,
-            String versionLabel) throws DocumentException;
-
-    /**
      * Finds the proxies for a document. If the folder is not null, the search
      * will be limited to its children.
      * <p>
@@ -262,6 +256,18 @@ public interface Session {
      * @since 1.4.1 for the case where doc is a proxy
      */
     Collection<Document> getProxies(Document doc, Document folder)
+            throws DocumentException;
+
+    /**
+     * Sets a proxies' target.
+     * <p>
+     * The target must have the same version series as the proxy.
+     *
+     * @param proxy the proxy
+     * @param target the new target
+     * @since 5.5
+     */
+    void setProxyTarget(Document proxy, Document target)
             throws DocumentException;
 
     /**

@@ -29,7 +29,7 @@ import org.w3c.dom.Node;
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@SuppressWarnings( { "SuppressionAnnotation" })
+@SuppressWarnings({ "SuppressionAnnotation" })
 public class XAnnotatedList extends XAnnotatedMember {
 
     protected static final ElementVisitor elementListVisitor = new ElementVisitor();
@@ -77,6 +77,10 @@ public class XAnnotatedList extends XAnnotatedMember {
             }
         }
 
+        if (isNullByDefault && values.isEmpty()) {
+            return null;
+        }
+
         if (type != ArrayList.class) {
             if (type.isArray()) {
                 if (componentType.isPrimitive()) {
@@ -94,9 +98,6 @@ public class XAnnotatedList extends XAnnotatedMember {
             }
         }
 
-        if (isNullByDefault && values.isEmpty()) {
-            values = null;
-        }
         return values;
     }
 
@@ -109,6 +110,8 @@ public class XAnnotatedList extends XAnnotatedMember {
                 objects = (Object[]) v;
             } else if (v instanceof List) {
                 objects = ((List) v).toArray();
+            } else if (v instanceof Collection) {
+                objects = ((Collection) v).toArray();
             } else {
                 objects = PrimitiveArrays.toObjectArray(v);
             }
@@ -136,6 +139,7 @@ class ElementVisitor implements DOMHelper.NodeVisitor {
 
     private static final Log log = LogFactory.getLog(ElementVisitor.class);
 
+    @Override
     public void visitNode(Context ctx, XAnnotatedMember xam, Node node,
             Collection<Object> result) {
         try {
@@ -147,6 +151,7 @@ class ElementVisitor implements DOMHelper.NodeVisitor {
 }
 
 class ElementValueVisitor implements DOMHelper.NodeVisitor {
+    @Override
     public void visitNode(Context ctx, XAnnotatedMember xam, Node node,
             Collection<Object> result) {
         String val = node.getTextContent();
@@ -163,6 +168,7 @@ class ElementValueVisitor implements DOMHelper.NodeVisitor {
 }
 
 class AttributeValueVisitor implements DOMHelper.NodeVisitor {
+    @Override
     public void visitNode(Context ctx, XAnnotatedMember xam, Node node,
             Collection<Object> result) {
         String val = node.getNodeValue();

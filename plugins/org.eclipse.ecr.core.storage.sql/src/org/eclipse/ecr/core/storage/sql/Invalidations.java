@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -25,12 +25,21 @@ public class Invalidations implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** Pseudo-table to use to notify about children invalidated. */
+    /** Pseudo-table for children invalidation. */
     public static final String PARENT = "__PARENT__";
+
+    /** Pseudo-table for series proxies invalidation. */
+    public static final String SERIES_PROXIES = "__SERIES_PROXIES__";
+
+    /** Pseudo-table for target proxies invalidation. */
+    public static final String TARGET_PROXIES = "__TARGET_PROXIES__";
 
     public static final int MODIFIED = 1;
 
     public static final int DELETED = 2;
+
+    /** used locally when invalidating everything */
+    public boolean all;
 
     /** null when empty */
     public Set<RowId> modified;
@@ -38,20 +47,21 @@ public class Invalidations implements Serializable {
     /** null when empty */
     public Set<RowId> deleted;
 
+    public Invalidations() {
+    }
+
+    public Invalidations(boolean all) {
+        this.all = all;
+    }
+
     public boolean isEmpty() {
-        return modified == null && deleted == null;
+        return modified == null && deleted == null && !all;
     }
 
     public void clear() {
+        all = false;
         modified = null;
         deleted = null;
-    }
-
-    public boolean contains(RowId rowId) {
-        // even if rowId or the maps contain a Row, only RowId has an equals()
-        // so things comparisons will be correct
-        return (modified != null && modified.contains(rowId))
-                || (deleted != null && deleted.contains(rowId));
     }
 
     /** only call this if it's to add at least one element in the set */
@@ -75,6 +85,15 @@ public class Invalidations implements Serializable {
         if (other == null) {
             return;
         }
+        if (all) {
+            return;
+        }
+        if (other.all) {
+            all = true;
+            modified = null;
+            deleted = null;
+            return;
+        }
         if (other.modified != null) {
             addModified(other.modified);
         }
@@ -84,13 +103,16 @@ public class Invalidations implements Serializable {
     }
 
     public void addModified(RowId rowId) {
+        if (all) {
+            return;
+        }
         if (modified == null) {
             modified = new HashSet<RowId>();
         }
         modified.add(rowId);
     }
 
-    public void addModified(Set<RowId> rowIds) {
+    protected void addModified(Set<RowId> rowIds) {
         if (modified == null) {
             modified = new HashSet<RowId>();
         }
@@ -98,13 +120,16 @@ public class Invalidations implements Serializable {
     }
 
     public void addDeleted(RowId rowId) {
+        if (all) {
+            return;
+        }
         if (deleted == null) {
             deleted = new HashSet<RowId>();
         }
         deleted.add(rowId);
     }
 
-    public void addDeleted(Set<RowId> rowIds) {
+    protected void addDeleted(Set<RowId> rowIds) {
         if (deleted == null) {
             deleted = new HashSet<RowId>();
         }
@@ -125,6 +150,9 @@ public class Invalidations implements Serializable {
     public String toString() {
         StringBuilder sb = new StringBuilder(
                 this.getClass().getSimpleName() + '(');
+        if (all) {
+            sb.append("all=true");
+        }
         if (modified != null) {
             sb.append("modified=");
             sb.append(modified);

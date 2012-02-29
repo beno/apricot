@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Nuxeo SA (http://nuxeo.com/) and others.
+ * Copyright (c) 2006-2012 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -37,6 +37,7 @@ public enum ColumnSpec {
     SYSNAMEARRAY, // system names array (mixins), string if not suppported
     TINYINT, // cluster inval kind
     INTEGER, // complex prop order, ordered doc
+    AUTOINC, // auto-incremented integer (identity, serial, etc.)
     FTINDEXED, // summary ft column being indexed
     FTSTORED, // individual ft column
     CLUSTERNODE, // cluster node id

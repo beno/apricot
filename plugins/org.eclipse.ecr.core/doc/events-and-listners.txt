@@ -71,19 +71,19 @@ Needs
    issue.
 
    This listenerList has been extracted from the Eclipse project and is 'pure'
-   Java. You may check org.nuxeo.ecm.core.util.ListernerList for more
+   Java. You may check org.eclipse.ecr.core.util.ListernerList for more
   information.
 
    For listeners aimed at being notified on document based events NXCore exposes
-   an interface : org.nuxeo.ecm.core.model.EventListener that specific
+   an interface : org.eclipse.ecr.core.model.EventListener that specific
    listeners must implement in order to register in the NXCore listeners list.
 
    They are two kind of EventListener. Asynchronous and Synchronous listeners.
 
    See ::
 
-      org.nuxeo.ecm.core.mode.event.SynchronousEventListener
-      org.nuxeo.ecm.core.mode.event.AsynchronousEventListener
+      org.eclipse.ecr.core.mode.event.SynchronousEventListener
+      org.eclipse.ecr.core.mode.event.AsynchronousEventListener
 
    Both interfaces above implement the EventListener marker interface.
 
