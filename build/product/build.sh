@@ -16,5 +16,5 @@ INSTALLER=ecr-installer/target/ecr-installer-*.jar
 
 rm -rf target
 mkdir target
-${JAVA} ${JAVA_OPTS} -jar ${INSTALLER} -p core,web,h2 -r ../repository/target/repository  target/ecr-default
+${JAVA} ${JAVA_OPTS} -jar ${INSTALLER} -p core,web,h2,cmis -r ../repository/target/repository  target/ecr-default
 
